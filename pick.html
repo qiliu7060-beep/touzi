@@ -1,0 +1,184 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>选股 · 勾选建仓 · A 股长期投资系统</title><style>
+:root{--bg:#f5f7fa;--card:#fff;--ink:#15202b;--muted:#6b7683;--line:#e3e8ef;
+--blue:#2f6fed;--green:#12a150;--amber:#d99100;--red:#e5484d;--purple:#7c5cff;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font-family:-apple-system,"Segoe UI","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+font-size:14px;line-height:1.6}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
+h1{font-size:26px;margin:0 0 6px}
+h2{font-size:19px;margin:38px 0 14px;padding-left:10px;border-left:4px solid var(--blue)}
+h3{font-size:15px;margin:22px 0 10px;color:#2b3a4a}
+.sub{color:var(--muted);margin:0 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;
+margin:14px 0;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.grid5{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.kv:last-child{border-bottom:0}
+.kv b{font-weight:600}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child,th.l,td.l{text-align:left;white-space:normal}
+th{background:#eef2f7;font-weight:600;color:#33414f;position:sticky;top:0}
+tbody tr:hover{background:#f8fafc}
+.scroll{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.pill{display:inline-block;min-width:46px;padding:2px 9px;border-radius:999px;font-weight:700;
+font-size:12.5px;text-align:center;color:#fff}
+.pill.great{background:var(--green)}.pill.good{background:#3f9e6f}
+.pill.mid{background:var(--amber)}.pill.weak{background:#e07b39}
+.pill.bad{background:var(--red)}.pill.na{background:#b6bfca}
+.meter{height:8px;background:#e9eef5;border-radius:5px;overflow:hidden;margin-top:8px}
+.meter>i{display:block;height:100%;border-radius:5px}
+.v-great{background:var(--green)}.v-good{background:#3f9e6f}.v-mid{background:var(--amber)}
+.v-weak{background:#e07b39}.v-bad{background:var(--red)}.v-na{background:#c3cbd5}
+.big{font-size:30px;font-weight:700;letter-spacing:-.5px}
+.tag{display:inline-block;padding:1px 8px;border-radius:6px;font-size:12px;font-weight:600}
+.tag.ok{background:#e5f6ec;color:#0d7a3c}
+.tag.warn{background:#fff4e0;color:#9a6600}
+.tag.bad{background:#fdeaea;color:#b32227}
+.tag.info{background:#e8f0fe;color:#1a56c4}
+.chart{width:100%;height:auto;display:block}
+.grid{stroke:#e9eef5;stroke-width:1}
+.base{stroke:#c3cbd5;stroke-width:1.2;stroke-dasharray:4 4}
+.chart polyline{stroke-linejoin:round;stroke-linecap:round}
+.axt{font-size:10.5px;fill:#7b8794}
+.lg{font-size:11.5px;fill:#4a5768;font-weight:600}
+.svc{display:inline-block;padding:3px 10px;border:1px solid var(--line);border-radius:999px;
+margin:3px 4px 3px 0;font-size:12.5px;background:#fff}
+blockquote{margin:10px 0;padding:10px 14px;background:#fffaf0;border-left:4px solid var(--amber);
+border-radius:0 8px 8px 0}
+code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:12.5px}
+footer{color:var(--muted);font-size:12.5px;margin-top:40px;border-top:1px solid var(--line);
+padding-top:14px}
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0}
+.topbar{position:sticky;top:0;z-index:900;display:flex;align-items:center;gap:4px;
+ flex-wrap:wrap;padding:8px 16px;background:#0b1220cc;backdrop-filter:blur(8px);
+ border-bottom:1px solid #1f2937;font:14px/1.4 "Microsoft YaHei",system-ui,sans-serif}
+.topbar .brand{color:#fff;font-weight:700;text-decoration:none;margin-right:12px;
+ white-space:nowrap;letter-spacing:.3px}
+.topbar a.nv{color:#9ca3af;text-decoration:none;padding:6px 11px;border-radius:8px;
+ white-space:nowrap}
+.topbar a.nv:hover{background:#1f2937;color:#e5e7eb}
+.topbar a.nv.on{background:#2563eb;color:#fff;font-weight:600}
+.topbar .sp{flex:1 1 auto}
+.topbar .live{color:#9ca3af;font-size:12px;white-space:nowrap}
+.topbar .live b{color:#22c55e}
+main.wrap{padding-top:16px}
+.hero-links{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.hero-links a{display:inline-block;padding:8px 14px;border-radius:10px;background:#111827;
+ color:#e5e7eb;text-decoration:none;border:1px solid #1f2937;font-size:13px}
+.hero-links a:hover{border-color:#2563eb;color:#fff}
+.flash-up{animation:__fu 1.2s ease-out}
+.flash-dn{animation:__fd 1.2s ease-out}
+@keyframes __fu{0%{background:#065f46;color:#ecfdf5}100%{background:transparent}}
+@keyframes __fd{0%{background:#7f1d1d;color:#fef2f2}100%{background:transparent}}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b7280;
+ margin-right:6px;vertical-align:middle}
+.dot.ok{background:#22c55e;box-shadow:0 0 6px #22c55e}
+.dot.wait{background:#eab308}
+.dot.bad{background:#ef4444;box-shadow:0 0 6px #ef4444}
+.src{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;
+ border:1px solid #374151;color:#9ca3af;margin-left:4px}
+.src.live{border-color:#166534;color:#86efac}
+@media (prefers-reduced-motion:reduce){.flash-up,.flash-dn{animation:none!important}}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+h4{font-size:13.5px;margin:4px 0 8px;color:#9ca3af;font-weight:600}
+@media (max-width:900px){.grid3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.px{font-variant-numeric:tabular-nums}
+.pickbar{position:sticky;bottom:0;z-index:800;display:flex;gap:10px;align-items:center;
+ flex-wrap:wrap;padding:10px 14px;margin-top:12px;background:#0b1220ee;border:1px solid #1f2937;
+ border-radius:12px;font:13px/1.5 "Microsoft YaHei",system-ui,sans-serif}
+.pickbar input[type=date],.pickbar input[type=text]{background:#111827;color:#e5e7eb;
+ border:1px solid #374151;border-radius:7px;padding:6px 9px;font:inherit}
+button.b{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 15px;
+ cursor:pointer;font:inherit;font-weight:600}
+button.b:hover{background:#1d4ed8}
+button.b2{background:#374151;font-weight:400}
+button.b2:hover{background:#4b5563}
+button.b:disabled{opacity:.5;cursor:not-allowed}
+tr.picked{background:#0f2a1d}
+.hint{color:#9ca3af;font-size:12.5px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:70px;z-index:99998;
+ background:#111827;color:#e5e7eb;border:1px solid #374151;border-radius:10px;
+ padding:10px 18px;font:13px/1.6 "Microsoft YaHei",system-ui,sans-serif;
+ box-shadow:0 8px 24px rgba(0,0,0,.5);display:none}
+table input.ip,table input.is{width:78px;background:#111827;color:#e5e7eb;border:1px solid #374151;
+ border-radius:6px;padding:4px 6px;font:12.5px/1.2 inherit;text-align:right}
+@media print{.topbar,.pickbar,.toast{display:none}}
+</style></head><body><header class="topbar"><a class="brand" href="index.html">📈 A 股长期投资系统</a><a class="nv" href="index.html">总览</a><a class="nv on" href="pick.html">选股 · 勾选建仓</a><a class="nv" href="my.html">我的持仓</a><a class="nv" href="report.html">完整报告</a><a class="nv" href="macro.html">宏观与政策</a><a class="nv" href="backtest.html">回测</a><a class="nv" href="data.html">数据新鲜度</a><a class="nv" href="rules.html">规则与费率</a><span class="sp"></span><span class="live" id="__navlive"><span class="dot" id="__dot"></span><span id="__livestate">连接中…</span>　·　报价 <b id="__livets">—</b>　·　<span id="__buildstate">—</span></span></header><main class="wrap"><h1>选股 · 勾选建仓</h1><p class="sub">下面每一行都是打分与买卖规则算出来的结果，<b>不是推荐你买</b>——「建仓」= 9 条买入门槛全通过；「接近建仓」= 只差一条。打勾、填股数（默认 100 股），点底部按钮就直接进你的持仓台账。</p><div class="hero-links"><a href="my.html">看我的持仓</a><a href="report.html">看完整报告</a><a href="rules.html">看规则与阈值</a></div><div class="card"><h3>✅ 建仓：买入门槛全通过</h3><p class="small muted" style="margin:0 0 10px">6 只。这些是规则说「可以买」的，最终买不买、买多少由你决定。</p><div class="scroll"><table><tr><th>选</th><th>代码</th><th>名称</th><th>动作</th><th class='num'>总分</th><th class='num'>现价</th><th class='num'>PE</th><th class='num'>PB</th><th class='num'>股息率%</th><th>还差什么</th><th>买入价</th><th>股数</th></tr><tr data-pick="600690" data-name="海尔智家"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>600690</code></td><td>海尔智家</td><td><span class="pill great">建仓</span></td><td class="num">89.3</td><td class="px" data-q="600690.price" data-nd="3">20.430</td><td class="num">10.66</td><td class="num">1.59</td><td class="num">5.68</td><td class="small">（全部通过）</td><td><input class="ip" type="text" value="20.430"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="000568" data-name="泸州老窖"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>000568</code></td><td>泸州老窖</td><td><span class="pill great">建仓</span></td><td class="num">86.9</td><td class="px" data-q="000568.price" data-nd="3">72.610</td><td class="num">14.24</td><td class="num">2.34</td><td class="num">7.95</td><td class="small">（全部通过）　<span class="muted">ROE 连续 2 个年报下滑</span></td><td><input class="ip" type="text" value="72.610"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="000708" data-name="中信特钢"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>000708</code></td><td>中信特钢</td><td><span class="pill great">建仓</span></td><td class="num">82.0</td><td class="px" data-q="000708.price" data-nd="3">13.200</td><td class="num">10.89</td><td class="num">1.56</td><td class="num">6.41</td><td class="small">（全部通过）</td><td><input class="ip" type="text" value="13.200"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="601018" data-name="宁波港"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>601018</code></td><td>宁波港</td><td><span class="pill great">建仓</span></td><td class="num">81.5</td><td class="px" data-q="601018.price" data-nd="3">3.590</td><td class="num">13.66</td><td class="num">0.86</td><td class="num">4.21</td><td class="small">（全部通过）</td><td><input class="ip" type="text" value="3.590"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="002001" data-name="新 和 成"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>002001</code></td><td>新 和 成</td><td><span class="pill great">建仓</span></td><td class="num">78.3</td><td class="px" data-q="002001.price" data-nd="3">26.310</td><td class="num">11.28</td><td class="num">2.32</td><td class="num">3.80</td><td class="small">（全部通过）</td><td><input class="ip" type="text" value="26.310"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="688036" data-name="传音控股"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>688036</code></td><td>传音控股</td><td><span class="pill great">建仓</span></td><td class="num">75.4</td><td class="px" data-q="688036.price" data-nd="3">46.100</td><td class="num">16.89</td><td class="num">2.62</td><td class="num">3.69</td><td class="small">（全部通过）　<span class="muted">ROE 连续 2 个年报下滑</span></td><td><input class="ip" type="text" value="46.100"></td><td><input class="is" type="text" value="100"></td></tr></table></div></div><div class="card"><h3>🟡 接近建仓：只差一条门槛</h3><p class="small muted" style="margin:0 0 10px">20 只。差的那一条写在「还差什么」列——多数是估值还贵一点。</p><div class="scroll"><table><tr><th>选</th><th>代码</th><th>名称</th><th>动作</th><th class='num'>总分</th><th class='num'>现价</th><th class='num'>PE</th><th class='num'>PB</th><th class='num'>股息率%</th><th>还差什么</th><th>买入价</th><th>股数</th></tr><tr data-pick="600660" data-name="福耀玻璃"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>600660</code></td><td>福耀玻璃</td><td><span class="pill mid">接近建仓</span></td><td class="num">91.1</td><td class="px" data-q="600660.price" data-nd="3">51.650</td><td class="num">15.90</td><td class="num">3.79</td><td class="num">6.00</td><td class="small">PE × PB ≤ 50（格雷厄姆门槛）</td><td><input class="ip" type="text" value="51.650"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="603195" data-name="公牛集团"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>603195</code></td><td>公牛集团</td><td><span class="pill mid">接近建仓</span></td><td class="num">90.8</td><td class="px" data-q="603195.price" data-nd="3">38.890</td><td class="num">16.85</td><td class="num">4.62</td><td class="num">4.89</td><td class="small">PE × PB ≤ 50（格雷厄姆门槛）</td><td><input class="ip" type="text" value="38.890"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="605499" data-name="东鹏饮料"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>605499</code></td><td>东鹏饮料</td><td><span class="pill mid">接近建仓</span></td><td class="num">88.5</td><td class="px" data-q="605499.price" data-nd="3">113.040</td><td class="num">16.91</td><td class="num">4.80</td><td class="num">4.87</td><td class="small">PE × PB ≤ 50（格雷厄姆门槛）</td><td><input class="ip" type="text" value="113.040"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="002415" data-name="海康威视"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>002415</code></td><td>海康威视</td><td><span class="pill mid">接近建仓</span></td><td class="num">88.1</td><td class="px" data-q="002415.price" data-nd="3">33.000</td><td class="num">18.40</td><td class="num">3.81</td><td class="num">5.15</td><td class="small">PE × PB ≤ 50（格雷厄姆门槛）</td><td><input class="ip" type="text" value="33.000"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="600406" data-name="国电南瑞"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>600406</code></td><td>国电南瑞</td><td><span class="pill mid">接近建仓</span></td><td class="num">85.6</td><td class="px" data-q="600406.price" data-nd="3">22.860</td><td class="num">21.86</td><td class="num">3.61</td><td class="num">2.75</td><td class="small">PE × PB ≤ 50（格雷厄姆门槛）</td><td><input class="ip" type="text" value="22.860"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="600809" data-name="山西汾酒"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>600809</code></td><td>山西汾酒</td><td><span class="pill mid">接近建仓</span></td><td class="num">85.5</td><td class="px" data-q="600809.price" data-nd="3">115.100</td><td class="num">13.79</td><td class="num">3.69</td><td class="num">5.70</td><td class="small">PE × PB ≤ 50（格雷厄姆门槛）　<span class="muted">ROE 连续 2 个年报下滑</span></td><td><input class="ip" type="text" value="115.100"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="000651" data-name="格力电器"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>000651</code></td><td>格力电器</td><td><span class="pill mid">接近建仓</span></td><td class="num">84.6</td><td class="px" data-q="000651.price" data-nd="3">38.320</td><td class="num">7.70</td><td class="num">1.45</td><td class="num">7.83</td><td class="small">PE 处于自身历史分位 ≤ 40%　<span class="muted">ROE 连续 2 个年报下滑</span></td><td><input class="ip" type="text" value="38.320"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="000895" data-name="双汇发展"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>000895</code></td><td>双汇发展</td><td><span class="pill mid">接近建仓</span></td><td class="num">81.9</td><td class="px" data-q="000895.price" data-nd="3">23.660</td><td class="num">16.11</td><td class="num">3.92</td><td class="num">3.38</td><td class="small">PE × PB ≤ 50（格雷厄姆门槛）</td><td><input class="ip" type="text" value="23.660"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="000538" data-name="云南白药"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>000538</code></td><td>云南白药</td><td><span class="pill mid">接近建仓</span></td><td class="num">80.1</td><td class="px" data-q="000538.price" data-nd="3">50.890</td><td class="num">17.39</td><td class="num">2.32</td><td class="num">5.15</td><td class="small">质量分 ≥ 60（便宜但烂的公司不买）</td><td><input class="ip" type="text" value="50.890"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="300015" data-name="爱尔眼科"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>300015</code></td><td>爱尔眼科</td><td><span class="pill mid">接近建仓</span></td><td class="num">79.6</td><td class="px" data-q="300015.price" data-nd="3">7.860</td><td class="num">28.71</td><td class="num">3.35</td><td class="num">2.29</td><td class="small">PE × PB ≤ 50（格雷厄姆门槛）　<span class="muted">ROE 连续 2 个年报下滑</span></td><td><input class="ip" type="text" value="7.860"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="000858" data-name="五 粮 液"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>000858</code></td><td>五 粮 液</td><td><span class="pill mid">接近建仓</span></td><td class="num">79.3</td><td class="px" data-q="000858.price" data-nd="3">70.140</td><td class="num">20.81</td><td class="num">2.30</td><td class="num">7.35</td><td class="small">PE 处于自身历史分位 ≤ 40%</td><td><input class="ip" type="text" value="70.140"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="600887" data-name="伊利股份"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>600887</code></td><td>伊利股份</td><td><span class="pill mid">接近建仓</span></td><td class="num">78.4</td><td class="px" data-q="600887.price" data-nd="3">27.320</td><td class="num">17.07</td><td class="num">3.22</td><td class="num">5.05</td><td class="small">PE × PB ≤ 50（格雷厄姆门槛）</td><td><input class="ip" type="text" value="27.320"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="601318" data-name="中国平安"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>601318</code></td><td>中国平安</td><td><span class="pill mid">接近建仓</span></td><td class="num">77.9</td><td class="px" data-q="601318.price" data-nd="3">52.670</td><td class="num">5.99</td><td class="num">0.94</td><td class="num">6.99</td><td class="small">质量分 ≥ 60（便宜但烂的公司不买）</td><td><input class="ip" type="text" value="52.670"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="601601" data-name="中国太保"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>601601</code></td><td>中国太保</td><td><span class="pill mid">接近建仓</span></td><td class="num">75.0</td><td class="px" data-q="601601.price" data-nd="3">30.830</td><td class="num">5.26</td><td class="num">0.93</td><td class="num">3.73</td><td class="small">质量分 ≥ 60（便宜但烂的公司不买）</td><td><input class="ip" type="text" value="30.830"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="002532" data-name="天山铝业"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>002532</code></td><td>天山铝业</td><td><span class="pill mid">接近建仓</span></td><td class="num">74.2</td><td class="px" data-q="002532.price" data-nd="3">12.170</td><td class="num">8.15</td><td class="num">1.75</td><td class="num">6.98</td><td class="small">PB 处于自身历史分位 ≤ 40%</td><td><input class="ip" type="text" value="12.170"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="601766" data-name="中国中车"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>601766</code></td><td>中国中车</td><td><span class="pill mid">接近建仓</span></td><td class="num">74.0</td><td class="px" data-q="601766.price" data-nd="3">6.220</td><td class="num">12.82</td><td class="num">1.01</td><td class="num">3.70</td><td class="small">质量分 ≥ 60（便宜但烂的公司不买）</td><td><input class="ip" type="text" value="6.220"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="600803" data-name="新奥股份"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>600803</code></td><td>新奥股份</td><td><span class="pill mid">接近建仓</span></td><td class="num">73.1</td><td class="px" data-q="600803.price" data-nd="3">19.490</td><td class="num">13.83</td><td class="num">2.57</td><td class="num">5.85</td><td class="small">PE 处于自身历史分位 ≤ 40%　<span class="muted">ROE 连续 2 个年报下滑</span></td><td><input class="ip" type="text" value="19.490"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="600989" data-name="宝丰能源"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>600989</code></td><td>宝丰能源</td><td><span class="pill mid">接近建仓</span></td><td class="num">72.9</td><td class="px" data-q="600989.price" data-nd="3">23.320</td><td class="num">11.13</td><td class="num">3.28</td><td class="num">3.91</td><td class="small">PB 处于自身历史分位 ≤ 40%</td><td><input class="ip" type="text" value="23.320"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="300274" data-name="阳光电源"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>300274</code></td><td>阳光电源</td><td><span class="pill mid">接近建仓</span></td><td class="num">72.1</td><td class="px" data-q="300274.price" data-nd="3">80.490</td><td class="num">15.19</td><td class="num">3.42</td><td class="num">2.83</td><td class="small">PE × PB ≤ 50（格雷厄姆门槛）　<span class="muted">ROE 连续 2 个年报下滑</span></td><td><input class="ip" type="text" value="80.490"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="600233" data-name="圆通速递"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>600233</code></td><td>圆通速递</td><td><span class="pill mid">接近建仓</span></td><td class="num">68.4</td><td class="px" data-q="600233.price" data-nd="3">17.780</td><td class="num">10.75</td><td class="num">1.66</td><td class="num">2.08</td><td class="small">总分 ≥ 72（A 级）　<span class="muted">ROE 连续 2 个年报下滑</span></td><td><input class="ip" type="text" value="17.780"></td><td><input class="is" type="text" value="100"></td></tr></table></div></div><div class="card"><h3>⚪ 观望：目前不满足买入条件</h3><p class="small muted" style="margin:0 0 10px">14 只。列在这里是为了让你能一起勾选建仓（比如你已经持有、想补仓）。</p><div class="scroll"><table><tr><th>选</th><th>代码</th><th>名称</th><th>动作</th><th class='num'>总分</th><th class='num'>现价</th><th class='num'>PE</th><th class='num'>PB</th><th class='num'>股息率%</th><th>还差什么</th><th>买入价</th><th>股数</th></tr><tr data-pick="002027" data-name="分众传媒"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>002027</code></td><td>分众传媒</td><td><span class="pill weak">观望</span></td><td class="num">81.9</td><td class="px" data-q="002027.price" data-nd="3">4.740</td><td class="num">20.08</td><td class="num">5.16</td><td class="num">8.23</td><td class="small">PE 处于自身历史分位 ≤ 40%；PE × PB ≤ 50（格雷厄姆门槛）</td><td><input class="ip" type="text" value="4.740"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="600415" data-name="小商品城"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>600415</code></td><td>小商品城</td><td><span class="pill weak">观望</span></td><td class="num">76.6</td><td class="px" data-q="600415.price" data-nd="3">10.830</td><td class="num">13.22</td><td class="num">2.69</td><td class="num">4.62</td><td class="small">质量分 ≥ 60（便宜但烂的公司不买）；PB 处于自身历史分位 ≤ 40%</td><td><input class="ip" type="text" value="10.830"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="300760" data-name="迈瑞医疗"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>300760</code></td><td>迈瑞医疗</td><td><span class="pill weak">观望</span></td><td class="num">75.2</td><td class="px" data-q="300760.price" data-nd="3">157.600</td><td class="num">24.29</td><td class="num">4.90</td><td class="num">1.90</td><td class="small">股息率 ≥ 2%；PE × PB ≤ 50（格雷厄姆门槛）　<span class="muted">ROE 连续 2 个年报下滑</span></td><td><input class="ip" type="text" value="157.600"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="601336" data-name="新华保险"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>601336</code></td><td>新华保险</td><td><span class="pill weak">观望</span></td><td class="num">74.3</td><td class="px" data-q="601336.price" data-nd="3">56.120</td><td class="num">3.95</td><td class="num">1.42</td><td class="num">4.87</td><td class="small">质量分 ≥ 60（便宜但烂的公司不买）；PB 处于自身历史分位 ≤ 40%</td><td><input class="ip" type="text" value="56.120"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="600015" data-name="华夏银行"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>600015</code></td><td>华夏银行</td><td><span class="pill weak">观望</span></td><td class="num">71.7</td><td class="px" data-q="600015.price" data-nd="3">6.310</td><td class="num">4.00</td><td class="num">0.31</td><td class="num">6.66</td><td class="small">总分 ≥ 72（A 级）；质量分 ≥ 60（便宜但烂的公司不买）；PE 处于自身历史分位 ≤ 40%　<span class="muted">ROE 连续 2 个年报下滑</span></td><td><input class="ip" type="text" value="6.310"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="600050" data-name="中国联通"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>600050</code></td><td>中国联通</td><td><span class="pill weak">观望</span></td><td class="num">71.2</td><td class="px" data-q="600050.price" data-nd="3">4.270</td><td class="num">19.30</td><td class="num">0.78</td><td class="num">3.83</td><td class="small">总分 ≥ 72（A 级）；PE 处于自身历史分位 ≤ 40%</td><td><input class="ip" type="text" value="4.270"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="600941" data-name="中国移动"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>600941</code></td><td>中国移动</td><td><span class="pill weak">观望</span></td><td class="num">71.2</td><td class="px" data-q="600941.price" data-nd="3">97.960</td><td class="num">16.13</td><td class="num">1.55</td><td class="num">4.81</td><td class="small">总分 ≥ 72（A 级）；PE 处于自身历史分位 ≤ 40%</td><td><input class="ip" type="text" value="97.960"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="601899" data-name="紫金矿业"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>601899</code></td><td>紫金矿业</td><td><span class="pill weak">观望</span></td><td class="num">71.0</td><td class="px" data-q="601899.price" data-nd="3">29.370</td><td class="num">11.54</td><td class="num">4.09</td><td class="num">2.72</td><td class="small">总分 ≥ 72（A 级）；PB 处于自身历史分位 ≤ 40%</td><td><input class="ip" type="text" value="29.370"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="600036" data-name="招商银行"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>600036</code></td><td>招商银行</td><td><span class="pill weak">观望</span></td><td class="num">71.0</td><td class="px" data-q="600036.price" data-nd="3">41.710</td><td class="num">6.93</td><td class="num">0.92</td><td class="num">4.83</td><td class="small">总分 ≥ 72（A 级）；PE 处于自身历史分位 ≤ 40%　<span class="muted">ROE 连续 2 个年报下滑</span></td><td><input class="ip" type="text" value="41.710"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="600999" data-name="招商证券"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>600999</code></td><td>招商证券</td><td><span class="pill weak">观望</span></td><td class="num">70.6</td><td class="px" data-q="600999.price" data-nd="3">16.860</td><td class="num">8.24</td><td class="num">1.18</td><td class="num">3.65</td><td class="small">总分 ≥ 72（A 级）；质量分 ≥ 60（便宜但烂的公司不买）</td><td><input class="ip" type="text" value="16.860"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="002311" data-name="海大集团"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>002311</code></td><td>海大集团</td><td><span class="pill weak">观望</span></td><td class="num">70.2</td><td class="px" data-q="002311.price" data-nd="3">41.960</td><td class="num">21.38</td><td class="num">2.96</td><td class="num">2.98</td><td class="small">总分 ≥ 72（A 级）；质量分 ≥ 60（便宜但烂的公司不买）；PE 处于自身历史分位 ≤ 40%；PE × PB ≤ 50（格雷厄姆门槛）</td><td><input class="ip" type="text" value="41.960"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="601600" data-name="中国铝业"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>601600</code></td><td>中国铝业</td><td><span class="pill weak">观望</span></td><td class="num">70.2</td><td class="px" data-q="601600.price" data-nd="3">9.020</td><td class="num">8.85</td><td class="num">1.83</td><td class="num">2.99</td><td class="small">总分 ≥ 72（A 级）；PB 处于自身历史分位 ≤ 40%</td><td><input class="ip" type="text" value="9.020"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="002352" data-name="顺丰控股"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>002352</code></td><td>顺丰控股</td><td><span class="pill weak">观望</span></td><td class="num">69.8</td><td class="px" data-q="002352.price" data-nd="3">30.770</td><td class="num">14.44</td><td class="num">1.67</td><td class="num">2.99</td><td class="small">总分 ≥ 72（A 级）；质量分 ≥ 60（便宜但烂的公司不买）</td><td><input class="ip" type="text" value="30.770"></td><td><input class="is" type="text" value="100"></td></tr><tr data-pick="300124" data-name="汇川技术"><td><input type="checkbox" onchange="__pickOne(this)"></td><td><code>300124</code></td><td>汇川技术</td><td><span class="pill weak">观望</span></td><td class="num">69.3</td><td class="px" data-q="300124.price" data-nd="3">49.850</td><td class="num">27.62</td><td class="num">3.67</td><td class="num">1.00</td><td class="small">总分 ≥ 72（A 级）；股息率 ≥ 2%；PE × PB ≤ 50（格雷厄姆门槛）　<span class="muted">ROE 连续 2 个年报下滑</span></td><td><input class="ip" type="text" value="49.850"></td><td><input class="is" type="text" value="100"></td></tr></table></div></div>
+<div class="pickbar">
+  <button class="b b2" type="button" onclick="__pickAll('ready')">全选「建仓」</button>
+  <button class="b b2" type="button" onclick="__pickAll('near')">全选「接近建仓」</button>
+  <button class="b b2" type="button" onclick="__pickAll('none')">清空勾选</button>
+  <span class="sp" style="flex:1"></span>
+  <label class="hint">买入日期 <input type="date" id="__pdate" value="2026-10-08"></label>
+  <label class="hint">备注 <input type="text" id="__pnote" placeholder="可留空" size="12"></label>
+  <button class="b" type="button" id="__padd" onclick="__pickAdd()">加入我的持仓</button>
+</div>
+<script>
+function __pickAll(which) {
+  var trs = document.querySelectorAll('tr[data-pick]');
+  for (var i = 0; i < trs.length; i++) {
+    var cb = trs[i].querySelector('input[type=checkbox]');
+    var pill = trs[i].querySelector('.pill');
+    var act = pill ? pill.textContent : '';
+    var want = which === 'ready' ? (act === '建仓')
+             : which === 'near' ? (act === '接近建仓') : false;
+    cb.checked = want;
+    trs[i].className = want ? 'picked' : '';
+  }
+}
+function __pickOne(cb) {
+  var tr = cb.closest('tr');
+  tr.className = cb.checked ? 'picked' : '';
+}
+function __pickAdd() {
+  var trs = document.querySelectorAll('tr[data-pick]');
+  var date = document.getElementById('__pdate').value;
+  var note = document.getElementById('__pnote').value;
+  var jobs = [];
+  for (var i = 0; i < trs.length; i++) {
+    var cb = trs[i].querySelector('input[type=checkbox]');
+    if (!cb || !cb.checked) { continue; }
+    jobs.push({
+      code: trs[i].getAttribute('data-pick'),
+      name: trs[i].getAttribute('data-name'),
+      price: (trs[i].querySelector('input.ip').value || '').trim(),
+      shares: (trs[i].querySelector('input.is').value || '').trim()
+    });
+  }
+  if (!jobs.length) { window.__toast('先勾选至少一只股票'); return; }
+  var btn = document.getElementById('__padd');
+  btn.disabled = true; btn.textContent = '正在写入 0/' + jobs.length + ' …';
+  var done = 0, failed = [];
+  function next() {
+    if (!jobs.length) {
+      btn.textContent = '已写入 ' + done + ' 笔，正在重算…';
+      fetch('/api/refresh', {method: 'POST'}).catch(function () {});
+      window.__toast('已写入 ' + done + ' 笔' + (failed.length ? ('，失败 ' + failed.length + ' 笔：' + failed.join('、')) : '') + '，正在重算，稍后自动刷新');
+      setTimeout(function () { location.href = '/my'; }, 2500);
+      return;
+    }
+    var j = jobs.shift();
+    var fd = new URLSearchParams();
+    fd.set('action', 'add'); fd.set('code', j.code); fd.set('name', j.name);
+    fd.set('buy_date', date); fd.set('buy_price', j.price);
+    fd.set('shares', j.shares); fd.set('note', note);
+    fetch('/api/holdings', {method: 'POST', body: fd})
+      .then(function (r) { return r.json().then(function (o) { return {ok: r.ok, o: o}; }); })
+      .then(function (res) {
+        if (res.ok) { done++; } else { failed.push(j.code); }
+      })
+      .catch(function () { failed.push(j.code); })
+      .then(function () { btn.textContent = '正在写入 ' + done + '/' + (done + jobs.length + failed.length) + ' …'; next(); });
+  }
+  next();
+}
+</script></main><script src="site.js"></script><script src="app.js"></script></body></html>
