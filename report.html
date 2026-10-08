@@ -1,0 +1,700 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>完整报告 · A 股长期投资系统</title><style>
+:root{--bg:#f5f7fa;--card:#fff;--ink:#15202b;--muted:#6b7683;--line:#e3e8ef;
+--blue:#2f6fed;--green:#12a150;--amber:#d99100;--red:#e5484d;--purple:#7c5cff;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font-family:-apple-system,"Segoe UI","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+font-size:14px;line-height:1.6}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
+h1{font-size:26px;margin:0 0 6px}
+h2{font-size:19px;margin:38px 0 14px;padding-left:10px;border-left:4px solid var(--blue)}
+h3{font-size:15px;margin:22px 0 10px;color:#2b3a4a}
+.sub{color:var(--muted);margin:0 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;
+margin:14px 0;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.grid5{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.kv:last-child{border-bottom:0}
+.kv b{font-weight:600}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child,th.l,td.l{text-align:left;white-space:normal}
+th{background:#eef2f7;font-weight:600;color:#33414f;position:sticky;top:0}
+tbody tr:hover{background:#f8fafc}
+.scroll{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.pill{display:inline-block;min-width:46px;padding:2px 9px;border-radius:999px;font-weight:700;
+font-size:12.5px;text-align:center;color:#fff}
+.pill.great{background:var(--green)}.pill.good{background:#3f9e6f}
+.pill.mid{background:var(--amber)}.pill.weak{background:#e07b39}
+.pill.bad{background:var(--red)}.pill.na{background:#b6bfca}
+.meter{height:8px;background:#e9eef5;border-radius:5px;overflow:hidden;margin-top:8px}
+.meter>i{display:block;height:100%;border-radius:5px}
+.v-great{background:var(--green)}.v-good{background:#3f9e6f}.v-mid{background:var(--amber)}
+.v-weak{background:#e07b39}.v-bad{background:var(--red)}.v-na{background:#c3cbd5}
+.big{font-size:30px;font-weight:700;letter-spacing:-.5px}
+.tag{display:inline-block;padding:1px 8px;border-radius:6px;font-size:12px;font-weight:600}
+.tag.ok{background:#e5f6ec;color:#0d7a3c}
+.tag.warn{background:#fff4e0;color:#9a6600}
+.tag.bad{background:#fdeaea;color:#b32227}
+.tag.info{background:#e8f0fe;color:#1a56c4}
+.chart{width:100%;height:auto;display:block}
+.grid{stroke:#e9eef5;stroke-width:1}
+.base{stroke:#c3cbd5;stroke-width:1.2;stroke-dasharray:4 4}
+.chart polyline{stroke-linejoin:round;stroke-linecap:round}
+.axt{font-size:10.5px;fill:#7b8794}
+.lg{font-size:11.5px;fill:#4a5768;font-weight:600}
+.svc{display:inline-block;padding:3px 10px;border:1px solid var(--line);border-radius:999px;
+margin:3px 4px 3px 0;font-size:12.5px;background:#fff}
+blockquote{margin:10px 0;padding:10px 14px;background:#fffaf0;border-left:4px solid var(--amber);
+border-radius:0 8px 8px 0}
+code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:12.5px}
+footer{color:var(--muted);font-size:12.5px;margin-top:40px;border-top:1px solid var(--line);
+padding-top:14px}
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0}
+.topbar{position:sticky;top:0;z-index:900;display:flex;align-items:center;gap:4px;
+ flex-wrap:wrap;padding:8px 16px;background:#0b1220cc;backdrop-filter:blur(8px);
+ border-bottom:1px solid #1f2937;font:14px/1.4 "Microsoft YaHei",system-ui,sans-serif}
+.topbar .brand{color:#fff;font-weight:700;text-decoration:none;margin-right:12px;
+ white-space:nowrap;letter-spacing:.3px}
+.topbar a.nv{color:#9ca3af;text-decoration:none;padding:6px 11px;border-radius:8px;
+ white-space:nowrap}
+.topbar a.nv:hover{background:#1f2937;color:#e5e7eb}
+.topbar a.nv.on{background:#2563eb;color:#fff;font-weight:600}
+.topbar .sp{flex:1 1 auto}
+.topbar .live{color:#9ca3af;font-size:12px;white-space:nowrap}
+.topbar .live b{color:#22c55e}
+main.wrap{padding-top:16px}
+.hero-links{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.hero-links a{display:inline-block;padding:8px 14px;border-radius:10px;background:#111827;
+ color:#e5e7eb;text-decoration:none;border:1px solid #1f2937;font-size:13px}
+.hero-links a:hover{border-color:#2563eb;color:#fff}
+.flash-up{animation:__fu 1.2s ease-out}
+.flash-dn{animation:__fd 1.2s ease-out}
+@keyframes __fu{0%{background:#065f46;color:#ecfdf5}100%{background:transparent}}
+@keyframes __fd{0%{background:#7f1d1d;color:#fef2f2}100%{background:transparent}}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b7280;
+ margin-right:6px;vertical-align:middle}
+.dot.ok{background:#22c55e;box-shadow:0 0 6px #22c55e}
+.dot.wait{background:#eab308}
+.dot.bad{background:#ef4444;box-shadow:0 0 6px #ef4444}
+.src{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;
+ border:1px solid #374151;color:#9ca3af;margin-left:4px}
+.src.live{border-color:#166534;color:#86efac}
+@media (prefers-reduced-motion:reduce){.flash-up,.flash-dn{animation:none!important}}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+h4{font-size:13.5px;margin:4px 0 8px;color:#9ca3af;font-weight:600}
+@media (max-width:900px){.grid3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.px{font-variant-numeric:tabular-nums}
+.pickbar{position:sticky;bottom:0;z-index:800;display:flex;gap:10px;align-items:center;
+ flex-wrap:wrap;padding:10px 14px;margin-top:12px;background:#0b1220ee;border:1px solid #1f2937;
+ border-radius:12px;font:13px/1.5 "Microsoft YaHei",system-ui,sans-serif}
+.pickbar input[type=date],.pickbar input[type=text]{background:#111827;color:#e5e7eb;
+ border:1px solid #374151;border-radius:7px;padding:6px 9px;font:inherit}
+button.b{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 15px;
+ cursor:pointer;font:inherit;font-weight:600}
+button.b:hover{background:#1d4ed8}
+button.b2{background:#374151;font-weight:400}
+button.b2:hover{background:#4b5563}
+button.b:disabled{opacity:.5;cursor:not-allowed}
+tr.picked{background:#0f2a1d}
+.hint{color:#9ca3af;font-size:12.5px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:70px;z-index:99998;
+ background:#111827;color:#e5e7eb;border:1px solid #374151;border-radius:10px;
+ padding:10px 18px;font:13px/1.6 "Microsoft YaHei",system-ui,sans-serif;
+ box-shadow:0 8px 24px rgba(0,0,0,.5);display:none}
+table input.ip,table input.is{width:78px;background:#111827;color:#e5e7eb;border:1px solid #374151;
+ border-radius:6px;padding:4px 6px;font:12.5px/1.2 inherit;text-align:right}
+@media print{.topbar,.pickbar,.toast{display:none}}
+</style></head><body><header class="topbar"><a class="brand" href="index.html">📈 A 股长期投资系统</a><a class="nv" href="index.html">总览</a><a class="nv" href="pick.html">选股 · 勾选建仓</a><a class="nv" href="my.html">我的持仓</a><a class="nv on" href="report.html">完整报告</a><a class="nv" href="macro.html">宏观与政策</a><a class="nv" href="backtest.html">回测</a><a class="nv" href="data.html">数据新鲜度</a><a class="nv" href="rules.html">规则与费率</a><span class="sp"></span><span class="live" id="__navlive"><span class="dot" id="__dot"></span><span id="__livestate">连接中…</span>　·　报价 <b id="__livets">—</b>　·　<span id="__buildstate">—</span></span></header><main class="wrap"><h1>完整报告</h1><p class="sub">下面就是那份单文件看板的全部内容，只是套进了统一站点里。</p><div class="hero-links"><a href="index.html">回到总览</a><a href="data.html">数据新鲜度</a></div><div class="hero-links"><a href="#sec-macro">宏观背景分与目标仓位</a><a href="#sec-my">我的持仓：录入 → 跟踪 → 卖出提醒</a><a href="#sec-verdicts">你提的 7 条判断条件：逐条落地 + 历史验证</a><a href="#sec-macro_bt">宏观规则明细（回测A：这些说法在历史上成立吗）</a><a href="#sec-port_bt">个股组合回测（回测B）</a><a href="#sec-stock_bt">个股逐笔买卖回测（不组组合，一只一只算）</a><a href="#sec-scores">当前个股打分（前 50 名）</a><a href="#sec-track">个股买卖决策与跟踪</a><a href="#sec-policy">政策红利打分依据（主观成分，全量公开）</a><a href="#sec-freshness">数据新鲜度（哪一块实时、哪一块天然滞后）</a><a href="#sec-method">方法与口径</a></div><div id="sec-macro">
+<h2>一、宏观背景分与目标仓位</h2>
+<div class="card">
+  <div class="grid2">
+    <div>
+      <div class="muted small">宏观背景分（0~100）</div>
+      <div class="big" style="color:var(--ink)">48.5</div>
+      <div class="meter"><i class="v-mid" style="width:48%"></i></div>
+      <div style="margin-top:10px"><span class="tag info">中性（均衡配置）</span></div>
+    </div>
+    <div>
+      <div class="muted small">对应目标仓位（该分数下的建议股票仓位）</div>
+      <div class="big" style="color:var(--blue)">55%</div>
+      <div class="meter"><i class="v-mid" style="width:55%"></i></div>
+      <p class="small muted" style="margin:8px 0 0">仓位阶梯：—</p>
+    </div>
+  </div>
+  <p class="small muted" style="margin:14px 0 4px">
+    数据截止：<b>2026-10-08</b>　口径：宏观数据已按公布滞后对齐（PMI 当月 0 个月、
+    CPI/PPI/GDP 各滞后 1 个月），T 时刻的分数只使用 T 时刻已经能看到的数字。
+  </p>
+  <div class="grid2" style="margin-top:8px">
+    <div><div class="kv"><span>pmi</span><b>{&#x27;last_period&#x27;: &#x27;2026-09-30&#x27;, &#x27;value&#x27;: {&#x27;manufacturing&#x27;: 50.1, &#x27;non_manufacturing&#x27;: 50.2}}</b></div><div class="kv"><span>cpi</span><b>{&#x27;last_period&#x27;: &#x27;2026-08-31&#x27;, &#x27;value&#x27;: 0.8}</b></div><div class="kv"><span>ppi</span><b>{&#x27;last_period&#x27;: &#x27;2026-08-31&#x27;, &#x27;value&#x27;: 3.8}</b></div><div class="kv"><span>gdp</span><b>{&#x27;last_period&#x27;: &#x27;2026-06-30&#x27;, &#x27;value&#x27;: 4.7}</b></div></div>
+    <div><div class="small muted">五个模块数据齐备。</div></div>
+  </div>
+</div>
+<div class="grid5"><div class="card"><div class="kv"><b>PMI（制造业景气）</b><span class="muted small">权重 0.30</span></div><div class="big">48.7<span class="muted" style="font-size:14px;font-weight:400"> /100</span></div><div class="meter"><i class="v-mid" style="width:49%"></i></div><div style="margin-top:8px"><span class="tag info">扩张上行（50.1，连续 2 个月上行）</span></div><p class="small muted" style="margin:8px 0 0">最新 PMI 50.14（2026-09）。水平项 53 分（站上荣枯线 50，强扩张门槛 51.5）；动量项 46 分（3 个月均值较 3 个月前变化 -0.50，连续上行 2 个月）。规则依据：PMI 与股市正相关，大幅超过 50 或处于上升阶段时，股市大概率上涨。</p></div><div class="card"><div class="kv"><b>PPI（工业品价格/盈利周期）</b><span class="muted small">权重 0.25</span></div><div class="big">93.9<span class="muted" style="font-size:14px;font-weight:400"> /100</span></div><div class="meter"><i class="v-great" style="width:94%"></i></div><div style="margin-top:8px"><span class="tag info">回撤至一半（51%）—— 用户规则的看多区间</span></div><p class="small muted" style="margin:8px 0 0">最新 PPI 同比 3.80%（2026-09），近 60 个月周期高点 13.50%、低点 -5.40%，当前回撤比例 r=0.51（51%），PPI 近 3 个月下行 -0.10pct。钟形打分峰值设在 r=50%（用户规则：PPI 下跌到一半，股市领先上涨），谷值设在 r=85%~100%（用户规则：PPI 到底部时，股市已到顶峰）。</p></div><div class="card"><div class="kv"><b>美联储潮汐（全球流动性）</b><span class="muted small">权重 0.20</span></div><div class="big">13.8<span class="muted" style="font-size:14px;font-weight:400"> /100</span></div><div class="meter"><i class="v-bad" style="width:14%"></i></div><div style="margin-top:8px"><span class="tag info">退潮（全球流动性紧缩）</span></div><p class="small muted" style="margin:8px 0 0">美联储潮汐评分 14，退潮（全球流动性紧缩）。短端利率(13周美债，政策利率代理) 4.04%，近 6 个月 +45bp（上行/持平=退潮）；10 年期美债名义收益率 5.28%，近 6 个月 +0.89pct；美元指数 DXY 102.4，近 6 个月 +4.4%（走强压制风险偏好）；中美 10 年期利差 -360bp（中债 1.69% - 美债 5.29%）（倒挂，人民币资产吸引力弱）。规则依据：降息/扩表/长端利率下行/美元走弱 = 涨潮，利好 A 股；反之为退潮。注意：美联储总资产 数据缺席，已在其余子项间重新归一化权重。</p></div><div class="card"><div class="kv"><b>CPI（通胀速度）</b><span class="muted small">权重 0.15</span></div><div class="big">35.0<span class="muted" style="font-size:14px;font-weight:400"> /100</span></div><div class="meter"><i class="v-weak" style="width:35%"></i></div><div style="margin-top:8px"><span class="tag info">通胀快速回落（CPI 0.80%，3 个月下行 -0.40pct）</span></div><p class="small muted" style="margin:8px 0 0">最新 CPI 同比 0.80%（2026-09），3 个月变化 -0.40 个百分点。速度项 0 分（±0.3pct 为满分/零分界）；水平项 100 分（温和区间 0.5%~3%）。规则依据：CPI 涨得快利好股市和债市，涨得慢则不利。</p></div><div class="card"><div class="kv"><b>GDP（经济增长）</b><span class="muted small">权重 0.10</span></div><div class="big">23.8<span class="muted" style="font-size:14px;font-weight:400"> /100</span></div><div class="meter"><i class="v-bad" style="width:24%"></i></div><div style="margin-top:8px"><span class="tag info">增速4.7%，低于近 8 季均值 -0.39pct，连续回升 0 个季度</span></div><p class="small muted" style="margin:8px 0 0">最新 GDP 同比 4.7%（2026-07 可见）。水平项 43 分（3%~7% 映射 0~100）；动能项 11 分（较近 8 季均值 -0.39pct）。规则依据：GDP 与股市正相关。注意 GDP 为季度低频数据且滞后公布，权重低于 PMI。</p></div></div>
+</div><div id="sec-my"><h2>二、我的持仓：录入 → 跟踪 → 卖出提醒</h2><p class="muted">还没有录入持仓，所以这一节暂时是空的。<b>录入后这里会出现</b>：现价、市值、浮动盈亏、建议动作、<b>建议卖出多少股</b>，以及<b>扣掉手续费后净赚多少</b>。</p><h3>怎么录入</h3><ul class="small"><li>最简单的办法：打开网站后点左下角的 <a href="my.html">✎ 我的持仓 / 录入与提醒</a>，填 <b>代码 / 买入日期 / 买入价 / 股数</b> 后点「保存并重算」；</li><li>也可以直接编辑 <code>config/holdings.csv</code>，六列是 <code>代码,名称,买入日期,买入价,股数,备注</code>；</li><li>同一只股票<b>分批买入就写多行</b>，系统按<b>加权平均成本</b>合并（键是「代码 + 买入日期 + 买入价」）；股数可以留空，那样只给买卖建议、不算金额。</li></ul><h3>手续费口径（「扣费后净盈利」的算法）</h3><ul class="small"><li>佣金：买卖双向收取，<b>单笔最低 ¥5</b>；</li><li>印花税：<b>仅卖出</b> 0.05%（2023-08-28 起由 0.1% 减半）；</li><li>过户费：买卖双向 0.001%；</li><li><b>扣费后净盈利</b> = 卖出到账金额 − 该部分对应的<b>含费成本</b>（买入佣金也在成本里，所以小额买入会被最低 5 元明显拖累——这是真实情况）。</li></ul><p class="small muted">费率写在 <code>config/settings.toml</code> 的 <code>[fees]</code> 段，请按你的券商对账单核对后改。</p></div><div id="sec-verdicts">
+<h2>三、你提的 7 条判断条件：逐条落地 + 历史验证</h2>
+<div class="card">
+<p class="small muted">全样本基准（189 个月）：3 月 1.18%／6 月 2.57%／12 月 5.76%；胜率 50.50%／51.40%／54.80%</p>
+<div class="scroll"><table>
+<thead><tr><th class="l">你的说法</th><th class="l">结论</th><th class="l">对应状态实测</th>
+<th class="l">对照状态实测</th><th class="l">说明</th></tr></thead>
+<tbody><tr>
+<td class="l"><b>1. 看市盈率、市净率、股息率判断长期投资价值</b><br>
+  <span class="muted small">估值 + 股息模块　·　本题（长期投资选股）</span></td>
+<td class="l"><span class="tag warn">已落地</span></td>
+<td class="l"><span class="muted">—</span></td>
+<td class="l"><span class="muted">—</span></td>
+<td class="l small">PE/PB 用个股近 5 年历史分位＋行业/全市场截面分位；股息率用近 12 个月实际分红除以股价。三者在个股分里合计占 45%（估值）+ 15%（股息）。</td>
+</tr><tr>
+<td class="l"><b>2. 国家政策的红利（行业政策倾斜）</b><br>
+  <span class="muted small">政策模块　·　本题（长期投资选股）</span></td>
+<td class="l"><span class="tag warn">已落地（含主观成分）</span></td>
+<td class="l"><span class="muted">—</span></td>
+<td class="l"><span class="muted">—</span></td>
+<td class="l small">行业底分（31 个申万一级行业，人工打分）＋政策事件衰减加成。行业表是人工判断而非接口数据，是本系统唯一的主观输入，已在看板原样公开。</td>
+</tr><tr>
+<td class="l"><b>3. 美联储潮汐（全球流动性松紧）</b><br>
+  <span class="muted small">美联储模块　·　宏观择时规则</span></td>
+<td class="l"><span class="tag ok">短端成立</span></td>
+<td class="l">涨潮(≥60)<br><span class="muted small">n=35　前瞻均值 3/6/12 月：1.36% / 2.34% / 3.66%　胜率 54.3% / 54.3% / 51.4%</span></td>
+<td class="l">退潮(&lt;45)<br><span class="muted small">n=41　前瞻均值 3/6/12 月：-1.08% / 1.88% / 4.11%　胜率 39.5% / 51.4% / 61.8%</span></td>
+<td class="l small">退潮期 3 个月前瞻收益显著低于涨潮期，短端方向与说法一致；12 个月维度差异消失，说明它更像短周期择时信号而非长期信号。</td>
+</tr><tr>
+<td class="l"><b>4. GDP、PMI 与股市正相关；PMI 大幅超 50 或处于上升阶段，股市大概率上涨</b><br>
+  <span class="muted small">PMI + GDP 模块　·　宏观择时规则</span></td>
+<td class="l"><span class="tag warn">部分成立、部分证伪</span></td>
+<td class="l">≥51.5 强扩张<br><span class="muted small">n=95　前瞻均值 3/6/12 月：0.91% / 4.19% / 7.22%　胜率 46.3% / 48.4% / 51.6%</span></td>
+<td class="l">&lt;50 收缩<br><span class="muted small">n=31　前瞻均值 3/6/12 月：5.27% / 4.82% / 10.52%　胜率 75.9% / 60.7% / 75.0%</span></td>
+<td class="l small">PMI≥51.5 的 12 个月前瞻收益略高于全样本，方向对但幅度有限；反倒是 PMI&lt;50（收缩）时 3 个月胜率高达 75.9%，比扩张期更好——这是「坏消息→政策宽松→估值修复」的逆势效应，与「PMI 高才涨」相反。GDP 高于近年均值时 12 个月收益反而低于均值以下，正相关在 A 股不成立。</td>
+</tr><tr>
+<td class="l"><b>5. CPI 涨得快利好股市和债市，涨得慢不利于股市和债市</b><br>
+  <span class="muted small">CPI 模块　·　宏观择时规则</span></td>
+<td class="l"><span class="tag bad">被证伪（方向相反）</span></td>
+<td class="l">涨得快<br><span class="muted small">n=61　前瞻均值 3/6/12 月：-2.20% / 1.77% / 3.97%　胜率 39.3% / 48.3% / 50.9%</span></td>
+<td class="l">涨得慢<br><span class="muted small">n=64　前瞻均值 3/6/12 月：4.05% / 5.44% / 7.54%　胜率 58.1% / 56.5% / 54.1%</span></td>
+<td class="l small">样本内「涨得快」的 3 个月前瞻收益为负、胜率不足 40%；「涨得慢」反而是收益最好的一档。A 股对通胀的定价是「通胀上行→货币收紧→杀估值」，所以 CPI 加速是利空。代码仍按原规则保留该模块，但报告与看板都标注了证伪结论。</td>
+</tr><tr>
+<td class="l"><b>6. PPI 下跌到一半，股市会领先上涨</b><br>
+  <span class="muted small">PPI 模块　·　宏观择时规则</span></td>
+<td class="l"><span class="tag ok">强烈成立</span></td>
+<td class="l">半山腰(35%~65%)<br><span class="muted small">n=48　前瞻均值 3/6/12 月：1.12% / 6.83% / 22.36%　胜率 44.4% / 53.5% / 69.8%</span></td>
+<td class="l"><span class="muted">—</span></td>
+<td class="l small">PPI 回撤到周期一半（35%~65% 区间）时，12 个月前瞻平均收益远超全样本，胜率接近 70%。这是全部规则里区分度最强的一条，因此 PPI 在宏观权重里给到 0.25。</td>
+</tr><tr>
+<td class="l"><b>7. PPI 到底部时，股市已经到顶峰</b><br>
+  <span class="muted small">PPI 模块　·　宏观择时规则</span></td>
+<td class="l"><span class="tag ok">成立</span></td>
+<td class="l">底部区(≥85%)<br><span class="muted small">n=39　前瞻均值 3/6/12 月：1.54% / -0.55% / -0.51%　胜率 48.7% / 43.6% / 48.7%</span></td>
+<td class="l">高位区(&lt;35%)<br><span class="muted small">n=50　前瞻均值 3/6/12 月：-2.66% / -4.24% / -6.99%　胜率 42.0% / 30.0% / 30.0%</span></td>
+<td class="l small">回撤≥85%（逼近周期底部）时前瞻收益转负；而 PPI 处于高位（回撤&lt;35%）时12 个月收益为负、胜率仅 30%。两条合起来支持「PPI 见底≈股市见顶」的钟形判断，也是本系统给 PPI 用钟形曲线而非单调打分的原因。</td>
+</tr></tbody></table></div>
+<p class="small muted">表格里的实测数字来自 2011-01 至 2026-09、共 189 个月度样本的
+前瞻收益统计（回测A）。<b>「证伪」不是不实现</b>——代码仍按你的规则打分，但结论如实标注，
+免得把一条在 A 股历史上方向相反的说法当成买入理由。</p>
+</div>
+</div><div id="sec-macro_bt">
+<h2>四、宏观规则明细（回测A：这些说法在历史上成立吗）</h2>
+<div class="card">
+<p class="small muted">{&#x27;行数&#x27;: 189, &#x27;区间&#x27;: &#x27;2011-01 ~ 2026-09&#x27;, &#x27;基准(沪深300)&#x27;: {&#x27;3月均值%&#x27;: 1.18, &#x27;6月均值%&#x27;: 2.57, &#x27;12月均值%&#x27;: 5.76}}</p>
+<p class="small">做法：把 2011-01 起的每个自然月末当作一个决策点，只喂给它当时能看到的宏观数据，
+用<b>与实盘完全相同</b>的打分函数判定状态，再看沪深300 之后 3／6／12 个月的实际涨跌。
+这样「回测」和「实盘」不可能出现两套逻辑。</p>
+<h3>PMI水平</h3><div class="scroll" style="max-height:none"><table><thead><tr><th class="l">状态</th><th class="">样本数</th><th class="">3月均值%</th><th class="">3月胜率%</th><th class="">6月均值%</th><th class="">6月胜率%</th><th class="">12月均值%</th><th class="">12月胜率%</th></tr></thead><tbody><tr><td class="l">50~51.5 温和扩张</td><td>63.0</td><td>-0.33</td><td>45.2</td><td>-1.02</td><td>51.7</td><td>1.40</td><td>51.7</td></tr><tr><td class="l">&lt;50 收缩</td><td>31.0</td><td>5.27</td><td>75.9</td><td>4.82</td><td>60.7</td><td>10.52</td><td>75.0</td></tr><tr><td class="l">≥51.5 强扩张</td><td>95.0</td><td>0.91</td><td>46.3</td><td>4.19</td><td>48.4</td><td>7.22</td><td>51.6</td></tr><tr style="background:#f7faff"><td class="l"><b>【全样本基准】</b></td><td>189.0</td><td>1.18</td><td>50.5</td><td>2.57</td><td>51.4</td><td>5.76</td><td>54.8</td></tr></tbody></table></div><h3>PMI动量</h3><div class="scroll" style="max-height:none"><table><thead><tr><th class="l">状态</th><th class="">样本数</th><th class="">3月均值%</th><th class="">3月胜率%</th><th class="">6月均值%</th><th class="">6月胜率%</th><th class="">12月均值%</th><th class="">12月胜率%</th></tr></thead><tbody><tr><td class="l">上升阶段</td><td>69.0</td><td>-0.92</td><td>40.6</td><td>2.09</td><td>47.0</td><td>8.14</td><td>56.1</td></tr><tr><td class="l">下行阶段</td><td>74.0</td><td>3.22</td><td>53.4</td><td>3.98</td><td>53.4</td><td>5.89</td><td>51.4</td></tr><tr><td class="l">走平</td><td>46.0</td><td>1.08</td><td>61.4</td><td>0.97</td><td>54.5</td><td>1.49</td><td>59.0</td></tr><tr style="background:#f7faff"><td class="l"><b>【全样本基准】</b></td><td>189.0</td><td>1.18</td><td>50.5</td><td>2.57</td><td>51.4</td><td>5.76</td><td>54.8</td></tr></tbody></table></div><h3>CPI速度</h3><div class="scroll" style="max-height:none"><table><thead><tr><th class="l">状态</th><th class="">样本数</th><th class="">3月均值%</th><th class="">3月胜率%</th><th class="">6月均值%</th><th class="">6月胜率%</th><th class="">12月均值%</th><th class="">12月胜率%</th></tr></thead><tbody><tr><td class="l">基本走平</td><td>64.0</td><td>1.62</td><td>54.0</td><td>0.46</td><td>49.2</td><td>5.65</td><td>59.3</td></tr><tr><td class="l">涨得快</td><td>61.0</td><td>-2.20</td><td>39.3</td><td>1.77</td><td>48.3</td><td>3.97</td><td>50.9</td></tr><tr><td class="l">涨得慢</td><td>64.0</td><td>4.05</td><td>58.1</td><td>5.44</td><td>56.5</td><td>7.54</td><td>54.1</td></tr><tr style="background:#f7faff"><td class="l"><b>【全样本基准】</b></td><td>189.0</td><td>1.18</td><td>50.5</td><td>2.57</td><td>51.4</td><td>5.76</td><td>54.8</td></tr></tbody></table></div><h3>PPI回撤</h3><div class="scroll" style="max-height:none"><table><thead><tr><th class="l">状态</th><th class="">样本数</th><th class="">3月均值%</th><th class="">3月胜率%</th><th class="">6月均值%</th><th class="">6月胜率%</th><th class="">12月均值%</th><th class="">12月胜率%</th></tr></thead><tbody><tr><td class="l">半山腰(35%~65%)</td><td>48.0</td><td>1.12</td><td>44.4</td><td>6.83</td><td>53.5</td><td>22.36</td><td>69.8</td></tr><tr><td class="l">底部区(≥85%)</td><td>39.0</td><td>1.54</td><td>48.7</td><td>-0.55</td><td>43.6</td><td>-0.51</td><td>48.7</td></tr><tr><td class="l">深跌区(65%~85%)</td><td>52.0</td><td>4.64</td><td>65.4</td><td>8.05</td><td>76.5</td><td>9.50</td><td>73.3</td></tr><tr><td class="l">高位区(&lt;35%)</td><td>50.0</td><td>-2.66</td><td>42.0</td><td>-4.24</td><td>30.0</td><td>-6.99</td><td>30.0</td></tr><tr style="background:#f7faff"><td class="l"><b>【全样本基准】</b></td><td>189.0</td><td>1.18</td><td>50.5</td><td>2.57</td><td>51.4</td><td>5.76</td><td>54.8</td></tr></tbody></table></div><h3>GDP动能</h3><div class="scroll" style="max-height:none"><table><thead><tr><th class="l">状态</th><th class="">样本数</th><th class="">3月均值%</th><th class="">3月胜率%</th><th class="">6月均值%</th><th class="">6月胜率%</th><th class="">12月均值%</th><th class="">12月胜率%</th></tr></thead><tbody><tr><td class="l">低于近年均值</td><td>132.0</td><td>2.03</td><td>54.3</td><td>4.02</td><td>53.2</td><td>8.09</td><td>55.8</td></tr><tr><td class="l">高于近年均值</td><td>57.0</td><td>-0.76</td><td>42.1</td><td>-0.62</td><td>47.4</td><td>0.86</td><td>52.6</td></tr><tr style="background:#f7faff"><td class="l"><b>【全样本基准】</b></td><td>189.0</td><td>1.18</td><td>50.5</td><td>2.57</td><td>51.4</td><td>5.76</td><td>54.8</td></tr></tbody></table></div><h3>美联储潮汐</h3><div class="scroll" style="max-height:none"><table><thead><tr><th class="l">状态</th><th class="">样本数</th><th class="">3月均值%</th><th class="">3月胜率%</th><th class="">6月均值%</th><th class="">6月胜率%</th><th class="">12月均值%</th><th class="">12月胜率%</th></tr></thead><tbody><tr><td class="l">中性(45~60)</td><td>30.0</td><td>2.11</td><td>43.3</td><td>0.78</td><td>43.3</td><td>6.64</td><td>56.0</td></tr><tr><td class="l">涨潮(≥60)</td><td>35.0</td><td>1.36</td><td>54.3</td><td>2.34</td><td>54.3</td><td>3.66</td><td>51.4</td></tr><tr><td class="l">退潮(&lt;45)</td><td>41.0</td><td>-1.08</td><td>39.5</td><td>1.88</td><td>51.4</td><td>4.11</td><td>61.8</td></tr><tr style="background:#f7faff"><td class="l"><b>【全样本基准】</b></td><td>189.0</td><td>1.18</td><td>50.5</td><td>2.57</td><td>51.4</td><td>5.76</td><td>54.8</td></tr></tbody></table></div>
+</div>
+</div><div id="sec-port_bt">
+<h2>五、个股组合回测（回测B）</h2>
+<div class="card">
+  <div class="grid2">
+    <div><div class="kv"><span class="muted">期数</span><b>15</b></div><div class="kv"><span class="muted">累计收益</span><b>96.04%</b></div><div class="kv"><span class="muted">年化收益</span><b>19.66%</b></div><div class="kv"><span class="muted">年化波动</span><b>15.52%</b></div><div class="kv"><span class="muted">夏普</span><b>1.11</b></div><div class="kv"><span class="muted">最大回撤</span><b>-7.04%</b></div><div class="kv"><span class="muted">胜率（正收益期数占比）</span><b>73.3%</b></div><div class="kv"><span class="muted">沪深300 累计收益</span><b>12.55%</b></div><div class="kv"><span class="muted">沪深300 年化收益</span><b>3.20%</b></div><div class="kv"><span class="muted">沪深300 最大回撤</span><b>-15.30%</b></div><div class="kv"><span class="muted">累计超额（终值差）</span><b>83.49%</b></div><div class="kv"><span class="muted">平均每期超额</span><b>3.74%</b></div><div class="kv"><span class="muted">跑赢期数占比</span><b>93.3%</b></div></div>
+    <div>
+      <p class="small muted">每期按总分取前 30 名等权买入，
+      单边成本 0.15%，对比沪深300。
+      回测起点 2022-12-31。</p>
+      <svg viewBox="0 0 880 300" class="chart" role="img"><line x1="58" y1="266.0" x2="862" y2="266.0" class="grid"/><text x="50" y="270.0" class="axt" text-anchor="end">0.80</text><line x1="58" y1="203.5" x2="862" y2="203.5" class="grid"/><text x="50" y="207.5" class="axt" text-anchor="end">1.11</text><line x1="58" y1="141.0" x2="862" y2="141.0" class="grid"/><text x="50" y="145.0" class="axt" text-anchor="end">1.42</text><line x1="58" y1="78.5" x2="862" y2="78.5" class="grid"/><text x="50" y="82.5" class="axt" text-anchor="end">1.73</text><line x1="58" y1="16.0" x2="862" y2="16.0" class="grid"/><text x="50" y="20.0" class="axt" text-anchor="end">2.05</text><line x1="58" y1="225.9" x2="862" y2="225.9" class="base"/><polyline points="58.0,203.3 115.4,206.0 172.9,199.5 230.3,209.1 287.7,188.7 345.1,174.3 402.6,127.1 460.0,131.6 517.4,125.5 574.9,114.2 632.3,54.2 689.7,49.3 747.1,46.0 804.6,72.8 862.0,33.2" fill="none" stroke="#2f6fed" stroke-width="2.2"/><polyline points="58.0,216.6 115.4,227.4 172.9,235.4 230.3,248.8 287.7,243.2 345.1,247.2 402.6,218.3 460.0,222.7 517.4,225.1 574.9,222.6 632.3,186.1 689.7,186.6 747.1,196.0 804.6,168.5 862.0,200.8" fill="none" stroke="#9aa4b2" stroke-width="2.2"/><text x="58.0" y="288" class="axt" text-anchor="middle">2022-12-31</text><text x="115.4" y="288" class="axt" text-anchor="middle">2023-03-31</text><text x="172.9" y="288" class="axt" text-anchor="middle">2023-06-30</text><text x="230.3" y="288" class="axt" text-anchor="middle">2023-09-30</text><text x="287.7" y="288" class="axt" text-anchor="middle">2023-12-31</text><text x="345.1" y="288" class="axt" text-anchor="middle">2024-03-31</text><text x="402.6" y="288" class="axt" text-anchor="middle">2024-06-30</text><text x="460.0" y="288" class="axt" text-anchor="middle">2024-09-30</text><text x="517.4" y="288" class="axt" text-anchor="middle">2024-12-31</text><text x="574.9" y="288" class="axt" text-anchor="middle">2025-03-31</text><text x="632.3" y="288" class="axt" text-anchor="middle">2025-06-30</text><text x="689.7" y="288" class="axt" text-anchor="middle">2025-09-30</text><text x="747.1" y="288" class="axt" text-anchor="middle">2025-12-31</text><text x="804.6" y="288" class="axt" text-anchor="middle">2026-03-31</text><text x="862.0" y="288" class="axt" text-anchor="middle">2026-06-30</text><rect x="64" y="18" width="11" height="11" fill="#2f6fed" rx="2"/><text x="81" y="28" class="lg">组合 1.960</text><rect x="160" y="18" width="11" height="11" fill="#9aa4b2" rx="2"/><text x="177" y="28" class="lg">沪深300 1.125</text></svg>
+      <svg viewBox="0 0 880 240" class="chart" role="img"><line x1="52" y1="124.2" x2="864" y2="124.2" class="base"/><line x1="52" y1="188.0" x2="864" y2="188.0" class="grid"/><text x="44" y="192.0" class="axt" text-anchor="end">-12.5</text><line x1="52" y1="147.5" x2="864" y2="147.5" class="grid"/><text x="44" y="151.5" class="axt" text-anchor="end">-4.6</text><line x1="52" y1="107.0" x2="864" y2="107.0" class="grid"/><text x="44" y="111.0" class="axt" text-anchor="end">3.4</text><line x1="52" y1="66.5" x2="864" y2="66.5" class="grid"/><text x="44" y="70.5" class="axt" text-anchor="end">11.3</text><line x1="52" y1="26.0" x2="864" y2="26.0" class="grid"/><text x="44" y="30.0" class="axt" text-anchor="end">19.2</text><rect x="62.8" y="66.6" width="16.2" height="57.6" fill="#2f6fed" rx="2"/><text x="70.9" y="62.6" class="axt" text-anchor="middle">11.3</text><rect x="81.1" y="100.5" width="16.2" height="23.7" fill="#9aa4b2" rx="2"/><text x="89.2" y="96.5" class="axt" text-anchor="middle">4.6</text><text x="79.1" y="210" class="axt" text-anchor="middle">-03-31</text><rect x="117.0" y="124.2" width="16.2" height="6.1" fill="#2f6fed" rx="2"/><text x="125.1" y="142.3" class="axt" text-anchor="middle">-1.2</text><rect x="135.2" y="124.2" width="16.2" height="26.3" fill="#9aa4b2" rx="2"/><text x="143.3" y="162.5" class="axt" text-anchor="middle">-5.2</text><text x="133.2" y="210" class="axt" text-anchor="middle">-06-30</text><rect x="171.1" y="109.2" width="16.2" height="15.0" fill="#2f6fed" rx="2"/><text x="179.2" y="105.2" class="axt" text-anchor="middle">2.9</text><rect x="189.3" y="124.2" width="16.2" height="20.3" fill="#9aa4b2" rx="2"/><text x="197.5" y="156.5" class="axt" text-anchor="middle">-4.0</text><text x="187.3" y="210" class="axt" text-anchor="middle">-09-30</text><rect x="225.2" y="124.2" width="16.2" height="21.5" fill="#2f6fed" rx="2"/><text x="233.3" y="157.6" class="axt" text-anchor="middle">-4.2</text><rect x="243.5" y="124.2" width="16.2" height="35.8" fill="#9aa4b2" rx="2"/><text x="251.6" y="171.9" class="axt" text-anchor="middle">-7.0</text><text x="241.5" y="210" class="axt" text-anchor="middle">-12-31</text><rect x="279.4" y="76.3" width="16.2" height="47.8" fill="#2f6fed" rx="2"/><text x="287.5" y="72.3" class="axt" text-anchor="middle">9.4</text><rect x="297.6" y="108.3" width="16.2" height="15.8" fill="#9aa4b2" rx="2"/><text x="305.7" y="104.3" class="axt" text-anchor="middle">3.1</text><text x="295.6" y="210" class="axt" text-anchor="middle">-03-31</text><rect x="333.5" y="93.1" width="16.2" height="31.1" fill="#2f6fed" rx="2"/><text x="341.6" y="89.1" class="axt" text-anchor="middle">6.1</text><rect x="351.7" y="124.2" width="16.2" height="10.9" fill="#9aa4b2" rx="2"/><text x="359.9" y="147.1" class="axt" text-anchor="middle">-2.1</text><text x="349.7" y="210" class="axt" text-anchor="middle">-06-30</text><rect x="387.6" y="28.6" width="16.2" height="95.6" fill="#2f6fed" rx="2"/><text x="395.7" y="24.6" class="axt" text-anchor="middle">18.7</text><rect x="405.9" y="42.0" width="16.2" height="82.1" fill="#9aa4b2" rx="2"/><text x="414.0" y="38.0" class="axt" text-anchor="middle">16.1</text><text x="403.9" y="210" class="axt" text-anchor="middle">-09-30</text><rect x="441.8" y="124.2" width="16.2" height="7.7" fill="#2f6fed" rx="2"/><text x="449.9" y="143.9" class="axt" text-anchor="middle">-1.5</text><rect x="460.0" y="124.2" width="16.2" height="10.5" fill="#9aa4b2" rx="2"/><text x="468.1" y="146.7" class="axt" text-anchor="middle">-2.1</text><text x="458.0" y="210" class="axt" text-anchor="middle">-12-31</text><rect x="495.9" y="113.6" width="16.2" height="10.5" fill="#2f6fed" rx="2"/><text x="504.0" y="109.6" class="axt" text-anchor="middle">2.1</text><rect x="514.1" y="124.2" width="16.2" height="6.2" fill="#9aa4b2" rx="2"/><text x="522.3" y="142.4" class="axt" text-anchor="middle">-1.2</text><text x="512.1" y="210" class="axt" text-anchor="middle">-03-31</text><rect x="550.0" y="105.0" width="16.2" height="19.2" fill="#2f6fed" rx="2"/><text x="558.1" y="101.0" class="axt" text-anchor="middle">3.8</text><rect x="568.3" y="117.8" width="16.2" height="6.4" fill="#9aa4b2" rx="2"/><text x="576.4" y="113.8" class="axt" text-anchor="middle">1.2</text><text x="566.3" y="210" class="axt" text-anchor="middle">-06-30</text><rect x="604.2" y="26.0" width="16.2" height="98.2" fill="#2f6fed" rx="2"/><text x="612.3" y="22.0" class="axt" text-anchor="middle">19.2</text><rect x="622.4" y="32.7" width="16.2" height="91.5" fill="#9aa4b2" rx="2"/><text x="630.5" y="28.7" class="axt" text-anchor="middle">17.9</text><text x="620.4" y="210" class="axt" text-anchor="middle">-09-30</text><rect x="658.3" y="117.4" width="16.2" height="6.8" fill="#2f6fed" rx="2"/><text x="666.4" y="113.4" class="axt" text-anchor="middle">1.3</text><rect x="676.5" y="124.2" width="16.2" height="1.2" fill="#9aa4b2" rx="2"/><text x="684.7" y="137.3" class="axt" text-anchor="middle">-0.2</text><text x="674.5" y="210" class="axt" text-anchor="middle">-12-31</text><rect x="712.4" y="119.8" width="16.2" height="4.3" fill="#2f6fed" rx="2"/><text x="720.5" y="115.8" class="axt" text-anchor="middle">0.8</text><rect x="730.7" y="124.2" width="16.2" height="19.9" fill="#9aa4b2" rx="2"/><text x="738.8" y="156.1" class="axt" text-anchor="middle">-3.9</text><text x="728.7" y="210" class="axt" text-anchor="middle">-03-31</text><rect x="766.6" y="124.2" width="16.2" height="36.0" fill="#2f6fed" rx="2"/><text x="774.7" y="172.1" class="axt" text-anchor="middle">-7.0</text><rect x="784.8" y="63.4" width="16.2" height="60.8" fill="#9aa4b2" rx="2"/><text x="792.9" y="59.4" class="axt" text-anchor="middle">11.9</text><text x="782.8" y="210" class="axt" text-anchor="middle">-06-30</text><rect x="820.7" y="67.0" width="16.2" height="57.2" fill="#2f6fed" rx="2"/><text x="828.8" y="63.0" class="axt" text-anchor="middle">11.2</text><rect x="838.9" y="124.2" width="16.2" height="63.8" fill="#9aa4b2" rx="2"/><text x="847.1" y="200.0" class="axt" text-anchor="middle">-12.5</text><text x="836.9" y="210" class="axt" text-anchor="middle">-09-30</text><rect x="56" y="6" width="11" height="11" fill="#2f6fed" rx="2"/><text x="72" y="16" class="lg">组合</text><rect x="140" y="6" width="11" height="11" fill="#9aa4b2" rx="2"/><text x="156" y="16" class="lg">沪深300</text><text x="864" y="16" class="lg" text-anchor="end">单位：%</text></svg>
+      <p class="small muted" style="margin-top:10px">· 候选池是今天仍在交易的股票，存在幸存者偏差，结果偏乐观。　· 估值历史来自百度股市通『近五年』，回测区间受此限制。　· 回测打分禁用了全市场/同行业截面分位（那是今天的快照），只保留个股历史分位。</p>
+    </div>
+  </div>
+  <div class="scroll"><table><thead><tr><th class="l">调仓日</th><th class="">下期</th><th class="">持仓数</th><th class="">换手率%</th><th class="">组合收益%</th><th class="">沪深300%</th><th class="">超额%</th><th class="">组合净值</th><th class="">基准净值</th></tr></thead><tbody><tr><td class="l">2022-12-31</td><td>2023-03-31</td><td>30</td><td>100.00</td><td style="color:var(--green)">11.27</td><td style="color:var(--green)">4.63</td><td style="color:var(--green)">6.64</td><td>1.113</td><td>1.046</td></tr><tr><td class="l">2023-03-31</td><td>2023-06-30</td><td>30</td><td>33.30</td><td style="color:var(--red)">-1.20</td><td style="color:var(--red)">-5.15</td><td style="color:var(--green)">3.95</td><td>1.099</td><td>0.993</td></tr><tr><td class="l">2023-06-30</td><td>2023-09-30</td><td>30</td><td>20.00</td><td style="color:var(--green)">2.93</td><td style="color:var(--red)">-3.98</td><td style="color:var(--green)">6.91</td><td>1.132</td><td>0.953</td></tr><tr><td class="l">2023-09-30</td><td>2023-12-31</td><td>30</td><td>26.70</td><td style="color:var(--red)">-4.20</td><td style="color:var(--red)">-7.00</td><td style="color:var(--green)">2.80</td><td>1.084</td><td>0.886</td></tr><tr><td class="l">2023-12-31</td><td>2024-03-31</td><td>30</td><td>23.30</td><td style="color:var(--green)">9.36</td><td style="color:var(--green)">3.10</td><td style="color:var(--green)">6.26</td><td>1.185</td><td>0.914</td></tr><tr><td class="l">2024-03-31</td><td>2024-06-30</td><td>30</td><td>23.30</td><td style="color:var(--green)">6.08</td><td style="color:var(--red)">-2.14</td><td style="color:var(--green)">8.22</td><td>1.258</td><td>0.894</td></tr><tr><td class="l">2024-06-30</td><td>2024-09-30</td><td>30</td><td>26.70</td><td style="color:var(--green)">18.70</td><td style="color:var(--green)">16.07</td><td style="color:var(--green)">2.64</td><td>1.493</td><td>1.038</td></tr><tr><td class="l">2024-09-30</td><td>2024-12-31</td><td>30</td><td>23.30</td><td style="color:var(--red)">-1.51</td><td style="color:var(--red)">-2.06</td><td style="color:var(--green)">0.55</td><td>1.470</td><td>1.016</td></tr><tr><td class="l">2024-12-31</td><td>2025-03-31</td><td>30</td><td>26.70</td><td style="color:var(--green)">2.06</td><td style="color:var(--red)">-1.21</td><td style="color:var(--green)">3.27</td><td>1.500</td><td>1.004</td></tr><tr><td class="l">2025-03-31</td><td>2025-06-30</td><td>30</td><td>20.00</td><td style="color:var(--green)">3.76</td><td style="color:var(--green)">1.25</td><td style="color:var(--green)">2.50</td><td>1.557</td><td>1.017</td></tr><tr><td class="l">2025-06-30</td><td>2025-09-30</td><td>30</td><td>23.30</td><td style="color:var(--green)">19.21</td><td style="color:var(--green)">17.90</td><td style="color:var(--green)">1.31</td><td>1.856</td><td>1.199</td></tr><tr><td class="l">2025-09-30</td><td>2025-12-31</td><td>30</td><td>30.00</td><td style="color:var(--green)">1.33</td><td style="color:var(--red)">-0.23</td><td style="color:var(--green)">1.56</td><td>1.881</td><td>1.196</td></tr><tr><td class="l">2025-12-31</td><td>2026-03-31</td><td>30</td><td>13.30</td><td style="color:var(--green)">0.85</td><td style="color:var(--red)">-3.89</td><td style="color:var(--green)">4.74</td><td>1.897</td><td>1.149</td></tr><tr><td class="l">2026-03-31</td><td>2026-06-30</td><td>30</td><td>20.00</td><td style="color:var(--red)">-7.04</td><td style="color:var(--green)">11.90</td><td style="color:var(--red)">-18.93</td><td>1.763</td><td>1.286</td></tr><tr><td class="l">2026-06-30</td><td>2026-09-30</td><td>30</td><td>13.30</td><td style="color:var(--green)">11.19</td><td style="color:var(--red)">-12.49</td><td style="color:var(--green)">23.68</td><td>1.960</td><td>1.125</td></tr></tbody></table></div>
+</div>
+</div><div id="sec-stock_bt"><h2>六、个股逐笔买卖回测（不组组合，一只一只算）</h2><div class="card"><p class="small">按同一套买卖规则，在每个评估日对每只股票独立判断：买入门槛全通过就按<b>次日收盘价</b>建仓，触发卖出条件就卖。每笔都与「同期买入并持有」对比，用来判断<b>卖出规则到底有没有创造价值</b>。</p><p class="small"><b>怎么读这张表（重要）</b>：候选池是按<b>今天的流通市值</b>排出来的，今天的大市值里已经包含新易盛、寒武纪、中际旭创这类 2023–2026 年涨了十几倍的 AI 行情赢家，当年无法预知 —— 所以「平均买入持有%」被这些极值拉高，是<b>带后见之明的基准</b>，不能当成「本该赚到的钱」。请结合三个数一起读：①「买入持有中位数%」看这池子的<b>中位</b>表现；②「有交易的股票数 / 有交易的股票平均策略收益% / 有交易的股票平均买入持有%」是<b>同口径</b>对比（只在真正买过的股票上比）；③「平均策略收益%」对从未触发买入的股票记 0，与买入持有<b>不同口径</b>，它回答的是「这套门槛三年里到底敢不敢下手」。</p><p class="small"><b>卖出规则的实测线索</b>：看下面「按卖出原因分布」——按<b>个股估值</b>卖的（PE/PB 分位 ≥ 80% 清仓）平均收益最高，而按<b>宏观背景分</b>减仓的这笔数最多、平均收益最低。这说明卖出条件应该以个股自身估值为主要依据，少用大盘背景分去动个股仓位 —— 否则容易在上涨途中被反复削峰。</p><h3>汇总</h3><div class="grid2"><div><div class="kv"><span>股票数</span><b>100</b></div><div class="kv"><span>总交易笔数</span><b>34</b></div><div class="kv"><span>盈利笔数</span><b>28</b></div><div class="kv"><span>胜率%</span><b>82.4</b></div><div class="kv"><span>平均单笔收益%</span><b>14.45</b></div><div class="kv"><span>单笔收益中位数%</span><b>10.98</b></div><div class="kv"><span>最好一笔%</span><b>52.88</b></div><div class="kv"><span>最差一笔%</span><b>-32.53</b></div><div class="kv"><span>平均持有天数</span><b>274.0</b></div><div class="kv"><span>平均策略收益%</span><b>3.45</b></div><div class="kv"><span>平均买入持有%</span><b>187.2</b></div><div class="kv"><span>跑赢买入持有占比%</span><b>15.0</b></div><div class="kv"><span>有交易的股票数</span><b>13</b></div><div class="kv"><span>有交易的股票平均策略收益%</span><b>26.54</b></div><div class="kv"><span>有交易的股票平均买入持有%</span><b>38.21</b></div><div class="kv"><span>买入持有中位数%</span><b>55.13</b></div><div class="kv"><span>买入持有25%分位%</span><b>20.24</b></div><div class="kv"><span>买入持有75%分位%</span><b>157.82</b></div></div><div></div></div><h3>逐笔明细（共 34 笔，显示前 60 笔）</h3><div class="scroll"><table><thead><tr><th class="l">代码</th><th class="l">名称</th><th class="">买入日</th><th class="">买入价</th><th class="">卖出日</th><th class="">卖出价</th><th class="">持有天数</th><th class="">单笔收益%</th><th class="">卖出比例</th><th class="l">卖出原因</th><th class="">卖出时总分</th><th class="">卖出时宏观分</th></tr></thead><tbody><tr><td class="l">600036</td><td class="l">招商银行</td><td>2024-04-01</td><td>27.99</td><td>2025-02-05</td><td>36.38</td><td>310</td><td>29.97</td><td>一半</td><td>[减仓] 宏观背景分 ≤ 40（偏防御）；[预警] ROE 连续 2 个年报下滑</td><td>67.59</td><td>38.74</td></tr><tr><td class="l">600036</td><td class="l">招商银行</td><td>2024-04-01</td><td>27.99</td><td>2025-07-01</td><td>42.24</td><td>456</td><td>50.91</td><td>全部</td><td>[清仓] PE 回到自身历史分位 ≥ 80%；[减仓] 总分 ≤ 67（压力位，先减一半）；[预警] ROE 连续 2 个年报下滑</td><td>62.88</td><td>50.15</td></tr><tr><td class="l">600036</td><td class="l">招商银行</td><td>2026-05-06</td><td>36.98</td><td>2026-09-30</td><td>41.26</td><td>147</td><td>11.57</td><td>期末未卖（按最后收盘价估算）</td><td>回测期末仍持有</td><td>—</td><td>—</td></tr><tr><td class="l">601899</td><td class="l">紫金矿业</td><td>2026-07-01</td><td>24.80</td><td>2026-08-03</td><td>32.15</td><td>33</td><td>29.64</td><td>全部</td><td>[清仓] PB 回到自身历史分位 ≥ 80%；[清仓] 总分 ≤ 62（B 级，买入理由不再成立）；[减仓] 总分 ≤ 67（压力位，先减一半）</td><td>60.79</td><td>55.04</td></tr><tr><td class="l">000333</td><td class="l">美的集团</td><td>2024-08-01</td><td>57.41</td><td>2024-10-08</td><td>72.41</td><td>68</td><td>26.13</td><td>全部</td><td>[清仓] PE 回到自身历史分位 ≥ 80%；[清仓] PB 回到自身历史分位 ≥ 80%；[减仓] 总分 ≤ 67（压力位，先减一半）</td><td>65.08</td><td>57.35</td></tr><tr><td class="l">000333</td><td class="l">美的集团</td><td>2026-04-01</td><td>73.20</td><td>2026-08-03</td><td>85.90</td><td>124</td><td>17.35</td><td>全部</td><td>[清仓] PE 回到自身历史分位 ≥ 80%；[减仓] 总分 ≤ 67（压力位，先减一半）</td><td>65.26</td><td>55.04</td></tr><tr><td class="l">601728</td><td class="l">中国电信</td><td>2026-03-02</td><td>5.64</td><td>2026-08-03</td><td>6.30</td><td>154</td><td>11.70</td><td>全部</td><td>[清仓] 总分 ≤ 62（B 级，买入理由不再成立）；[减仓] 总分 ≤ 67（压力位，先减一半）</td><td>60.51</td><td>55.04</td></tr><tr><td class="l">000858</td><td class="l">五 粮 液</td><td>2025-07-01</td><td>109.20</td><td>2025-11-03</td><td>112.35</td><td>125</td><td>2.88</td><td>一半</td><td>[减仓] 宏观背景分 ≤ 40（偏防御）</td><td>91.45</td><td>37.32</td></tr><tr><td class="l">000858</td><td class="l">五 粮 液</td><td>2025-07-01</td><td>106.72</td><td>2026-07-01</td><td>72.01</td><td>365</td><td>-32.53</td><td>全部</td><td>[清仓] 相对成本浮亏 ≤ -25%（风控止损）</td><td>77.85</td><td>61.37</td></tr><tr><td class="l">002142</td><td class="l">宁波银行</td><td>2024-04-01</td><td>19.48</td><td>2025-02-05</td><td>23.95</td><td>310</td><td>22.95</td><td>一半</td><td>[减仓] 总分 ≤ 67（压力位，先减一半）；[减仓] 宏观背景分 ≤ 40（偏防御）；[预警] ROE 连续 2 个年报下滑</td><td>66.88</td><td>38.74</td></tr><tr><td class="l">002142</td><td class="l">宁波银行</td><td>2024-04-01</td><td>23.18</td><td>2026-05-06</td><td>31.86</td><td>765</td><td>37.47</td><td>一半</td><td>[减仓] 总分 ≤ 67（压力位，先减一半）</td><td>66.03</td><td>58.79</td></tr><tr><td class="l">002142</td><td class="l">宁波银行</td><td>2024-04-01</td><td>23.18</td><td>2026-09-30</td><td>35.43</td><td>912</td><td>52.88</td><td>期末未卖（按最后收盘价估算）</td><td>回测期末仍持有</td><td>—</td><td>—</td></tr><tr><td class="l">000651</td><td class="l">格力电器</td><td>2024-06-03</td><td>34.09</td><td>2024-10-08</td><td>44.83</td><td>127</td><td>31.50</td><td>全部</td><td>[清仓] PE 回到自身历史分位 ≥ 80%；[清仓] PB 回到自身历史分位 ≥ 80%；[减仓] 总分 ≤ 67（压力位，先减一半）</td><td>62.26</td><td>57.35</td></tr><tr><td class="l">000651</td><td class="l">格力电器</td><td>2024-12-02</td><td>36.60</td><td>2025-02-05</td><td>38.16</td><td>65</td><td>4.26</td><td>一半</td><td>[减仓] 宏观背景分 ≤ 40（偏防御）；[预警] ROE 连续 2 个年报下滑</td><td>75.08</td><td>38.74</td></tr><tr><td class="l">000651</td><td class="l">格力电器</td><td>2024-12-02</td><td>35.96</td><td>2025-04-01</td><td>39.29</td><td>120</td><td>9.26</td><td>一半</td><td>[减仓] 宏观背景分 ≤ 40（偏防御）；[预警] ROE 连续 2 个年报下滑</td><td>72.17</td><td>38.26</td></tr><tr><td class="l">000651</td><td class="l">格力电器</td><td>2024-12-02</td><td>38.19</td><td>2025-11-03</td><td>36.70</td><td>336</td><td>-3.90</td><td>一半</td><td>[减仓] 宏观背景分 ≤ 40（偏防御）；[预警] ROE 连续 2 个年报下滑</td><td>88.58</td><td>37.32</td></tr><tr><td class="l">000651</td><td class="l">格力电器</td><td>2024-12-02</td><td>38.09</td><td>2026-09-30</td><td>38.28</td><td>667</td><td>0.49</td><td>期末未卖（按最后收盘价估算）</td><td>回测期末仍持有</td><td>—</td><td>—</td></tr><tr><td class="l">600887</td><td class="l">伊利股份</td><td>2024-05-06</td><td>25.16</td><td>2025-02-05</td><td>24.48</td><td>275</td><td>-2.70</td><td>一半</td><td>[减仓] 宏观背景分 ≤ 40（偏防御）</td><td>84.45</td><td>38.74</td></tr><tr><td class="l">600887</td><td class="l">伊利股份</td><td>2024-05-06</td><td>25.32</td><td>2025-04-01</td><td>25.59</td><td>330</td><td>1.08</td><td>一半</td><td>[减仓] 宏观背景分 ≤ 40（偏防御）</td><td>84.23</td><td>38.26</td></tr><tr><td class="l">600887</td><td class="l">伊利股份</td><td>2024-05-06</td><td>25.32</td><td>2025-06-03</td><td>27.87</td><td>393</td><td>10.09</td><td>全部</td><td>[清仓] PE 回到自身历史分位 ≥ 80%；[减仓] 宏观背景分 ≤ 40（偏防御）</td><td>70.64</td><td>39.54</td></tr><tr><td class="l">600887</td><td class="l">伊利股份</td><td>2026-05-06</td><td>26.52</td><td>2026-09-30</td><td>27.30</td><td>147</td><td>2.94</td><td>期末未卖（按最后收盘价估算）</td><td>回测期末仍持有</td><td>—</td><td>—</td></tr><tr><td class="l">600989</td><td class="l">宝丰能源</td><td>2025-07-01</td><td>15.44</td><td>2025-11-03</td><td>18.32</td><td>125</td><td>18.65</td><td>一半</td><td>[减仓] 宏观背景分 ≤ 40（偏防御）</td><td>75.95</td><td>37.32</td></tr><tr><td class="l">600989</td><td class="l">宝丰能源</td><td>2025-07-01</td><td>16.71</td><td>2026-02-02</td><td>20.99</td><td>216</td><td>25.61</td><td>全部</td><td>[清仓] PB 回到自身历史分位 ≥ 80%；[清仓] 总分 ≤ 62（B 级，买入理由不再成立）；[减仓] 总分 ≤ 67（压力位，先减一半）</td><td>59.30</td><td>52.95</td></tr><tr><td class="l">600989</td><td class="l">宝丰能源</td><td>2026-07-01</td><td>20.40</td><td>2026-08-03</td><td>22.52</td><td>33</td><td>10.39</td><td>一半</td><td>[减仓] 总分 ≤ 67（压力位，先减一半）</td><td>66.49</td><td>55.04</td></tr><tr><td class="l">600989</td><td class="l">宝丰能源</td><td>2026-07-01</td><td>20.40</td><td>2026-09-30</td><td>22.46</td><td>91</td><td>10.10</td><td>期末未卖（按最后收盘价估算）</td><td>回测期末仍持有</td><td>—</td><td>—</td></tr><tr><td class="l">600809</td><td class="l">山西汾酒</td><td>2026-06-01</td><td>121.95</td><td>2026-09-30</td><td>115.60</td><td>121</td><td>-5.21</td><td>期末未卖（按最后收盘价估算）</td><td>回测期末仍持有</td><td>—</td><td>—</td></tr><tr><td class="l">600050</td><td class="l">中国联通</td><td>2026-03-02</td><td>4.87</td><td>2026-09-30</td><td>4.23</td><td>212</td><td>-13.14</td><td>期末未卖（按最后收盘价估算）</td><td>回测期末仍持有</td><td>—</td><td>—</td></tr><tr><td class="l">600926</td><td class="l">杭州银行</td><td>2024-04-01</td><td>9.71</td><td>2025-02-05</td><td>13.39</td><td>310</td><td>37.90</td><td>一半</td><td>[减仓] 宏观背景分 ≤ 40（偏防御）</td><td>73.27</td><td>38.74</td></tr><tr><td class="l">600926</td><td class="l">杭州银行</td><td>2024-04-01</td><td>11.92</td><td>2026-09-30</td><td>17.11</td><td>912</td><td>43.49</td><td>期末未卖（按最后收盘价估算）</td><td>回测期末仍持有</td><td>—</td><td>—</td></tr><tr><td class="l">600690</td><td class="l">海尔智家</td><td>2024-04-01</td><td>22.76</td><td>2024-05-06</td><td>28.17</td><td>35</td><td>23.77</td><td>一半</td><td>[减仓] 总分 ≤ 67（压力位，先减一半）</td><td>63.29</td><td>56.48</td></tr><tr><td class="l">600690</td><td class="l">海尔智家</td><td>2024-04-01</td><td>23.35</td><td>2024-10-08</td><td>30.38</td><td>190</td><td>30.12</td><td>全部</td><td>[清仓] 总分 ≤ 62（B 级，买入理由不再成立）；[减仓] 总分 ≤ 67（压力位，先减一半）</td><td>60.75</td><td>57.35</td></tr><tr><td class="l">600690</td><td class="l">海尔智家</td><td>2025-03-03</td><td>23.78</td><td>2025-04-01</td><td>24.72</td><td>29</td><td>3.95</td><td>一半</td><td>[减仓] 宏观背景分 ≤ 40（偏防御）</td><td>79.88</td><td>38.26</td></tr><tr><td class="l">600690</td><td class="l">海尔智家</td><td>2025-03-03</td><td>23.24</td><td>2025-11-03</td><td>25.39</td><td>245</td><td>9.25</td><td>一半</td><td>[减仓] 宏观背景分 ≤ 40（偏防御）</td><td>84.02</td><td>37.32</td></tr><tr><td class="l">600690</td><td class="l">海尔智家</td><td>2025-03-03</td><td>24.79</td><td>2026-09-30</td><td>20.42</td><td>576</td><td>-17.64</td><td>期末未卖（按最后收盘价估算）</td><td>回测期末仍持有</td><td>—</td><td>—</td></tr></tbody></table></div><ul class="small muted"><li>候选池是今天仍在交易的股票，存在幸存者偏差，结果偏乐观。</li><li>**候选池按「今天的」流通市值排序选取，这本身带后见之明**：今天的大市值里已经包含新易盛、寒武纪、中际旭创这类 2023–2026 年涨了十几倍的 AI 行情赢家，当年无法预知。所以「平均买入持有%」被这些极值拉高，读的时候请同时看「买入持有中位数%」与「有交易的股票平均买入持有%」。</li><li>「平均策略收益%」对从未触发买入的股票记 0（因为一直空仓），与「买入持有」不是同口径；只有「有交易的股票平均策略收益%」才与同口径的「有交易的股票平均买入持有%」可比。</li><li>估值历史来自百度股市通『近五年』，所以个股回测最早只能回到约 5 年前。</li><li>信号在评估日（月末）收盘后产生，按**次一交易日收盘价**成交，单边成本 0.0015；停牌超过 15 天视为无法成交。</li><li>历史打分禁用了全市场/同行业截面分位（那是今天的快照），只用个股自身历史分位，因此历史口径与今天的打分口径不完全一致。</li><li>「减仓」按卖出一半处理，且**同一轮建仓只减一次**（除非之后触发加仓）；分红没有再投资，股息率只作为信号，不进入收益。</li></ul></div></div><div id="sec-scores">
+<h2>七、当前个股打分（前 50 名）</h2>
+<div class="card">
+<p class="small muted">总分 = 估值 45% + 质量 30% + 股息 15% + 政策 10%（缺失项在可用项间重新归一化）。
+评级：A+ ≥80、A ≥72、B ≥62、C ≥50、其余 D。</p>
+<div class="scroll"><table><thead><tr><th class="">排名</th><th class="l">代码</th><th class="l">名称</th><th class="l">行业</th><th class="">总分</th><th class="">评级</th><th class="">股价</th><th class="">PE_TTM</th><th class="">PB</th><th class="">股息率%</th><th class="">流通市值(亿)</th><th class="">估值分</th><th class="">估值状态</th><th class="">质量分</th><th class="">质量状态</th><th class="">股息分</th><th class="">股息状态</th><th class="">政策分</th><th class="">政策状态</th><th class="l">逐项理由</th></tr></thead><tbody><tr><td>1</td><td class="l">600660</td><td class="l">福耀玻璃</td><td class="l">汽车制造</td><td><span class="pill great">91.1</span></td><td><span class="pill great">A+</span></td><td>51.65</td><td>15.90</td><td>3.79</td><td>6.002</td><td>1,034.50</td><td>93.2</td><td><span class="muted small">显著低估</span></td><td>91.6</td><td><span class="muted small">优秀</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>67.3</td><td><span class="muted small">政策受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600660 福耀玻璃】汽车制造  总分 91.1（A+）
+  · 估值 93.2／显著低估
+      600660 福耀玻璃；PE 15.9，处于个股5年历史分位 3%（便宜），得 98 分；PB 3.79，处于个股5年历史分位 31%（便宜），得 79 分；股息率 6.00%，无历史分位，按绝对水平得 100 分
+  · 质量 91.6／优秀
+      600660 福耀玻璃；ROE 21.2% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 1.26 倍，利润含金量高；资产负债率 48.4%，尚可；净利润增速标准差 0.13，波动中等
+  · 股息 100.0／高股息
+      600660 福耀玻璃；股息率 6.00% ≥ 5.0%，现金回报丰厚；已连续分红 17 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 4.31 个百分点，有风险补偿
+  · 政策 67.3／政策受益
+      600660 福耀玻璃；行业「汽车」政策优先级 80/100：新能源汽车购置税减免与以旧换新政策延续；近 422 天内有效政策事件 2 条，贡献最大的是「个人消费贷款财政贴息政策实施方案」（衰减后 +2.2 分）</pre></details></td></tr><tr><td>2</td><td class="l">603195</td><td class="l">公牛集团</td><td class="l"></td><td><span class="pill great">90.8</span></td><td><span class="pill great">A+</span></td><td>38.89</td><td>16.85</td><td>4.62</td><td>4.886</td><td>700.10</td><td>96.9</td><td><span class="muted small">显著低估</span></td><td>99.6</td><td><span class="muted small">优秀</span></td><td>88.8</td><td><span class="muted small">高股息</span></td><td>40.0</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【603195 公牛集团】  总分 90.8（A+）
+  · 估值 96.9／显著低估
+      603195 公牛集团；PE 16.9，处于个股5年历史分位 4%（便宜），得 98 分；PB 4.62，处于个股5年历史分位 8%（便宜），得 96 分；股息率 4.89%，无历史分位，按绝对水平得 96 分
+  · 质量 99.6／优秀
+      603195 公牛集团；ROE 26.0% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 1.10 倍，利润含金量高；资产负债率 29.0%，财务稳健；净利润增速标准差 0.10，波动中等
+  · 股息 88.8／高股息
+      603195 公牛集团；股息率 4.89%，达到及格线 2.0%；连续分红 7 年，具备分红习惯；股息率比 10 年期国债（1.69%）高 3.20 个百分点，有风险补偿
+  · 政策 40.0／政策偏弱
+      603195 公牛集团；行业「未知」不在政策表内，按中性 40 分处理；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>3</td><td class="l">600690</td><td class="l">海尔智家</td><td class="l">家电行业</td><td><span class="pill great">89.3</span></td><td><span class="pill great">A+</span></td><td>20.43</td><td>10.66</td><td>1.59</td><td>5.681</td><td>1,262.30</td><td>97.7</td><td><span class="muted small">显著低估</span></td><td>78.8</td><td><span class="muted small">良好</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>66.8</td><td><span class="muted small">政策受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600690 海尔智家】家电行业  总分 89.3（A+）
+  · 估值 97.7／显著低估
+      600690 海尔智家；PE 10.7，处于个股5年历史分位 7%（便宜），得 97 分；PB 1.59，处于个股5年历史分位 4%（便宜），得 98 分；股息率 5.68%，无历史分位，按绝对水平得 99 分；PE×PB = 16.9 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 78.8／良好
+      600690 海尔智家；ROE 16.4%（近3年均值），中等；经营现金流是净利润的 1.39 倍，利润含金量高；资产负债率 58.5%，尚可；近5年净利润增速标准差 0.06，盈利很稳定
+  · 股息 100.0／高股息
+      600690 海尔智家；股息率 5.68% ≥ 5.0%，现金回报丰厚；已连续分红 27 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 3.99 个百分点，有风险补偿
+  · 政策 66.8／政策受益
+      600690 海尔智家；行业「家用电器」政策优先级 70/100：以旧换新与家电下乡补贴直接拉动需求；近 8 天内有效政策事件 2 条，贡献最大的是「2500亿元以旧换新资金全部下达」（衰减后 +9.7 分）</pre></details></td></tr><tr><td>4</td><td class="l">600519</td><td class="l">贵州茅台</td><td class="l">酿酒行业</td><td><span class="pill great">89.2</span></td><td><span class="pill great">A+</span></td><td>1,255.79</td><td>19.28</td><td>6.25</td><td>4.139</td><td>15,698.40</td><td>95.6</td><td><span class="muted small">显著低估</span></td><td>92.0</td><td><span class="muted small">优秀</span></td><td>90.9</td><td><span class="muted small">高股息</span></td><td>49.6</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600519 贵州茅台】酿酒行业  总分 89.2（A+）
+  · 估值 95.6／显著低估
+      600519 贵州茅台；PE 19.3，处于个股5年历史分位 4%（便宜），得 98 分；PB 6.25，处于个股5年历史分位 5%（便宜），得 97 分；股息率 4.14%，无历史分位，按绝对水平得 90 分
+  · 质量 92.0／优秀
+      600519 贵州茅台；ROE 35.1% ≥ 20.0%，盈利能力优秀；经营现金流/净利润 = 0.87 倍，偏低；资产负债率 15.2%，财务稳健；近5年净利润增速标准差 0.09，盈利很稳定
+  · 股息 90.9／高股息
+      600519 贵州茅台；股息率 4.14%，达到及格线 2.0%；已连续分红 25 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 2.45 个百分点，有风险补偿
+  · 政策 49.6／政策偏弱
+      600519 贵州茅台；行业「食品饮料」政策优先级 62/100：促消费政策托底，但无专项产业扶持；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>5</td><td class="l">605499</td><td class="l">东鹏饮料</td><td class="l"></td><td><span class="pill great">88.5</span></td><td><span class="pill great">A+</span></td><td>113.04</td><td>16.91</td><td>4.80</td><td>4.866</td><td>764.20</td><td>98.4</td><td><span class="muted small">显著低估</span></td><td>91.5</td><td><span class="muted small">优秀</span></td><td>85.2</td><td><span class="muted small">高股息</span></td><td>40.0</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【605499 东鹏饮料】  总分 88.5（A+）
+  · 估值 98.4／显著低估
+      605499 东鹏饮料；PE 16.9，处于个股5年历史分位 1%（便宜），得 99 分；PB 4.80，处于个股5年历史分位 2%（便宜），得 99 分；股息率 4.87%，无历史分位，按绝对水平得 96 分
+  · 质量 91.5／优秀
+      605499 东鹏饮料；ROE 40.8% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 1.58 倍，利润含金量高；资产负债率 45.5%，尚可；净利润增速标准差 0.16，波动中等
+  · 股息 85.2／高股息
+      605499 东鹏饮料；股息率 4.87%，达到及格线 2.0%；连续分红 6 年，具备分红习惯；股息率比 10 年期国债（1.69%）高 3.18 个百分点，有风险补偿
+  · 政策 40.0／政策偏弱
+      605499 东鹏饮料；行业「未知」不在政策表内，按中性 40 分处理；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>6</td><td class="l">002415</td><td class="l">海康威视</td><td class="l">仪器仪表</td><td><span class="pill great">88.1</span></td><td><span class="pill great">A+</span></td><td>33.00</td><td>18.40</td><td>3.81</td><td>5.152</td><td>2,985.20</td><td>92.9</td><td><span class="muted small">显著低估</span></td><td>82.5</td><td><span class="muted small">优秀</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>65.6</td><td><span class="muted small">政策受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【002415 海康威视】仪器仪表  总分 88.1（A+）
+  · 估值 92.9／显著低估
+      002415 海康威视；PE 18.4，处于个股5年历史分位 10%（便宜），得 95 分；PB 3.81，处于个股5年历史分位 23%（便宜），得 86 分；股息率 5.15%，无历史分位，按绝对水平得 97 分
+  · 质量 82.5／优秀
+      002415 海康威视；ROE 16.8%（近3年均值），中等；经营现金流是净利润的 1.25 倍，利润含金量高；资产负债率 32.4%，财务稳健；净利润增速标准差 0.21，波动中等
+  · 股息 100.0／高股息
+      002415 海康威视；股息率 5.15% ≥ 5.0%，现金回报丰厚；已连续分红 17 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 3.46 个百分点，有风险补偿
+  · 政策 65.6／政策受益
+      002415 海康威视；行业「机械设备」政策优先级 82/100：高端装备国产替代与工业母机专项支持；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>7</td><td class="l">603288</td><td class="l">海天味业</td><td class="l">食品行业</td><td><span class="pill great">87.6</span></td><td><span class="pill great">A+</span></td><td>33.86</td><td>27.04</td><td>5.07</td><td>3.249</td><td>1,882.60</td><td>92.5</td><td><span class="muted small">显著低估</span></td><td>97.7</td><td><span class="muted small">优秀</span></td><td>78.0</td><td><span class="muted small">分红良好</span></td><td>49.6</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【603288 海天味业】食品行业  总分 87.6（A+）
+  · 估值 92.5／显著低估
+      603288 海天味业；PE 27.0，处于个股5年历史分位 1%（便宜），得 99 分；PB 5.07，处于个股5年历史分位 5%（便宜），得 97 分；股息率 3.25%，无历史分位，按绝对水平得 78 分
+  · 质量 97.7／优秀
+      603288 海天味业；ROE 19.1%（近3年均值），中等；经营现金流是净利润的 1.16 倍，利润含金量高；资产负债率 16.0%，财务稳健；近5年净利润增速标准差 0.10，盈利很稳定
+  · 股息 78.0／分红良好
+      603288 海天味业；股息率 3.25%，达到及格线 2.0%；已连续分红 13 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 1.56 个百分点，有风险补偿
+  · 政策 49.6／政策偏弱
+      603288 海天味业；行业「食品饮料」政策优先级 62/100：促消费政策托底，但无专项产业扶持；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>8</td><td class="l">000568</td><td class="l">泸州老窖</td><td class="l">酿酒行业</td><td><span class="pill great">86.9</span></td><td><span class="pill great">A+</span></td><td>72.61</td><td>14.24</td><td>2.34</td><td>7.954</td><td>1,068.20</td><td>91.0</td><td><span class="muted small">显著低估</span></td><td>86.6</td><td><span class="muted small">优秀</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>49.6</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【000568 泸州老窖】酿酒行业  总分 86.9（A+）
+  · 估值 91.0／显著低估
+      000568 泸州老窖；PE 14.2，处于个股5年历史分位 32%（便宜），得 79 分；PB 2.34，处于个股5年历史分位 3%（便宜），得 99 分；股息率 7.95%，无历史分位，按绝对水平得 100 分
+  · 质量 86.6／优秀
+      000568 泸州老窖；ROE 27.4% ≥ 20.0%，盈利能力优秀；经营现金流/净利润 = 0.96 倍，偏低；资产负债率 28.7%，财务稳健；净利润增速标准差 0.23，波动中等
+  · 股息 100.0／高股息
+      000568 泸州老窖；股息率 7.95% ≥ 5.0%，现金回报丰厚；已连续分红 22 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 6.26 个百分点，有风险补偿
+  · 政策 49.6／政策偏弱
+      000568 泸州老窖；行业「食品饮料」政策优先级 62/100：促消费政策托底，但无专项产业扶持；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>9</td><td class="l">600406</td><td class="l">国电南瑞</td><td class="l">电子信息</td><td><span class="pill great">85.6</span></td><td><span class="pill great">A+</span></td><td>22.86</td><td>21.86</td><td>3.61</td><td>2.747</td><td>1,830.70</td><td>89.5</td><td><span class="muted small">显著低估</span></td><td>88.4</td><td><span class="muted small">优秀</span></td><td>70.0</td><td><span class="muted small">分红良好</span></td><td>82.9</td><td><span class="muted small">政策强受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600406 国电南瑞】电子信息  总分 85.6（A+）
+  · 估值 89.5／显著低估
+      600406 国电南瑞；PE 21.9，处于个股5年历史分位 3%（便宜），得 99 分；PB 3.61，处于个股5年历史分位 7%（便宜），得 97 分；股息率 2.75%，无历史分位，按绝对水平得 70 分
+  · 质量 88.4／优秀
+      600406 国电南瑞；ROE 15.5%（近3年均值），中等；经营现金流是净利润的 1.43 倍，利润含金量高；资产负债率 40.4%，尚可；近5年净利润增速标准差 0.04，盈利很稳定
+  · 股息 70.0／分红良好
+      600406 国电南瑞；股息率 2.75%，达到及格线 2.0%；已连续分红 23 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 1.06 个百分点，有风险补偿
+  · 政策 82.9／政策强受益
+      600406 国电南瑞；行业「计算机」政策优先级 92/100：信创、人工智能、数据要素均属国家级战略方向；近 247 天内有效政策事件 3 条，贡献最大的是「《培育数据流通服务机构加快数据要素市场化价值化的意见》」（衰减后 +4.2 分）</pre></details></td></tr><tr><td>10</td><td class="l">600809</td><td class="l">山西汾酒</td><td class="l">酿酒行业</td><td><span class="pill great">85.5</span></td><td><span class="pill great">A+</span></td><td>115.10</td><td>13.79</td><td>3.69</td><td>5.699</td><td>1,404.20</td><td>97.5</td><td><span class="muted small">显著低估</span></td><td>72.4</td><td><span class="muted small">良好</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>49.6</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600809 山西汾酒】酿酒行业  总分 85.6（A+）
+  · 估值 97.5／显著低估
+      600809 山西汾酒；PE 13.8，处于个股5年历史分位 6%（便宜），得 97 分；PB 3.69，处于个股5年历史分位 7%（便宜），得 96 分；股息率 5.70%，无历史分位，按绝对水平得 99 分
+  · 质量 72.4／良好
+      600809 山西汾酒；ROE 34.5% ≥ 20.0%，盈利能力优秀；经营现金流/净利润 = 0.81 倍，偏低；资产负债率 39.3%，财务稳健；净利润增速标准差 0.29，波动中等
+  · 股息 100.0／高股息
+      600809 山西汾酒；股息率 5.70% ≥ 5.0%，现金回报丰厚；已连续分红 11 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 4.01 个百分点，有风险补偿
+  · 政策 49.6／政策偏弱
+      600809 山西汾酒；行业「食品饮料」政策优先级 62/100：促消费政策托底，但无专项产业扶持；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>11</td><td class="l">000651</td><td class="l">格力电器</td><td class="l">家电行业</td><td><span class="pill great">84.6</span></td><td><span class="pill great">A+</span></td><td>38.32</td><td>7.70</td><td>1.45</td><td>7.829</td><td>2,112.50</td><td>86.6</td><td><span class="muted small">显著低估</span></td><td>83.2</td><td><span class="muted small">优秀</span></td><td>93.0</td><td><span class="muted small">高股息</span></td><td>66.8</td><td><span class="muted small">政策受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【000651 格力电器】家电行业  总分 84.6（A+）
+  · 估值 86.6／显著低估
+      000651 格力电器；PE 7.7，处于个股5年历史分位 44%（中性），得 68 分；PB 1.45，处于个股5年历史分位 5%（便宜），得 98 分；股息率 7.83%，无历史分位，按绝对水平得 100 分；PE×PB = 11.2 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 83.2／优秀
+      000651 格力电器；ROE 22.7% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 1.52 倍，利润含金量高；资产负债率 61.8%，尚可；净利润增速标准差 0.13，波动中等
+  · 股息 93.0／高股息
+      000651 格力电器；股息率 7.83% ≥ 5.0%，现金回报丰厚；连续分红 8 年，具备分红习惯；股息率比 10 年期国债（1.69%）高 6.14 个百分点，有风险补偿
+  · 政策 66.8／政策受益
+      000651 格力电器；行业「家用电器」政策优先级 70/100：以旧换新与家电下乡补贴直接拉动需求；近 8 天内有效政策事件 2 条，贡献最大的是「2500亿元以旧换新资金全部下达」（衰减后 +9.7 分）</pre></details></td></tr><tr><td>12</td><td class="l">000708</td><td class="l">中信特钢</td><td class="l">钢铁行业</td><td><span class="pill great">82.0</span></td><td><span class="pill great">A+</span></td><td>13.20</td><td>10.89</td><td>1.56</td><td>6.408</td><td>666.20</td><td>96.9</td><td><span class="muted small">显著低估</span></td><td>64.2</td><td><span class="muted small">一般</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>40.7</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【000708 中信特钢】钢铁行业  总分 82.0（A+）
+  · 估值 96.9／显著低估
+      000708 中信特钢；PE 10.9，处于个股5年历史分位 5%（便宜），得 97 分；PB 1.56，处于个股5年历史分位 13%（便宜），得 93 分；股息率 6.41%，无历史分位，按绝对水平得 100 分；PE×PB = 17.0 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 64.2／一般
+      000708 中信特钢；ROE 13.6%（近3年均值），中等；经营现金流是净利润的 2.08 倍，利润含金量高；资产负债率 56.8%，尚可；净利润增速标准差 0.20，波动中等
+  · 股息 100.0／高股息
+      000708 中信特钢；股息率 6.41% ≥ 5.0%，现金回报丰厚；已连续分红 13 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 4.72 个百分点，有风险补偿
+  · 政策 40.7／政策偏弱
+      000708 中信特钢；行业「钢铁」政策优先级 48/100：产能置换与超低排放改造带来成本压力，属调控行业；近 381 天内有效政策事件 1 条，贡献最大的是「《钢铁行业稳增长工作方案（2025—2026年）》」（衰减后 +2.3 分）</pre></details></td></tr><tr><td>13</td><td class="l">002027</td><td class="l">分众传媒</td><td class="l">电子信息</td><td><span class="pill great">81.9</span></td><td><span class="pill great">A+</span></td><td>4.74</td><td>20.08</td><td>5.16</td><td>8.228</td><td>684.60</td><td>80.2</td><td><span class="muted small">显著低估</span></td><td>75.0</td><td><span class="muted small">良好</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>82.9</td><td><span class="muted small">政策强受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【002027 分众传媒】电子信息  总分 81.9（A+）
+  · 估值 80.2／显著低估
+      002027 分众传媒；PE 20.1，处于个股5年历史分位 54%（中性），得 59 分；PB 5.16，处于个股5年历史分位 20%（便宜），得 89 分；股息率 8.23%，无历史分位，按绝对水平得 100 分
+  · 质量 75.0／良好
+      002027 分众传媒；ROE 26.1% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 1.79 倍，利润含金量高；资产负债率 35.6%，财务稳健；净利润增速标准差 0.55 很大，盈利大起大落
+  · 股息 100.0／高股息
+      002027 分众传媒；股息率 8.23% ≥ 5.0%，现金回报丰厚；已连续分红 11 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 6.54 个百分点，有风险补偿
+  · 政策 82.9／政策强受益
+      002027 分众传媒；行业「计算机」政策优先级 92/100：信创、人工智能、数据要素均属国家级战略方向；近 247 天内有效政策事件 3 条，贡献最大的是「《培育数据流通服务机构加快数据要素市场化价值化的意见》」（衰减后 +4.2 分）</pre></details></td></tr><tr><td>14</td><td class="l">000895</td><td class="l">双汇发展</td><td class="l">食品行业</td><td><span class="pill great">81.9</span></td><td><span class="pill great">A+</span></td><td>23.66</td><td>16.11</td><td>3.92</td><td>3.381</td><td>819.60</td><td>84.1</td><td><span class="muted small">显著低估</span></td><td>90.2</td><td><span class="muted small">优秀</span></td><td>80.0</td><td><span class="muted small">分红良好</span></td><td>49.6</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【000895 双汇发展】食品行业  总分 81.9（A+）
+  · 估值 84.1／显著低估
+      000895 双汇发展；PE 16.1，处于个股5年历史分位 23%（便宜），得 87 分；PB 3.92，处于个股5年历史分位 25%（便宜），得 85 分；股息率 3.38%，无历史分位，按绝对水平得 80 分
+  · 质量 90.2／优秀
+      000895 双汇发展；ROE 23.9% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 1.25 倍，利润含金量高；资产负债率 48.4%，尚可；净利润增速标准差 0.15，波动中等
+  · 股息 80.0／分红良好
+      000895 双汇发展；股息率 3.38%，达到及格线 2.0%；已连续分红 28 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 1.69 个百分点，有风险补偿
+  · 政策 49.6／政策偏弱
+      000895 双汇发展；行业「食品饮料」政策优先级 62/100：促消费政策托底，但无专项产业扶持；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>15</td><td class="l">601018</td><td class="l">宁波港</td><td class="l">交通运输</td><td><span class="pill great">81.5</span></td><td><span class="pill great">A+</span></td><td>3.59</td><td>13.66</td><td>0.86</td><td>4.206</td><td>698.40</td><td>93.7</td><td><span class="muted small">显著低估</span></td><td>69.4</td><td><span class="muted small">良好</span></td><td>91.8</td><td><span class="muted small">高股息</span></td><td>48.0</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【601018 宁波港】交通运输  总分 81.5（A+）
+  · 估值 93.7／显著低估
+      601018 宁波港；PE 13.7，处于个股5年历史分位 11%（便宜），得 94 分；PB 0.86，处于个股5年历史分位 8%（便宜），得 96 分；股息率 4.21%，无历史分位，按绝对水平得 91 分；「交通运输」的主指标是 dividend_yield，加成后 94 分；PE×PB = 11.7 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 69.4／良好
+      601018 宁波港；ROE 6.3% &lt; 8.0%，盈利能力偏弱；经营现金流是净利润的 1.68 倍，利润含金量高；资产负债率 26.8%，财务稳健；净利润增速标准差 0.11，波动中等
+  · 股息 91.8／高股息
+      601018 宁波港；股息率 4.21%，达到及格线 2.0%；已连续分红 16 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 2.52 个百分点，有风险补偿
+  · 政策 48.0／政策偏弱
+      601018 宁波港；行业「交通运输」政策优先级 60/100：物流降本与基建投资受益，政策中性偏支持；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>16</td><td class="l">000538</td><td class="l">云南白药</td><td class="l">生物制药</td><td><span class="pill great">80.1</span></td><td><span class="pill great">A+</span></td><td>50.89</td><td>17.39</td><td>2.32</td><td>5.150</td><td>907.90</td><td>96.1</td><td><span class="muted small">显著低估</span></td><td>51.7</td><td><span class="muted small">一般</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>63.5</td><td><span class="muted small">政策中性</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【000538 云南白药】生物制药  总分 80.1（A+）
+  · 估值 96.1／显著低估
+      000538 云南白药；PE 17.4，处于个股5年历史分位 7%（便宜），得 97 分；PB 2.32，处于个股5年历史分位 11%（便宜），得 94 分；股息率 5.15%，无历史分位，按绝对水平得 97 分
+  · 质量 51.7／一般
+      000538 云南白药；ROE 11.8%（近3年均值），中等；经营现金流/净利润 = 0.88 倍，偏低；资产负债率 25.6%，财务稳健；净利润增速标准差 0.34，波动中等
+  · 股息 100.0／高股息
+      000538 云南白药；股息率 5.15% ≥ 5.0%，现金回报丰厚；已连续分红 33 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 3.46 个百分点，有风险补偿
+  · 政策 63.5／政策中性
+      000538 云南白药；行业「医药生物」政策优先级 72/100：创新药审批加速与医保谈判并存，创新受益、仿制承压；近 302 天内有效政策事件 2 条，贡献最大的是「2025年国家医保药品目录及商保创新药目录」（衰减后 +3.4 分）</pre></details></td></tr><tr><td>17</td><td class="l">300015</td><td class="l">爱尔眼科</td><td class="l">医疗器械</td><td><span class="pill great">79.6</span></td><td><span class="pill good">A</span></td><td>7.86</td><td>28.71</td><td>3.35</td><td>2.290</td><td>625.50</td><td>86.0</td><td><span class="muted small">显著低估</span></td><td>84.2</td><td><span class="muted small">优秀</span></td><td>62.3</td><td><span class="muted small">分红良好</span></td><td>63.5</td><td><span class="muted small">政策中性</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【300015 爱尔眼科】医疗器械  总分 79.6（A）
+  · 估值 86.0／显著低估
+      300015 爱尔眼科；PE 28.7，处于个股5年历史分位 11%（便宜），得 94 分；PB 3.35，处于个股5年历史分位 0%（便宜），得 100 分；股息率 2.29%，无历史分位，按绝对水平得 61 分
+  · 质量 84.2／优秀
+      300015 爱尔眼科；ROE 16.6%（近3年均值），中等；经营现金流是净利润的 1.54 倍，利润含金量高；资产负债率 32.6%，财务稳健；净利润增速标准差 0.19，波动中等
+  · 股息 62.3／分红良好
+      300015 爱尔眼科；股息率 2.29%，达到及格线 2.0%；已连续分红 17 年，股东回报记录扎实；股息率相对国债仅高 0.60 个百分点（门槛 1.0），补偿不足
+  · 政策 63.5／政策中性
+      300015 爱尔眼科；行业「医药生物」政策优先级 72/100：创新药审批加速与医保谈判并存，创新受益、仿制承压；近 302 天内有效政策事件 2 条，贡献最大的是「2025年国家医保药品目录及商保创新药目录」（衰减后 +3.4 分）</pre></details></td></tr><tr><td>18</td><td class="l">000858</td><td class="l">五 粮 液</td><td class="l">酿酒行业</td><td><span class="pill great">79.3</span></td><td><span class="pill good">A</span></td><td>70.14</td><td>20.81</td><td>2.30</td><td>7.353</td><td>2,722.50</td><td>83.8</td><td><span class="muted small">显著低估</span></td><td>72.3</td><td><span class="muted small">良好</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>49.6</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【000858 五 粮 液】酿酒行业  总分 79.3（A）
+  · 估值 83.8／显著低估
+      000858 五 粮 液；PE 20.8，处于个股5年历史分位 52%（中性），得 61 分；PB 2.30，处于个股5年历史分位 4%（便宜），得 98 分；股息率 7.35%，无历史分位，按绝对水平得 100 分
+  · 质量 72.3／良好
+      000858 五 粮 液；ROE 18.2%（近3年均值），中等；经营现金流是净利润的 1.85 倍，利润含金量高；资产负债率 34.6%，财务稳健；净利润增速标准差 0.38，波动中等
+  · 股息 100.0／高股息
+      000858 五 粮 液；股息率 7.35% ≥ 5.0%，现金回报丰厚；已连续分红 18 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 5.66 个百分点，有风险补偿
+  · 政策 49.6／政策偏弱
+      000858 五 粮 液；行业「食品饮料」政策优先级 62/100：促消费政策托底，但无专项产业扶持；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>19</td><td class="l">600887</td><td class="l">伊利股份</td><td class="l">食品行业</td><td><span class="pill great">78.4</span></td><td><span class="pill good">A</span></td><td>27.32</td><td>17.07</td><td>3.22</td><td>5.051</td><td>1,719.50</td><td>81.2</td><td><span class="muted small">显著低估</span></td><td>73.0</td><td><span class="muted small">良好</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>49.6</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600887 伊利股份】食品行业  总分 78.4（A）
+  · 估值 81.2／显著低估
+      600887 伊利股份；PE 17.1，处于个股5年历史分位 38%（中性），得 74 分；PB 3.22，处于个股5年历史分位 36%（中性），得 76 分；股息率 5.05%，无历史分位，按绝对水平得 97 分
+  · 质量 73.0／良好
+      600887 伊利股份；ROE 18.8%（近3年均值），中等；经营现金流是净利润的 1.86 倍，利润含金量高；资产负债率 63.6%，尚可；净利润增速标准差 0.20，波动中等
+  · 股息 100.0／高股息
+      600887 伊利股份；股息率 5.05% ≥ 5.0%，现金回报丰厚；已连续分红 16 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 3.36 个百分点，有风险补偿
+  · 政策 49.6／政策偏弱
+      600887 伊利股份；行业「食品饮料」政策优先级 62/100：促消费政策托底，但无专项产业扶持；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>20</td><td class="l">002001</td><td class="l">新 和 成</td><td class="l">生物制药</td><td><span class="pill great">78.3</span></td><td><span class="pill good">A</span></td><td>26.31</td><td>11.28</td><td>2.32</td><td>3.801</td><td>799.00</td><td>85.9</td><td><span class="muted small">显著低估</span></td><td>67.9</td><td><span class="muted small">良好</span></td><td>86.2</td><td><span class="muted small">高股息</span></td><td>63.5</td><td><span class="muted small">政策中性</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【002001 新 和 成】生物制药  总分 78.3（A）
+  · 估值 85.9／显著低估
+      002001 新 和 成；PE 11.3，处于个股5年历史分位 15%（便宜），得 91 分；PB 2.32，处于个股5年历史分位 32%（便宜），得 79 分；股息率 3.80%，无历史分位，按绝对水平得 86 分
+  · 质量 67.9／良好
+      002001 新 和 成；ROE 17.2%（近3年均值），中等；经营现金流是净利润的 1.46 倍，利润含金量高；资产负债率 25.0%，财务稳健；净利润增速标准差 0.56 很大，盈利大起大落
+  · 股息 86.2／高股息
+      002001 新 和 成；股息率 3.80%，达到及格线 2.0%；已连续分红 22 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 2.11 个百分点，有风险补偿
+  · 政策 63.5／政策中性
+      002001 新 和 成；行业「医药生物」政策优先级 72/100：创新药审批加速与医保谈判并存，创新受益、仿制承压；近 302 天内有效政策事件 2 条，贡献最大的是「2025年国家医保药品目录及商保创新药目录」（衰减后 +3.4 分）</pre></details></td></tr><tr><td>21</td><td class="l">601318</td><td class="l">中国平安</td><td class="l">金融行业</td><td><span class="pill great">77.9</span></td><td><span class="pill good">A</span></td><td>52.67</td><td>5.99</td><td>0.94</td><td>6.987</td><td>5,614.70</td><td>95.2</td><td><span class="muted small">显著低估</span></td><td>50.6</td><td><span class="muted small">一般</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>48.6</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【601318 中国平安】金融行业  总分 77.9（A）
+  · 估值 95.2／显著低估
+      601318 中国平安；PE 6.0，处于个股5年历史分位 0%（便宜），得 100 分；PB 0.94，处于个股5年历史分位 26%（便宜），得 84 分；股息率 6.99%，无历史分位，按绝对水平得 100 分；PE×PB = 5.6 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 50.6／一般
+      601318 中国平安；ROE 12.2%（近3年均值），中等；经营现金流是净利润的 3.36 倍，利润含金量高；资产负债率 89.8% 偏高，偿债压力大；净利润增速标准差 0.22，波动中等
+  · 股息 100.0／高股息
+      601318 中国平安；股息率 6.99% ≥ 5.0%，现金回报丰厚；已连续分红 20 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 5.30 个百分点，有风险补偿
+  · 政策 48.6／政策偏弱
+      601318 中国平安；行业「非银金融」政策优先级 56/100：资本市场改革利好券商，但监管趋严；近 296 天内有效政策事件 1 条，贡献最大的是「证监会党委会议部署资本市场十五五规划」（衰减后 +3.8 分）</pre></details></td></tr><tr><td>22</td><td class="l">600415</td><td class="l">小商品城</td><td class="l">商业百货</td><td><span class="pill great">76.6</span></td><td><span class="pill good">A</span></td><td>10.83</td><td>13.22</td><td>2.69</td><td>4.617</td><td>593.90</td><td>87.0</td><td><span class="muted small">显著低估</span></td><td>59.6</td><td><span class="muted small">一般</span></td><td>97.1</td><td><span class="muted small">高股息</span></td><td>50.3</td><td><span class="muted small">政策中性</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600415 小商品城】商业百货  总分 76.6（A）
+  · 估值 87.0／显著低估
+      600415 小商品城；PE 13.2，处于个股5年历史分位 1%（便宜），得 99 分；PB 2.69，处于个股5年历史分位 51%（中性），得 62 分；股息率 4.62%，无历史分位，按绝对水平得 95 分
+  · 质量 59.6／一般
+      600415 小商品城；ROE 16.1%（近3年均值），中等；经营现金流是净利润的 1.55 倍，利润含金量高；资产负债率 48.6%，尚可；净利润增速标准差 0.60 很大，盈利大起大落
+  · 股息 97.1／高股息
+      600415 小商品城；股息率 4.62%，达到及格线 2.0%；已连续分红 19 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 2.93 个百分点，有风险补偿
+  · 政策 50.3／政策中性
+      600415 小商品城；行业「商贸零售」政策优先级 58/100：消费刺激政策受益，但行业竞争格局分散；近 294 天内有效政策事件 1 条，贡献最大的是「海南自贸港启动全岛封关运作」（衰减后 +3.9 分）</pre></details></td></tr><tr><td>23</td><td class="l">600066</td><td class="l">宇通客车</td><td class="l">汽车制造</td><td><span class="pill great">75.7</span></td><td><span class="pill good">A</span></td><td>26.89</td><td>10.85</td><td>4.59</td><td>7.438</td><td>595.30</td><td>77.9</td><td><span class="muted small">显著低估</span></td><td>63.3</td><td><span class="muted small">一般</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>67.3</td><td><span class="muted small">政策受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600066 宇通客车】汽车制造  总分 75.7（A）
+  · 估值 77.9／显著低估
+      600066 宇通客车；PE 10.8，处于个股5年历史分位 2%（便宜），得 99 分；PB 4.59，处于个股5年历史分位 81%（偏贵），得 27 分；股息率 7.44%，无历史分位，按绝对水平得 100 分
+  · 质量 63.3／一般
+      600066 宇通客车；ROE 26.4% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 1.62 倍，利润含金量高；资产负债率 57.6%，尚可；净利润增速标准差 0.59 很大，盈利大起大落
+  · 股息 100.0／高股息
+      600066 宇通客车；股息率 7.44% ≥ 5.0%，现金回报丰厚；已连续分红 23 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 5.75 个百分点，有风险补偿
+  · 政策 67.3／政策受益
+      600066 宇通客车；行业「汽车」政策优先级 80/100：新能源汽车购置税减免与以旧换新政策延续；近 422 天内有效政策事件 2 条，贡献最大的是「个人消费贷款财政贴息政策实施方案」（衰减后 +2.2 分）</pre></details></td></tr><tr><td>24</td><td class="l">688036</td><td class="l">传音控股</td><td class="l"></td><td><span class="pill great">75.4</span></td><td><span class="pill good">A</span></td><td>46.10</td><td>16.89</td><td>2.62</td><td>3.688</td><td>530.70</td><td>91.8</td><td><span class="muted small">显著低估</span></td><td>63.4</td><td><span class="muted small">一般</span></td><td>74.0</td><td><span class="muted small">分红良好</span></td><td>40.0</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【688036 传音控股】  总分 75.4（A）
+  · 估值 91.8／显著低估
+      688036 传音控股；PE 16.9，处于个股5年历史分位 15%（便宜），得 91 分；PB 2.62，处于个股5年历史分位 0%（便宜），得 100 分；股息率 3.69%，无历史分位，按绝对水平得 84 分
+  · 质量 63.4／一般
+      688036 传音控股；ROE 23.6% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 1.06 倍，利润含金量高；资产负债率 57.4%，尚可；净利润增速标准差 0.72 很大，盈利大起大落
+  · 股息 74.0／分红良好
+      688036 传音控股；股息率 3.69%，达到及格线 2.0%；连续分红 7 年，具备分红习惯；股息率比 10 年期国债（1.69%）高 2.00 个百分点，有风险补偿
+  · 政策 40.0／政策偏弱
+      688036 传音控股；行业「未知」不在政策表内，按中性 40 分处理；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>25</td><td class="l">300760</td><td class="l">迈瑞医疗</td><td class="l"></td><td><span class="pill great">75.2</span></td><td><span class="pill good">A</span></td><td>157.60</td><td>24.29</td><td>4.90</td><td>1.897</td><td>1,908.00</td><td>81.5</td><td><span class="muted small">显著低估</span></td><td>90.7</td><td><span class="muted small">优秀</span></td><td>48.5</td><td><span class="muted small">分红一般</span></td><td>40.0</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【300760 迈瑞医疗】  总分 75.2（A）
+  · 估值 81.5／显著低估
+      300760 迈瑞医疗；PE 24.3，处于个股5年历史分位 15%（便宜），得 92 分；PB 4.90，处于个股5年历史分位 5%（便宜），得 97 分；股息率 1.90%，无历史分位，按绝对水平得 52 分
+  · 质量 90.7／优秀
+      300760 迈瑞医疗；ROE 29.6% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 1.07 倍，利润含金量高；资产负债率 25.5%，财务稳健；净利润增速标准差 0.21，波动中等
+  · 股息 48.5／分红一般
+      300760 迈瑞医疗；股息率 1.90%，低于及格线 2.0%；连续分红 8 年，具备分红习惯；股息率相对国债仅高 0.21 个百分点（门槛 1.0），补偿不足
+  · 政策 40.0／政策偏弱
+      300760 迈瑞医疗；行业「未知」不在政策表内，按中性 40 分处理；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>26</td><td class="l">601601</td><td class="l">中国太保</td><td class="l">金融行业</td><td><span class="pill good">75.0</span></td><td><span class="pill good">A</span></td><td>30.83</td><td>5.26</td><td>0.93</td><td>3.730</td><td>2,110.30</td><td>93.1</td><td><span class="muted small">显著低估</span></td><td>51.6</td><td><span class="muted small">一般</span></td><td>85.1</td><td><span class="muted small">高股息</span></td><td>48.6</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【601601 中国太保】金融行业  总分 75.0（A）
+  · 估值 93.1／显著低估
+      601601 中国太保；PE 5.3，处于个股5年历史分位 1%（便宜），得 100 分；PB 0.93，处于个股5年历史分位 14%（便宜），得 93 分；股息率 3.73%，无历史分位，按绝对水平得 85 分；PE×PB = 4.9 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 51.6／一般
+      601601 中国太保；ROE 14.7%（近3年均值），中等；经营现金流是净利润的 3.93 倍，利润含金量高；资产负债率 89.3% 偏高，偿债压力大；净利润增速标准差 0.28，波动中等
+  · 股息 85.1／高股息
+      601601 中国太保；股息率 3.73%，达到及格线 2.0%；已连续分红 19 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 2.04 个百分点，有风险补偿
+  · 政策 48.6／政策偏弱
+      601601 中国太保；行业「非银金融」政策优先级 56/100：资本市场改革利好券商，但监管趋严；近 296 天内有效政策事件 1 条，贡献最大的是「证监会党委会议部署资本市场十五五规划」（衰减后 +3.8 分）</pre></details></td></tr><tr><td>27</td><td class="l">601336</td><td class="l">新华保险</td><td class="l">金融行业</td><td><span class="pill good">74.3</span></td><td><span class="pill good">A</span></td><td>56.12</td><td>3.95</td><td>1.42</td><td>4.865</td><td>1,170.30</td><td>84.5</td><td><span class="muted small">显著低估</span></td><td>55.0</td><td><span class="muted small">一般</span></td><td>99.1</td><td><span class="muted small">高股息</span></td><td>48.6</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【601336 新华保险】金融行业  总分 74.3（A）
+  · 估值 84.5／显著低估
+      601336 新华保险；PE 4.0，处于个股5年历史分位 0%（便宜），得 100 分；PB 1.42，处于个股5年历史分位 60%（中性），得 52 分；股息率 4.86%，无历史分位，按绝对水平得 96 分；PE×PB = 5.6 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 55.0／一般
+      601336 新华保险；ROE 22.7% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 5.74 倍，利润含金量高；资产负债率 93.7% 偏高，偿债压力大；净利润增速标准差 0.94 很大，盈利大起大落
+  · 股息 99.1／高股息
+      601336 新华保险；股息率 4.86%，达到及格线 2.0%；已连续分红 13 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 3.17 个百分点，有风险补偿
+  · 政策 48.6／政策偏弱
+      601336 新华保险；行业「非银金融」政策优先级 56/100：资本市场改革利好券商，但监管趋严；近 296 天内有效政策事件 1 条，贡献最大的是「证监会党委会议部署资本市场十五五规划」（衰减后 +3.8 分）</pre></details></td></tr><tr><td>28</td><td class="l">002532</td><td class="l">天山铝业</td><td class="l">机械行业</td><td><span class="pill good">74.2</span></td><td><span class="pill good">A</span></td><td>12.17</td><td>8.15</td><td>1.75</td><td>6.984</td><td>499.80</td><td>81.5</td><td><span class="muted small">显著低估</span></td><td>60.0</td><td><span class="muted small">一般</span></td><td>86.0</td><td><span class="muted small">高股息</span></td><td>65.6</td><td><span class="muted small">政策受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【002532 天山铝业】机械行业  总分 74.2（A）
+  · 估值 81.5／显著低估
+      002532 天山铝业；PE 8.2，处于个股5年历史分位 9%（便宜），得 95 分；PB 1.75，处于个股5年历史分位 66%（中性），得 45 分；股息率 6.98%，无历史分位，按绝对水平得 100 分；PE×PB = 14.3 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 60.0／一般
+      002532 天山铝业；ROE 14.0%（近3年均值），中等；经营现金流是净利润的 1.54 倍，利润含金量高；资产负债率 38.0%，财务稳健；净利润增速标准差 0.64 很大，盈利大起大落
+  · 股息 86.0／高股息
+      002532 天山铝业；股息率 6.98% ≥ 5.0%，现金回报丰厚；连续分红 6 年，具备分红习惯；股息率比 10 年期国债（1.69%）高 5.29 个百分点，有风险补偿
+  · 政策 65.6／政策受益
+      002532 天山铝业；行业「机械设备」政策优先级 82/100：高端装备国产替代与工业母机专项支持；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>29</td><td class="l">601766</td><td class="l">中国中车</td><td class="l">交通运输</td><td><span class="pill good">74.0</span></td><td><span class="pill good">A</span></td><td>6.22</td><td>12.82</td><td>1.01</td><td>3.698</td><td>1,513.20</td><td>87.6</td><td><span class="muted small">显著低估</span></td><td>56.9</td><td><span class="muted small">一般</span></td><td>84.6</td><td><span class="muted small">高股息</span></td><td>48.0</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【601766 中国中车】交通运输  总分 74.0（A）
+  · 估值 87.6／显著低估
+      601766 中国中车；PE 12.8，处于个股5年历史分位 14%（便宜），得 92 分；PB 1.01，处于个股5年历史分位 26%（便宜），得 84 分；股息率 3.70%，无历史分位，按绝对水平得 84 分；「交通运输」的主指标是 dividend_yield，加成后 88 分；PE×PB = 12.9 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 56.9／一般
+      601766 中国中车；ROE 7.4% &lt; 8.0%，盈利能力偏弱；经营现金流是净利润的 1.39 倍，利润含金量高；资产负债率 59.7%，尚可；近5年净利润增速标准差 0.10，盈利很稳定
+  · 股息 84.6／高股息
+      601766 中国中车；股息率 3.70%，达到及格线 2.0%；已连续分红 18 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 2.01 个百分点，有风险补偿
+  · 政策 48.0／政策偏弱
+      601766 中国中车；行业「交通运输」政策优先级 60/100：物流降本与基建投资受益，政策中性偏支持；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>30</td><td class="l">600803</td><td class="l">新奥股份</td><td class="l">农药化肥</td><td><span class="pill good">73.1</span></td><td><span class="pill good">A</span></td><td>19.49</td><td>13.83</td><td>2.57</td><td>5.849</td><td>598.70</td><td>65.5</td><td><span class="muted small">合理偏低</span></td><td>82.2</td><td><span class="muted small">优秀</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>40.0</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600803 新奥股份】农药化肥  总分 73.1（A）
+  · 估值 65.5／合理偏低
+      600803 新奥股份；PE 13.8，处于个股5年历史分位 79%（偏贵），得 29 分；PB 2.57，处于个股5年历史分位 31%（便宜），得 80 分；股息率 5.85%，无历史分位，按绝对水平得 99 分
+  · 质量 82.2／优秀
+      600803 新奥股份；ROE 22.7% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 1.32 倍，利润含金量高；资产负债率 54.2%，尚可；净利润增速标准差 0.20，波动中等
+  · 股息 100.0／高股息
+      600803 新奥股份；股息率 5.85% ≥ 5.0%，现金回报丰厚；已连续分红 12 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 4.16 个百分点，有风险补偿
+  · 政策 40.0／政策偏弱
+      600803 新奥股份；行业「农药化肥」不在政策表内，按中性 40 分处理；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>31</td><td class="l">600989</td><td class="l">宝丰能源</td><td class="l"></td><td><span class="pill good">72.9</span></td><td><span class="pill good">A</span></td><td>23.32</td><td>11.13</td><td>3.28</td><td>3.911</td><td>1,710.10</td><td>81.0</td><td><span class="muted small">显著低估</span></td><td>67.8</td><td><span class="muted small">良好</span></td><td>80.8</td><td><span class="muted small">高股息</span></td><td>40.0</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600989 宝丰能源】  总分 72.9（A）
+  · 估值 81.0／显著低估
+      600989 宝丰能源；PE 11.1，处于个股5年历史分位 1%（便宜），得 99 分；PB 3.28，处于个股5年历史分位 61%（中性），得 50 分；股息率 3.91%，无历史分位，按绝对水平得 87 分
+  · 质量 67.8／良好
+      600989 宝丰能源；ROE 17.6%（近3年均值），中等；经营现金流是净利润的 1.48 倍，利润含金量高；资产负债率 41.8%，尚可；净利润增速标准差 0.40 很大，盈利大起大落
+  · 股息 80.8／高股息
+      600989 宝丰能源；股息率 3.91%，达到及格线 2.0%；连续分红 8 年，具备分红习惯；股息率比 10 年期国债（1.69%）高 2.22 个百分点，有风险补偿
+  · 政策 40.0／政策偏弱
+      600989 宝丰能源；行业「未知」不在政策表内，按中性 40 分处理；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>32</td><td class="l">300274</td><td class="l">阳光电源</td><td class="l">电器行业</td><td><span class="pill good">72.1</span></td><td><span class="pill good">A</span></td><td>80.49</td><td>15.19</td><td>3.42</td><td>2.833</td><td>1,277.80</td><td>85.5</td><td><span class="muted small">显著低估</span></td><td>62.9</td><td><span class="muted small">一般</span></td><td>71.5</td><td><span class="muted small">分红良好</span></td><td>40.0</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【300274 阳光电源】电器行业  总分 72.1（A）
+  · 估值 85.5／显著低估
+      300274 阳光电源；PE 15.2，处于个股5年历史分位 23%（便宜），得 86 分；PB 3.42，处于个股5年历史分位 3%（便宜），得 98 分；股息率 2.83%，无历史分位，按绝对水平得 72 分
+  · 质量 62.9／一般
+      300274 阳光电源；ROE 30.9% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 1.02 倍，利润含金量高；资产负债率 58.2%，尚可；净利润增速标准差 0.74 很大，盈利大起大落
+  · 股息 71.5／分红良好
+      300274 阳光电源；股息率 2.83%，达到及格线 2.0%；已连续分红 15 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 1.14 个百分点，有风险补偿
+  · 政策 40.0／政策偏弱
+      300274 阳光电源；行业「电器行业」不在政策表内，按中性 40 分处理；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>33</td><td class="l">600015</td><td class="l">华夏银行</td><td class="l">金融行业</td><td><span class="pill good">71.7</span></td><td><span class="pill mid">B</span></td><td>6.31</td><td>4.00</td><td>0.31</td><td>6.656</td><td>970.90</td><td>81.9</td><td><span class="muted small">显著低估</span></td><td>50.0</td><td><span class="muted small">一般</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>48.6</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600015 华夏银行】金融行业  总分 71.7（B）
+  · 估值 81.9／显著低估
+      600015 华夏银行；PE 4.0，处于个股5年历史分位 58%（中性），得 55 分；PB 0.31，处于个股5年历史分位 0%（便宜），得 100 分；股息率 6.66%，无历史分位，按绝对水平得 100 分；PE×PB = 1.2 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 50.0／一般
+      600015 华夏银行；ROE 7.6% &lt; 8.0%，盈利能力偏弱；经营现金流是净利润的 4.48 倍，利润含金量高；资产负债率 91.9% 偏高，偿债压力大；近5年净利润增速标准差 0.04，盈利很稳定
+  · 股息 100.0／高股息
+      600015 华夏银行；股息率 6.66% ≥ 5.0%，现金回报丰厚；已连续分红 24 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 4.97 个百分点，有风险补偿
+  · 政策 48.6／政策偏弱
+      600015 华夏银行；行业「非银金融」政策优先级 56/100：资本市场改革利好券商，但监管趋严；近 296 天内有效政策事件 1 条，贡献最大的是「证监会党委会议部署资本市场十五五规划」（衰减后 +3.8 分）</pre></details></td></tr><tr><td>34</td><td class="l">600050</td><td class="l">中国联通</td><td class="l">电子信息</td><td><span class="pill good">71.2</span></td><td><span class="pill mid">B</span></td><td>4.27</td><td>19.30</td><td>0.78</td><td>3.829</td><td>1,323.30</td><td>67.0</td><td><span class="muted small">合理偏低</span></td><td>67.6</td><td><span class="muted small">良好</span></td><td>83.1</td><td><span class="muted small">高股息</span></td><td>82.9</td><td><span class="muted small">政策强受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600050 中国联通】电子信息  总分 71.2（B）
+  · 估值 67.0／合理偏低
+      600050 中国联通；PE 19.3，处于个股5年历史分位 74%（偏贵），得 36 分；PB 0.78，处于个股5年历史分位 18%（便宜），得 90 分；股息率 3.83%，无历史分位，按绝对水平得 86 分；PE×PB = 15.1 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 67.6／良好
+      600050 中国联通；ROE 5.3% &lt; 8.0%，盈利能力偏弱；经营现金流是净利润的 4.80 倍，利润含金量高；资产负债率 43.6%，尚可；近5年净利润增速标准差 0.06，盈利很稳定
+  · 股息 83.1／高股息
+      600050 中国联通；股息率 3.83%，达到及格线 2.0%；连续分红 9 年，具备分红习惯；股息率比 10 年期国债（1.69%）高 2.14 个百分点，有风险补偿
+  · 政策 82.9／政策强受益
+      600050 中国联通；行业「计算机」政策优先级 92/100：信创、人工智能、数据要素均属国家级战略方向；近 247 天内有效政策事件 3 条，贡献最大的是「《培育数据流通服务机构加快数据要素市场化价值化的意见》」（衰减后 +4.2 分）</pre></details></td></tr><tr><td>35</td><td class="l">600941</td><td class="l">中国移动</td><td class="l"></td><td><span class="pill good">71.2</span></td><td><span class="pill mid">B</span></td><td>97.96</td><td>16.13</td><td>1.55</td><td>4.809</td><td>884.40</td><td>72.1</td><td><span class="muted small">合理偏低</span></td><td>75.1</td><td><span class="muted small">良好</span></td><td>81.3</td><td><span class="muted small">高股息</span></td><td>40.0</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600941 中国移动】  总分 71.2（B）
+  · 估值 72.1／合理偏低
+      600941 中国移动；PE 16.1，处于个股5年历史分位 60%（中性），得 52 分；PB 1.55，处于个股5年历史分位 36%（中性），得 75 分；股息率 4.81%，无历史分位，按绝对水平得 96 分
+  · 质量 75.1／良好
+      600941 中国移动；ROE 10.0%（近3年均值），中等；经营现金流是净利润的 2.09 倍，利润含金量高；资产负债率 32.8%，财务稳健；近5年净利润增速标准差 0.04，盈利很稳定
+  · 股息 81.3／高股息
+      600941 中国移动；股息率 4.81%，达到及格线 2.0%；连续分红 5 年，具备分红习惯；股息率比 10 年期国债（1.69%）高 3.12 个百分点，有风险补偿
+  · 政策 40.0／政策偏弱
+      600941 中国移动；行业「未知」不在政策表内，按中性 40 分处理；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>36</td><td class="l">300033</td><td class="l">同花顺</td><td class="l">电子信息</td><td><span class="pill good">71.0</span></td><td><span class="pill mid">B</span></td><td>191.30</td><td>39.39</td><td>19.14</td><td>2.771</td><td>838.70</td><td>67.4</td><td><span class="muted small">合理偏低</span></td><td>72.8</td><td><span class="muted small">良好</span></td><td>70.4</td><td><span class="muted small">分红良好</span></td><td>82.9</td><td><span class="muted small">政策强受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【300033 同花顺】电子信息  总分 71.0（B）
+  · 估值 67.4／合理偏低
+      300033 同花顺；PE 39.4，处于个股5年历史分位 30%（便宜），得 80 分；PB 19.14，处于个股5年历史分位 64%（中性），得 47 分；股息率 2.77%，无历史分位，按绝对水平得 70 分
+  · 质量 72.8／良好
+      300033 同花顺；ROE 25.3% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 1.19 倍，利润含金量高；资产负债率 46.4%，尚可；净利润增速标准差 0.38，波动中等
+  · 股息 70.4／分红良好
+      300033 同花顺；股息率 2.77%，达到及格线 2.0%；已连续分红 17 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 1.08 个百分点，有风险补偿
+  · 政策 82.9／政策强受益
+      300033 同花顺；行业「计算机」政策优先级 92/100：信创、人工智能、数据要素均属国家级战略方向；近 247 天内有效政策事件 3 条，贡献最大的是「《培育数据流通服务机构加快数据要素市场化价值化的意见》」（衰减后 +4.2 分）</pre></details></td></tr><tr><td>37</td><td class="l">601899</td><td class="l">紫金矿业</td><td class="l">有色金属</td><td><span class="pill good">71.0</span></td><td><span class="pill mid">B</span></td><td>29.37</td><td>11.54</td><td>4.09</td><td>2.724</td><td>6,050.80</td><td>74.8</td><td><span class="muted small">合理偏低</span></td><td>68.6</td><td><span class="muted small">良好</span></td><td>69.6</td><td><span class="muted small">分红良好</span></td><td>62.9</td><td><span class="muted small">政策中性</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【601899 紫金矿业】有色金属  总分 71.0（B）
+  · 估值 74.8／合理偏低
+      601899 紫金矿业；PE 11.5，处于个股5年历史分位 6%（便宜），得 97 分；PB 4.09，处于个股5年历史分位 61%（中性），得 50 分；股息率 2.72%，无历史分位，按绝对水平得 69 分；「有色金属」的主指标是 pb，加成后 75 分
+  · 质量 68.6／良好
+      601899 紫金矿业；ROE 23.5% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 1.27 倍，利润含金量高；资产负债率 49.6%，尚可；净利润增速标准差 0.48 很大，盈利大起大落
+  · 股息 69.6／分红良好
+      601899 紫金矿业；股息率 2.72%，达到及格线 2.0%；已连续分红 19 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 1.03 个百分点，有风险补偿
+  · 政策 62.9／政策中性
+      601899 紫金矿业；行业「有色金属」政策优先级 74/100：新能源金属与战略小金属受资源安全政策支持；近 364 天内有效政策事件 1 条，贡献最大的是「商务部对境外相关稀土物项实施出口管制」（衰减后 +3.7 分）</pre></details></td></tr><tr><td>38</td><td class="l">600036</td><td class="l">招商银行</td><td class="l">金融行业</td><td><span class="pill good">71.0</span></td><td><span class="pill mid">B</span></td><td>41.71</td><td>6.93</td><td>0.92</td><td>4.833</td><td>8,604.30</td><td>73.1</td><td><span class="muted small">合理偏低</span></td><td>61.3</td><td><span class="muted small">一般</span></td><td>99.0</td><td><span class="muted small">高股息</span></td><td>48.6</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600036 招商银行】金融行业  总分 71.0（B）
+  · 估值 73.1／合理偏低
+      600036 招商银行；PE 6.9，处于个股5年历史分位 62%（中性），得 50 分；PB 0.92，处于个股5年历史分位 30%（便宜），得 80 分；股息率 4.83%，无历史分位，按绝对水平得 96 分；PE×PB = 6.4 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 61.3／一般
+      600036 招商银行；ROE 12.5%（近3年均值），中等；经营现金流是净利润的 2.80 倍，利润含金量高；资产负债率 90.2% 偏高，偿债压力大；近5年净利润增速标准差 0.10，盈利很稳定
+  · 股息 99.0／高股息
+      600036 招商银行；股息率 4.83%，达到及格线 2.0%；已连续分红 24 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 3.14 个百分点，有风险补偿
+  · 政策 48.6／政策偏弱
+      600036 招商银行；行业「非银金融」政策优先级 56/100：资本市场改革利好券商，但监管趋严；近 296 天内有效政策事件 1 条，贡献最大的是「证监会党委会议部署资本市场十五五规划」（衰减后 +3.8 分）</pre></details></td></tr><tr><td>39</td><td class="l">600999</td><td class="l">招商证券</td><td class="l">金融行业</td><td><span class="pill good">70.6</span></td><td><span class="pill mid">B</span></td><td>16.86</td><td>8.24</td><td>1.18</td><td>3.654</td><td>1,251.30</td><td>91.3</td><td><span class="muted small">显著低估</span></td><td>40.1</td><td><span class="muted small">较差</span></td><td>84.0</td><td><span class="muted small">高股息</span></td><td>48.6</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600999 招商证券】金融行业  总分 70.6（B）
+  · 估值 91.3／显著低估
+      600999 招商证券；PE 8.2，处于个股5年历史分位 0%（便宜），得 100 分；PB 1.18，处于个股5年历史分位 21%（便宜），得 87 分；股息率 3.65%，无历史分位，按绝对水平得 84 分；PE×PB = 9.7 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 40.1／较差
+      600999 招商证券；ROE 8.0%（近3年均值），中等；经营现金流是净利润的 1.94 倍，利润含金量高；资产负债率 83.4% 偏高，偿债压力大；净利润增速标准差 0.22，波动中等
+  · 股息 84.0／高股息
+      600999 招商证券；股息率 3.65%，达到及格线 2.0%；已连续分红 17 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 1.96 个百分点，有风险补偿
+  · 政策 48.6／政策偏弱
+      600999 招商证券；行业「非银金融」政策优先级 56/100：资本市场改革利好券商，但监管趋严；近 296 天内有效政策事件 1 条，贡献最大的是「证监会党委会议部署资本市场十五五规划」（衰减后 +3.8 分）</pre></details></td></tr><tr><td>40</td><td class="l">000333</td><td class="l">美的集团</td><td class="l">家电行业</td><td><span class="pill good">70.5</span></td><td><span class="pill mid">B</span></td><td>81.74</td><td>14.05</td><td>2.94</td><td>5.261</td><td>5,628.60</td><td>53.9</td><td><span class="muted small">估值中性</span></td><td>81.9</td><td><span class="muted small">优秀</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>66.8</td><td><span class="muted small">政策受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【000333 美的集团】家电行业  总分 70.5（B）
+  · 估值 53.9／估值中性
+      000333 美的集团；PE 14.1，处于个股5年历史分位 70%（偏贵），得 41 分；PB 2.94，处于个股5年历史分位 80%（偏贵），得 28 分；股息率 5.26%，无历史分位，按绝对水平得 98 分
+  · 质量 81.9／优秀
+      000333 美的集团；ROE 19.4%（近3年均值），中等；经营现金流是净利润的 1.49 倍，利润含金量高；资产负债率 64.9%，尚可；近5年净利润增速标准差 0.06，盈利很稳定
+  · 股息 100.0／高股息
+      000333 美的集团；股息率 5.26% ≥ 5.0%，现金回报丰厚；已连续分红 13 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 3.57 个百分点，有风险补偿
+  · 政策 66.8／政策受益
+      000333 美的集团；行业「家用电器」政策优先级 70/100：以旧换新与家电下乡补贴直接拉动需求；近 8 天内有效政策事件 2 条，贡献最大的是「2500亿元以旧换新资金全部下达」（衰减后 +9.7 分）</pre></details></td></tr><tr><td>41</td><td class="l">002311</td><td class="l">海大集团</td><td class="l">农林牧渔</td><td><span class="pill good">70.2</span></td><td><span class="pill mid">B</span></td><td>41.96</td><td>21.38</td><td>2.96</td><td>2.979</td><td>694.60</td><td>80.0</td><td><span class="muted small">显著低估</span></td><td>57.3</td><td><span class="muted small">一般</span></td><td>74.0</td><td><span class="muted small">分红良好</span></td><td>59.4</td><td><span class="muted small">政策中性</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【002311 海大集团】农林牧渔  总分 70.2（B）
+  · 估值 80.0／显著低估
+      002311 海大集团；PE 21.4，处于个股5年历史分位 42%（中性），得 70 分；PB 2.96，处于个股5年历史分位 3%（便宜），得 99 分；股息率 2.98%，无历史分位，按绝对水平得 75 分
+  · 质量 57.3／一般
+      002311 海大集团；ROE 16.8%（近3年均值），中等；经营现金流是净利润的 2.50 倍，利润含金量高；资产负债率 54.6%，尚可；净利润增速标准差 0.48 很大，盈利大起大落
+  · 股息 74.0／分红良好
+      002311 海大集团；股息率 2.98%，达到及格线 2.0%；已连续分红 17 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 1.29 个百分点，有风险补偿
+  · 政策 59.4／政策中性
+      002311 海大集团；行业「农林牧渔」政策优先级 68/100：粮食安全与种业振兴为长期政策主线；近 247 天内有效政策事件 1 条，贡献最大的是「2026年中央一号文件发布」（衰减后 +5.0 分）</pre></details></td></tr><tr><td>42</td><td class="l">605117</td><td class="l">德业股份</td><td class="l"></td><td><span class="pill good">70.2</span></td><td><span class="pill mid">B</span></td><td>76.96</td><td>22.44</td><td>8.53</td><td>3.779</td><td>979.90</td><td>79.4</td><td><span class="muted small">显著低估</span></td><td>65.8</td><td><span class="muted small">良好</span></td><td>71.8</td><td><span class="muted small">分红良好</span></td><td>40.0</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【605117 德业股份】  总分 70.2（B）
+  · 估值 79.4／显著低估
+      605117 德业股份；PE 22.4，处于个股5年历史分位 26%（便宜），得 84 分；PB 8.53，处于个股5年历史分位 45%（中性），得 67 分；股息率 3.78%，无历史分位，按绝对水平得 85 分
+  · 质量 65.8／良好
+      605117 德业股份；ROE 32.1% ≥ 20.0%，盈利能力优秀；经营现金流是净利润的 1.19 倍，利润含金量高；资产负债率 53.9%，尚可；净利润增速标准差 0.62 很大，盈利大起大落
+  · 股息 71.8／分红良好
+      605117 德业股份；股息率 3.78%，达到及格线 2.0%；连续分红 6 年，具备分红习惯；股息率比 10 年期国债（1.69%）高 2.09 个百分点，有风险补偿
+  · 政策 40.0／政策偏弱
+      605117 德业股份；行业「未知」不在政策表内，按中性 40 分处理；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>43</td><td class="l">601600</td><td class="l">中国铝业</td><td class="l">有色金属</td><td><span class="pill good">70.2</span></td><td><span class="pill mid">B</span></td><td>9.02</td><td>8.85</td><td>1.83</td><td>2.993</td><td>1,190.90</td><td>82.1</td><td><span class="muted small">显著低估</span></td><td>61.5</td><td><span class="muted small">一般</span></td><td>56.7</td><td><span class="muted small">分红一般</span></td><td>62.9</td><td><span class="muted small">政策中性</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【601600 中国铝业】有色金属  总分 70.2（B）
+  · 估值 82.1／显著低估
+      601600 中国铝业；PE 8.8，处于个股5年历史分位 4%（便宜），得 98 分；PB 1.83，处于个股5年历史分位 44%（中性），得 69 分；股息率 2.99%，无历史分位，按绝对水平得 75 分；「有色金属」的主指标是 pb，加成后 82 分；PE×PB = 16.2 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 61.5／一般
+      601600 中国铝业；ROE 15.3%（近3年均值），中等；经营现金流是净利润的 1.81 倍，利润含金量高；资产负债率 42.8%，尚可；净利润增速标准差 1.64 很大，盈利大起大落
+  · 股息 56.7／分红一般
+      601600 中国铝业；股息率 2.99%，达到及格线 2.0%；连续分红 5 年，具备分红习惯；股息率比 10 年期国债（1.69%）高 1.30 个百分点，有风险补偿
+  · 政策 62.9／政策中性
+      601600 中国铝业；行业「有色金属」政策优先级 74/100：新能源金属与战略小金属受资源安全政策支持；近 364 天内有效政策事件 1 条，贡献最大的是「商务部对境外相关稀土物项实施出口管制」（衰减后 +3.7 分）</pre></details></td></tr><tr><td>44</td><td class="l">002050</td><td class="l">三花智控</td><td class="l">机械行业</td><td><span class="pill good">69.9</span></td><td><span class="pill mid">B</span></td><td>33.94</td><td>35.73</td><td>4.46</td><td>1.532</td><td>1,252.70</td><td>70.7</td><td><span class="muted small">合理偏低</span></td><td>80.2</td><td><span class="muted small">优秀</span></td><td>50.0</td><td><span class="muted small">分红一般</span></td><td>65.6</td><td><span class="muted small">政策受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【002050 三花智控】机械行业  总分 69.9（B）
+  · 估值 70.7／合理偏低
+      002050 三花智控；PE 35.7，处于个股5年历史分位 41%（中性），得 71 分；PB 4.46，处于个股5年历史分位 6%（便宜），得 97 分；股息率 1.53%，无历史分位，按绝对水平得 43 分
+  · 质量 80.2／优秀
+      002050 三花智控；ROE 15.1%（近3年均值），中等；经营现金流是净利润的 1.30 倍，利润含金量高；资产负债率 36.2%，财务稳健；净利润增速标准差 0.19，波动中等
+  · 股息 50.0／分红一般
+      002050 三花智控；股息率 1.53%，低于及格线 2.0%；已连续分红 21 年，股东回报记录扎实；股息率相对国债仅高 -0.16 个百分点（门槛 1.0），补偿不足
+  · 政策 65.6／政策受益
+      002050 三花智控；行业「机械设备」政策优先级 82/100：高端装备国产替代与工业母机专项支持；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>45</td><td class="l">002352</td><td class="l">顺丰控股</td><td class="l">其它行业</td><td><span class="pill good">69.8</span></td><td><span class="pill mid">B</span></td><td>30.77</td><td>14.44</td><td>1.67</td><td>2.990</td><td>1,427.40</td><td>92.1</td><td><span class="muted small">显著低估</span></td><td>44.2</td><td><span class="muted small">较差</span></td><td>74.2</td><td><span class="muted small">分红良好</span></td><td>40.0</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【002352 顺丰控股】其它行业  总分 69.8（B）
+  · 估值 92.1／显著低估
+      002352 顺丰控股；PE 14.4，处于个股5年历史分位 1%（便宜），得 99 分；PB 1.67，处于个股5年历史分位 1%（便宜），得 100 分；股息率 2.99%，无历史分位，按绝对水平得 75 分
+  · 质量 44.2／较差
+      002352 顺丰控股；ROE 10.4%（近3年均值），中等；经营现金流是净利润的 2.96 倍，利润含金量高；资产负债率 50.1%，尚可；净利润增速标准差 0.44 很大，盈利大起大落
+  · 股息 74.2／分红良好
+      002352 顺丰控股；股息率 2.99%，达到及格线 2.0%；已连续分红 17 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 1.30 个百分点，有风险补偿
+  · 政策 40.0／政策偏弱
+      002352 顺丰控股；行业「其它行业」不在政策表内，按中性 40 分处理；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>46</td><td class="l">002475</td><td class="l">立讯精密</td><td class="l">电子器件</td><td><span class="pill good">69.5</span></td><td><span class="pill mid">B</span></td><td>48.43</td><td>21.07</td><td>4.03</td><td>0.617</td><td>3,549.80</td><td>68.9</td><td><span class="muted small">合理偏低</span></td><td>79.5</td><td><span class="muted small">良好</span></td><td>40.6</td><td><span class="muted small">分红一般</span></td><td>86.3</td><td><span class="muted small">政策强受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【002475 立讯精密】电子器件  总分 69.6（B）
+  · 估值 68.9／合理偏低
+      002475 立讯精密；PE 21.1，处于个股5年历史分位 18%（便宜），得 90 分；PB 4.03，处于个股5年历史分位 15%（便宜），得 91 分；股息率 0.62%，无历史分位，按绝对水平得 19 分
+  · 质量 79.5／良好
+      002475 立讯精密；ROE 19.4%（近3年均值），中等；经营现金流是净利润的 1.69 倍，利润含金量高；资产负债率 67.4%，尚可；净利润增速标准差 0.11，波动中等
+  · 股息 40.6／分红一般
+      002475 立讯精密；股息率 0.62%，低于及格线 2.0%；已连续分红 16 年，股东回报记录扎实；股息率相对国债仅高 -1.07 个百分点（门槛 1.0），补偿不足
+  · 政策 86.3／政策强受益
+      002475 立讯精密；行业「电子」政策优先级 96/100：半导体与集成电路列为国家战略首位，大基金与税收优惠持续加码；近 101 天内有效政策事件 2 条，贡献最大的是「国常会听取人工智能发展情况汇报」（衰减后 +8.1 分）</pre></details></td></tr><tr><td>47</td><td class="l">300124</td><td class="l">汇川技术</td><td class="l">仪器仪表</td><td><span class="pill good">69.3</span></td><td><span class="pill mid">B</span></td><td>49.85</td><td>27.62</td><td>3.67</td><td>1.003</td><td>1,202.60</td><td>78.3</td><td><span class="muted small">显著低估</span></td><td>69.8</td><td><span class="muted small">良好</span></td><td>44.0</td><td><span class="muted small">分红一般</span></td><td>65.6</td><td><span class="muted small">政策受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【300124 汇川技术】仪器仪表  总分 69.3（B）
+  · 估值 78.3／显著低估
+      300124 汇川技术；PE 27.6，处于个股5年历史分位 4%（便宜），得 98 分；PB 3.67，处于个股5年历史分位 0%（便宜），得 100 分；股息率 1.00%，无历史分位，按绝对水平得 30 分
+  · 质量 69.8／良好
+      300124 汇川技术；ROE 16.3%（近3年均值），中等；经营现金流是净利润的 1.22 倍，利润含金量高；资产负债率 48.0%，尚可；净利润增速标准差 0.29，波动中等
+  · 股息 44.0／分红一般
+      300124 汇川技术；股息率 1.00%，低于及格线 2.0%；已连续分红 16 年，股东回报记录扎实；股息率相对国债仅高 -0.69 个百分点（门槛 1.0），补偿不足
+  · 政策 65.6／政策受益
+      300124 汇川技术；行业「机械设备」政策优先级 82/100：高端装备国产替代与工业母机专项支持；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>48</td><td class="l">601390</td><td class="l">XD中国中</td><td class="l">建筑建材</td><td><span class="pill good">69.2</span></td><td><span class="pill mid">B</span></td><td>4.28</td><td>5.32</td><td>0.33</td><td>5.414</td><td>869.90</td><td>81.2</td><td><span class="muted small">显著低估</span></td><td>45.5</td><td><span class="muted small">较差</span></td><td>100.0</td><td><span class="muted small">高股息</span></td><td>40.0</td><td><span class="muted small">政策偏弱</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【601390 XD中国中】建筑建材  总分 69.2（B）
+  · 估值 81.2／显著低估
+      601390 XD中国中；PE 5.3，处于个股5年历史分位 58%（中性），得 55 分；PB 0.33，处于个股5年历史分位 1%（便宜），得 100 分；股息率 5.41%，无历史分位，按绝对水平得 98 分；PE×PB = 1.8 ≤ 22.5（格雷厄姆门槛），通过
+  · 质量 45.5／较差
+      601390 XD中国中；ROE 8.0%（近3年均值），中等；经营现金流是净利润的 1.01 倍，利润含金量高；资产负债率 77.4% 偏高，偿债压力大；净利润增速标准差 0.15，波动中等
+  · 股息 100.0／高股息
+      601390 XD中国中；股息率 5.41% ≥ 5.0%，现金回报丰厚；已连续分红 17 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 3.72 个百分点，有风险补偿
+  · 政策 40.0／政策偏弱
+      601390 XD中国中；行业「建筑建材」不在政策表内，按中性 40 分处理；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>49</td><td class="l">600031</td><td class="l">三一重工</td><td class="l">机械行业</td><td><span class="pill good">69.0</span></td><td><span class="pill mid">B</span></td><td>17.03</td><td>17.63</td><td>1.70</td><td>2.877</td><td>1,443.20</td><td>88.3</td><td><span class="muted small">显著低估</span></td><td>39.7</td><td><span class="muted small">较差</span></td><td>72.2</td><td><span class="muted small">分红良好</span></td><td>65.6</td><td><span class="muted small">政策受益</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600031 三一重工】机械行业  总分 69.0（B）
+  · 估值 88.3／显著低估
+      600031 三一重工；PE 17.6，处于个股5年历史分位 14%（便宜），得 92 分；PB 1.70，处于个股5年历史分位 3%（便宜），得 99 分；股息率 2.88%，无历史分位，按绝对水平得 73 分
+  · 质量 39.7／较差
+      600031 三一重工；ROE 8.2%（近3年均值），中等；经营现金流是净利润的 2.01 倍，利润含金量高；资产负债率 48.6%，尚可；净利润增速标准差 0.42 很大，盈利大起大落
+  · 股息 72.2／分红良好
+      600031 三一重工；股息率 2.88%，达到及格线 2.0%；已连续分红 20 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 1.19 个百分点，有风险补偿
+  · 政策 65.6／政策受益
+      600031 三一重工；行业「机械设备」政策优先级 82/100：高端装备国产替代与工业母机专项支持；近期无匹配的有效政策事件</pre></details></td></tr><tr><td>50</td><td class="l">600309</td><td class="l">万华化学</td><td class="l">化工行业</td><td><span class="pill good">68.9</span></td><td><span class="pill mid">B</span></td><td>69.79</td><td>13.27</td><td>1.97</td><td>2.952</td><td>2,184.80</td><td>87.0</td><td><span class="muted small">显著低估</span></td><td>45.7</td><td><span class="muted small">较差</span></td><td>73.5</td><td><span class="muted small">分红良好</span></td><td>50.1</td><td><span class="muted small">政策中性</span></td><td class="l small"><details><summary>展开</summary><pre style="white-space:pre-wrap;margin:6px 0">【600309 万华化学】化工行业  总分 68.9（B）
+  · 估值 87.0／显著低估
+      600309 万华化学；PE 13.3，处于个股5年历史分位 18%（便宜），得 90 分；PB 1.97，处于个股5年历史分位 7%（便宜），得 96 分；股息率 2.95%，无历史分位，按绝对水平得 74 分
+  · 质量 45.7／较差
+      600309 万华化学；ROE 14.8%（近3年均值），中等；经营现金流是净利润的 1.95 倍，利润含金量高；资产负债率 64.3%，尚可；净利润增速标准差 0.70 很大，盈利大起大落
+  · 股息 73.5／分红良好
+      600309 万华化学；股息率 2.95%，达到及格线 2.0%；已连续分红 26 年，股东回报记录扎实；股息率比 10 年期国债（1.69%）高 1.26 个百分点，有风险补偿
+  · 政策 50.1／政策中性
+      600309 万华化学；行业「基础化工」政策优先级 60/100：新材料方向受支持，传统化工受能耗双控约束；近 377 天内有效政策事件 1 条，贡献最大的是「《石化化工行业稳增长工作方案（2025—2026年）》」（衰减后 +2.1 分）</pre></details></td></tr></tbody></table></div>
+</div>
+</div><div id="sec-track"><h2>八、个股买卖决策与跟踪</h2><div class="card"><p class="small">这一节直接回答「<b>现在该买哪只、该卖哪只</b>」。打分是连续的，但决策是离散的——下面每只股票都被逐条核对了买入门槛与卖出条件，动作由 <code>touzi/plans.py</code> 按 <code>config/settings.toml</code> 的 <code>[plan]</code> 段算出。<b>所有阈值都在配置里，改完重跑，结论立刻跟着变。</b></p><p><span class="pill great">建仓 6</span>　<span class="pill good">接近建仓 20</span>　<span class="pill mid">观望 14</span></p><h3>规则总表（只在 config/settings.toml 的 [plan] 段，可改）</h3><h4>买入门槛：8 条 AND（另 1 条可选，默认关闭）—— 全通过才建仓</h4><div class="scroll"><table><thead><tr><th class="l">条件</th><th class="l">阈值</th><th class="l">为什么这么定</th></tr></thead><tbody><tr><td class="l">① 总分</td><td class="l"><b>≥ 72</b></td><td class="l small">综合评分够高</td></tr><tr><td class="l">② 质量分</td><td class="l"><b>≥ 60</b></td><td class="l small">ROE / 现金流 / 负债不能太差</td></tr><tr><td class="l">③ PE 自身历史分位</td><td class="l"><b>≤ 0.4</b></td><td class="l small">比它自己过去 5 年 60% 的时间都便宜</td></tr><tr><td class="l">④ PB 自身历史分位</td><td class="l"><b>≤ 0.4</b></td><td class="l small">净资产口径同样要便宜</td></tr><tr><td class="l">⑤ 股息率</td><td class="l"><b>≥ 2%</b></td><td class="l small">有真金白银的分红</td></tr><tr><td class="l">⑥ PE 绝对值</td><td class="l"><b>≤ 40</b></td><td class="l small">再便宜也不碰畸高估值</td></tr><tr><td class="l">⑦ PE × PB（格雷厄姆数）</td><td class="l"><b>≤ 50</b></td><td class="l small">A 股实测中位数约 62，故定为 50；教科书 22.5 只作「估值优秀」标记</td></tr><tr><td class="l">⑧ 宏观背景分</td><td class="l"><b>≥ 45</b></td><td class="l small">大盘不能处于防御/保守</td></tr><tr><td class="l">⑨ 候选池内排名</td><td class="l"><b>默认关闭</b></td><td class="l small">该分位随候选池大小漂移，故默认不做硬门槛</td></tr></tbody></table></div><h4>卖出门槛：13 条 OR —— 任一触发就动手</h4><div class="scroll"><table><thead><tr><th>级别</th><th class="l">条件</th><th class="l">阈值</th></tr></thead><tbody><tr><td><span class="pill bad">清仓</span></td><td class="l">PE 自身历史分位</td><td class="l"><b>≥ 0.8</b></td></tr><tr><td><span class="pill bad">清仓</span></td><td class="l">PB 自身历史分位</td><td class="l"><b>≥ 0.8</b></td></tr><tr><td><span class="pill bad">清仓</span></td><td class="l">PE × PB</td><td class="l"><b>≥ 120</b></td></tr><tr><td><span class="pill bad">清仓</span></td><td class="l">PE 绝对值</td><td class="l"><b>≥ 60</b></td></tr><tr><td><span class="pill bad">清仓</span></td><td class="l">股息率</td><td class="l"><b>≤ 1%</b></td></tr><tr><td><span class="pill bad">清仓</span></td><td class="l">总分</td><td class="l"><b>≤ 62</b></td></tr><tr><td><span class="pill bad">清仓</span></td><td class="l">宏观背景分</td><td class="l"><b>≤ 30</b></td></tr><tr><td><span class="pill bad">清仓</span></td><td class="l">现金流 / 净利润</td><td class="l"><b>≤ 0.5</b></td></tr><tr><td><span class="pill bad">清仓</span></td><td class="l">净利润连降 ≥ 2 个年报</td><td class="l"><b>——</b></td></tr><tr><td><span class="pill bad">清仓</span></td><td class="l">止损（相对成本）</td><td class="l"><b>≤ -25%</b></td></tr><tr><td><span class="pill bad">清仓</span></td><td class="l">止盈（相对成本）</td><td class="l"><b>≥ +150%</b></td></tr><tr><td><span class="pill weak">减仓</span></td><td class="l">总分</td><td class="l"><b>≤ 67</b></td></tr><tr><td><span class="pill weak">减仓</span></td><td class="l">宏观背景分</td><td class="l"><b>≤ 40</b></td></tr></tbody></table></div><p class="small"><b>「减仓」只做一次</b>：同一轮建仓里「总分 ≤ 67 / 宏观 ≤ 40」只触发一次减半，之后要等「加仓」复位。原因写在回测里——原先它会月月触发，每次卖掉剩余的一半，仓位几何衰减到几乎归零，等于被反复割肉。差 1 条以内记为<b>「接近建仓」</b>，一并列出。</p><h3>需要动手的（买入候选 / 减仓 / 清仓）</h3><div class="scroll"><table><thead><tr><th class="l">代码</th><th class="l">名称</th><th class="l">建议动作</th><th class="">现价</th><th class="">持仓成本</th><th class="">浮动盈亏%</th><th class="">PE_TTM</th><th class="">PB</th><th class="">股息率%</th><th class="">PE历史分位</th><th class="">PB历史分位</th><th class="">PE×PB</th><th class="">总分</th><th class="">宏观背景分</th><th class="l">未通过的门槛</th><th class="l">触发的卖出条件</th><th class="">预警</th></tr></thead><tbody><tr><td class="l">600690</td><td class="l">海尔智家</td><td class="l"><span class="pill great">建仓</span></td><td>20.43</td><td></td><td></td><td>10.66</td><td>1.59</td><td>5.681</td><td>7%</td><td>4%</td><td>16.95</td><td><span class="pill great">89.3</span></td><td>48.47</td><td class="l small">（全部通过）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">000568</td><td class="l">泸州老窖</td><td class="l"><span class="pill great">建仓</span></td><td>72.61</td><td></td><td></td><td>14.24</td><td>2.34</td><td>7.954</td><td>32%</td><td>3%</td><td>33.32</td><td><span class="pill great">86.9</span></td><td>48.47</td><td class="l small">（全部通过）</td><td class="l small">[预警] ROE 连续 2 个年报下滑</td><td class="l small">ROE 连续 2 个年报下滑</td></tr><tr><td class="l">000708</td><td class="l">中信特钢</td><td class="l"><span class="pill great">建仓</span></td><td>13.20</td><td></td><td></td><td>10.89</td><td>1.56</td><td>6.408</td><td>5%</td><td>13%</td><td>16.99</td><td><span class="pill great">82.0</span></td><td>48.47</td><td class="l small">（全部通过）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">601018</td><td class="l">宁波港</td><td class="l"><span class="pill great">建仓</span></td><td>3.59</td><td></td><td></td><td>13.66</td><td>0.86</td><td>4.206</td><td>11%</td><td>8%</td><td>11.75</td><td><span class="pill great">81.5</span></td><td>48.47</td><td class="l small">（全部通过）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">002001</td><td class="l">新 和 成</td><td class="l"><span class="pill great">建仓</span></td><td>26.31</td><td></td><td></td><td>11.28</td><td>2.32</td><td>3.801</td><td>15%</td><td>32%</td><td>26.17</td><td><span class="pill great">78.3</span></td><td>48.47</td><td class="l small">（全部通过）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">688036</td><td class="l">传音控股</td><td class="l"><span class="pill great">建仓</span></td><td>46.10</td><td></td><td></td><td>16.89</td><td>2.62</td><td>3.688</td><td>15%</td><td>0%</td><td>44.25</td><td><span class="pill great">75.4</span></td><td>48.47</td><td class="l small">（全部通过）</td><td class="l small">[预警] ROE 连续 2 个年报下滑</td><td class="l small">ROE 连续 2 个年报下滑</td></tr><tr><td class="l">600660</td><td class="l">福耀玻璃</td><td class="l"><span class="pill good">接近建仓</span></td><td>51.65</td><td></td><td></td><td>15.90</td><td>3.79</td><td>6.002</td><td>3%</td><td>31%</td><td>60.26</td><td><span class="pill great">91.1</span></td><td>48.47</td><td class="l small">PE × PB ≤ 50（格雷厄姆门槛）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">603195</td><td class="l">公牛集团</td><td class="l"><span class="pill good">接近建仓</span></td><td>38.89</td><td></td><td></td><td>16.85</td><td>4.62</td><td>4.886</td><td>4%</td><td>8%</td><td>77.85</td><td><span class="pill great">90.8</span></td><td>48.47</td><td class="l small">PE × PB ≤ 50（格雷厄姆门槛）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">605499</td><td class="l">东鹏饮料</td><td class="l"><span class="pill good">接近建仓</span></td><td>113.04</td><td></td><td></td><td>16.91</td><td>4.80</td><td>4.866</td><td>1%</td><td>2%</td><td>81.17</td><td><span class="pill great">88.5</span></td><td>48.47</td><td class="l small">PE × PB ≤ 50（格雷厄姆门槛）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">002415</td><td class="l">海康威视</td><td class="l"><span class="pill good">接近建仓</span></td><td>33.00</td><td></td><td></td><td>18.40</td><td>3.81</td><td>5.152</td><td>10%</td><td>23%</td><td>70.10</td><td><span class="pill great">88.1</span></td><td>48.47</td><td class="l small">PE × PB ≤ 50（格雷厄姆门槛）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">600406</td><td class="l">国电南瑞</td><td class="l"><span class="pill good">接近建仓</span></td><td>22.86</td><td></td><td></td><td>21.86</td><td>3.61</td><td>2.747</td><td>3%</td><td>7%</td><td>78.91</td><td><span class="pill great">85.6</span></td><td>48.47</td><td class="l small">PE × PB ≤ 50（格雷厄姆门槛）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">600809</td><td class="l">山西汾酒</td><td class="l"><span class="pill good">接近建仓</span></td><td>115.10</td><td></td><td></td><td>13.79</td><td>3.69</td><td>5.699</td><td>6%</td><td>7%</td><td>50.89</td><td><span class="pill great">85.5</span></td><td>48.47</td><td class="l small">PE × PB ≤ 50（格雷厄姆门槛）</td><td class="l small">[预警] ROE 连续 2 个年报下滑</td><td class="l small">ROE 连续 2 个年报下滑</td></tr><tr><td class="l">000651</td><td class="l">格力电器</td><td class="l"><span class="pill good">接近建仓</span></td><td>38.32</td><td></td><td></td><td>7.70</td><td>1.45</td><td>7.829</td><td>44%</td><td>5%</td><td>11.16</td><td><span class="pill great">84.6</span></td><td>48.47</td><td class="l small">PE 处于自身历史分位 ≤ 40%</td><td class="l small">[预警] ROE 连续 2 个年报下滑</td><td class="l small">ROE 连续 2 个年报下滑</td></tr><tr><td class="l">000895</td><td class="l">双汇发展</td><td class="l"><span class="pill good">接近建仓</span></td><td>23.66</td><td></td><td></td><td>16.11</td><td>3.92</td><td>3.381</td><td>23%</td><td>25%</td><td>63.15</td><td><span class="pill great">81.9</span></td><td>48.47</td><td class="l small">PE × PB ≤ 50（格雷厄姆门槛）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">000538</td><td class="l">云南白药</td><td class="l"><span class="pill good">接近建仓</span></td><td>50.89</td><td></td><td></td><td>17.39</td><td>2.32</td><td>5.150</td><td>7%</td><td>11%</td><td>40.34</td><td><span class="pill great">80.1</span></td><td>48.47</td><td class="l small">质量分 ≥ 60（便宜但烂的公司不买）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">300015</td><td class="l">爱尔眼科</td><td class="l"><span class="pill good">接近建仓</span></td><td>7.86</td><td></td><td></td><td>28.71</td><td>3.35</td><td>2.290</td><td>11%</td><td>0%</td><td>96.18</td><td><span class="pill great">79.6</span></td><td>48.47</td><td class="l small">PE × PB ≤ 50（格雷厄姆门槛）</td><td class="l small">[预警] ROE 连续 2 个年报下滑</td><td class="l small">ROE 连续 2 个年报下滑</td></tr><tr><td class="l">000858</td><td class="l">五 粮 液</td><td class="l"><span class="pill good">接近建仓</span></td><td>70.14</td><td></td><td></td><td>20.81</td><td>2.30</td><td>7.353</td><td>52%</td><td>4%</td><td>47.86</td><td><span class="pill great">79.3</span></td><td>48.47</td><td class="l small">PE 处于自身历史分位 ≤ 40%</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">600887</td><td class="l">伊利股份</td><td class="l"><span class="pill good">接近建仓</span></td><td>27.32</td><td></td><td></td><td>17.07</td><td>3.22</td><td>5.051</td><td>38%</td><td>36%</td><td>54.97</td><td><span class="pill great">78.4</span></td><td>48.47</td><td class="l small">PE × PB ≤ 50（格雷厄姆门槛）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">601318</td><td class="l">中国平安</td><td class="l"><span class="pill good">接近建仓</span></td><td>52.67</td><td></td><td></td><td>5.99</td><td>0.94</td><td>6.987</td><td>0%</td><td>26%</td><td>5.63</td><td><span class="pill great">77.9</span></td><td>48.47</td><td class="l small">质量分 ≥ 60（便宜但烂的公司不买）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">601601</td><td class="l">中国太保</td><td class="l"><span class="pill good">接近建仓</span></td><td>30.83</td><td></td><td></td><td>5.26</td><td>0.93</td><td>3.730</td><td>1%</td><td>14%</td><td>4.89</td><td><span class="pill good">75.0</span></td><td>48.47</td><td class="l small">质量分 ≥ 60（便宜但烂的公司不买）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">002532</td><td class="l">天山铝业</td><td class="l"><span class="pill good">接近建仓</span></td><td>12.17</td><td></td><td></td><td>8.15</td><td>1.75</td><td>6.984</td><td>9%</td><td>66%</td><td>14.26</td><td><span class="pill good">74.2</span></td><td>48.47</td><td class="l small">PB 处于自身历史分位 ≤ 40%</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">601766</td><td class="l">中国中车</td><td class="l"><span class="pill good">接近建仓</span></td><td>6.22</td><td></td><td></td><td>12.82</td><td>1.01</td><td>3.698</td><td>14%</td><td>26%</td><td>12.95</td><td><span class="pill good">74.0</span></td><td>48.47</td><td class="l small">质量分 ≥ 60（便宜但烂的公司不买）</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">600803</td><td class="l">新奥股份</td><td class="l"><span class="pill good">接近建仓</span></td><td>19.49</td><td></td><td></td><td>13.83</td><td>2.57</td><td>5.849</td><td>79%</td><td>31%</td><td>35.54</td><td><span class="pill good">73.1</span></td><td>48.47</td><td class="l small">PE 处于自身历史分位 ≤ 40%</td><td class="l small">[预警] ROE 连续 2 个年报下滑</td><td class="l small">ROE 连续 2 个年报下滑</td></tr><tr><td class="l">600989</td><td class="l">宝丰能源</td><td class="l"><span class="pill good">接近建仓</span></td><td>23.32</td><td></td><td></td><td>11.13</td><td>3.28</td><td>3.911</td><td>1%</td><td>61%</td><td>36.51</td><td><span class="pill good">72.9</span></td><td>48.47</td><td class="l small">PB 处于自身历史分位 ≤ 40%</td><td class="l small"></td><td class="l small"></td></tr><tr><td class="l">300274</td><td class="l">阳光电源</td><td class="l"><span class="pill good">接近建仓</span></td><td>80.49</td><td></td><td></td><td>15.19</td><td>3.42</td><td>2.833</td><td>23%</td><td>3%</td><td>51.95</td><td><span class="pill good">72.1</span></td><td>48.47</td><td class="l small">PE × PB ≤ 50（格雷厄姆门槛）</td><td class="l small">[预警] ROE 连续 2 个年报下滑</td><td class="l small">ROE 连续 2 个年报下滑</td></tr><tr><td class="l">600233</td><td class="l">圆通速递</td><td class="l"><span class="pill good">接近建仓</span></td><td>17.78</td><td></td><td></td><td>10.75</td><td>1.66</td><td>2.081</td><td>3%</td><td>23%</td><td>17.84</td><td><span class="pill good">68.4</span></td><td>48.47</td><td class="l small">总分 ≥ 72（A 级）</td><td class="l small">[预警] ROE 连续 2 个年报下滑</td><td class="l small">ROE 连续 2 个年报下滑</td></tr></tbody></table></div></div></div><div id="sec-policy"><h2>九、政策红利打分依据（主观成分，全量公开）</h2><div class="card"><p class="small">政策模块 = 行业底分（上限 80）+ 政策事件加成（上限 20）。事件按半衰期 180 天指数衰减，且<b>只使用 as_of 之前的事件</b>。下表是人工判断，不是接口数据——本系统唯一的主观输入，请自行复核。</p><h3>行业政策底分</h3><div class="scroll"><table><thead><tr><th class="l">行业</th><th>分数</th><th class="l">依据</th></tr></thead><tbody><tr><td class="l">电子</td><td>96</td><td class="l small">半导体与集成电路列为国家战略首位，大基金与税收优惠持续加码</td></tr><tr><td class="l">计算机</td><td>92</td><td class="l small">信创、人工智能、数据要素均属国家级战略方向</td></tr><tr><td class="l">电力设备</td><td>90</td><td class="l small">新能源装机与特高压持续受双碳目标驱动</td></tr><tr><td class="l">通信</td><td>88</td><td class="l small">5G/6G 与算力网络纳入新型基础设施，运营商资本开支受政策引导</td></tr><tr><td class="l">国防军工</td><td>87</td><td class="l small">国防预算稳定增长，装备现代化为长期确定方向</td></tr><tr><td class="l">机械设备</td><td>82</td><td class="l small">高端装备国产替代与工业母机专项支持</td></tr><tr><td class="l">汽车</td><td>80</td><td class="l small">新能源汽车购置税减免与以旧换新政策延续</td></tr><tr><td class="l">有色金属</td><td>74</td><td class="l small">新能源金属与战略小金属受资源安全政策支持</td></tr><tr><td class="l">医药生物</td><td>72</td><td class="l small">创新药审批加速与医保谈判并存，创新受益、仿制承压</td></tr><tr><td class="l">家用电器</td><td>70</td><td class="l small">以旧换新与家电下乡补贴直接拉动需求</td></tr><tr><td class="l">环保</td><td>70</td><td class="l small">美丽中国与双碳目标带来持续订单</td></tr><tr><td class="l">农林牧渔</td><td>68</td><td class="l small">粮食安全与种业振兴为长期政策主线</td></tr><tr><td class="l">公用事业</td><td>66</td><td class="l small">电力市场化改革与绿电消纳政策受益</td></tr><tr><td class="l">社会服务</td><td>64</td><td class="l small">文旅消费受促消费政策支持，波动较大</td></tr><tr><td class="l">食品饮料</td><td>62</td><td class="l small">促消费政策托底，但无专项产业扶持</td></tr><tr><td class="l">基础化工</td><td>60</td><td class="l small">新材料方向受支持，传统化工受能耗双控约束</td></tr><tr><td class="l">交通运输</td><td>60</td><td class="l small">物流降本与基建投资受益，政策中性偏支持</td></tr><tr><td class="l">商贸零售</td><td>58</td><td class="l small">消费刺激政策受益，但行业竞争格局分散</td></tr><tr><td class="l">银行</td><td>58</td><td class="l small">让利实体与净息差收窄压力，政策以稳定为主</td></tr><tr><td class="l">煤炭</td><td>56</td><td class="l small">能源保供要求下产量受控，双碳长期压制</td></tr><tr><td class="l">非银金融</td><td>56</td><td class="l small">资本市场改革利好券商，但监管趋严</td></tr><tr><td class="l">石油石化</td><td>54</td><td class="l small">能源安全托底，但双碳目标限制长期扩张</td></tr><tr><td class="l">纺织服饰</td><td>52</td><td class="l small">出口退税与产业转移政策，无显著倾斜</td></tr><tr><td class="l">轻工制造</td><td>52</td><td class="l small">政策中性</td></tr><tr><td class="l">美容护理</td><td>50</td><td class="l small">政策中性，主要由消费景气驱动</td></tr><tr><td class="l">综合</td><td>50</td><td class="l small">无明确行业政策方向</td></tr><tr><td class="l">钢铁</td><td>48</td><td class="l small">产能置换与超低排放改造带来成本压力，属调控行业</td></tr><tr><td class="l">建筑装饰</td><td>46</td><td class="l small">地方化债约束基建扩张，政策支持力度下降</td></tr><tr><td class="l">建筑材料</td><td>44</td><td class="l small">受地产链拖累，政策以稳为主而非扶持</td></tr><tr><td class="l">房地产</td><td>42</td><td class="l small">政策底已现但基调仍是「房住不炒」，去库存压力未解</td></tr></tbody></table></div><h3>政策事件（46 条）</h3><div class="scroll"><table><thead><tr><th class="l">日期</th><th class="l">事件</th><th class="l">行业</th><th>强度</th><th class="l">备注</th></tr></thead><tbody><tr><td class="l">2026-10-08 00:00:00</td><td class="l">中央金融机构注资特别国债一期发行</td><td class="l">银行</td><td>0.60</td><td class="l small">竞争性招标1500亿元支持国有大行</td></tr><tr><td class="l">2026-09-30 00:00:00</td><td class="l">2500亿元以旧换新资金全部下达</td><td class="l">家用电器</td><td>0.50</td><td class="l small">超长期特别国债资金已全部下达</td></tr><tr><td class="l">2026-09-28 00:00:00</td><td class="l">国常会研究宏观政策发力提效</td><td class="l">全市场</td><td>0.60</td><td class="l small">推出增量政策并研究稳定房地产市场</td></tr><tr><td class="l">2026-07-31 00:00:00</td><td class="l">国常会核准四个核电项目8台机组</td><td class="l">公用事业</td><td>0.55</td><td class="l small">总投资超1700亿元</td></tr><tr><td class="l">2026-07-30 00:00:00</td><td class="l">中央政治局会议部署下半年经济工作</td><td class="l">全市场</td><td>0.70</td><td class="l small">加大逆周期调节并出台增量政策</td></tr><tr><td class="l">2026-06-29 00:00:00</td><td class="l">国常会听取人工智能发展情况汇报</td><td class="l">电子</td><td>0.60</td><td class="l small">加快超大规模智算集群建设</td></tr><tr><td class="l">2026-05-28 00:00:00</td><td class="l">国务院印发《城市更新十五五规划》</td><td class="l">建筑装饰</td><td>0.60</td><td class="l small">部署14项重大工程和行动</td></tr><tr><td class="l">2026-05-20 00:00:00</td><td class="l">《2026年数字经济发展工作要点》印发</td><td class="l">通信</td><td>0.45</td><td class="l small">部署数字经济与算力基础设施建设</td></tr><tr><td class="l">2026-04-28 00:00:00</td><td class="l">中央政治局会议分析研究经济形势</td><td class="l">全市场</td><td>0.70</td><td class="l small">全面实施人工智能+行动</td></tr><tr><td class="l">2026-04-17 00:00:00</td><td class="l">四部门联合召开光伏行业座谈会</td><td class="l">电力设备</td><td>0.55</td><td class="l small">推进产能调控与兼并重组</td></tr><tr><td class="l">2026-03-10 00:00:00</td><td class="l">2026年国防支出预算增长6.9%</td><td class="l">国防军工</td><td>0.60</td><td class="l small">全国国防支出1.94万亿元</td></tr><tr><td class="l">2026-03-05 00:00:00</td><td class="l">2026年政府工作报告</td><td class="l">全市场</td><td>0.85</td><td class="l small">赤字率4%左右并发行1.3万亿元特别国债</td></tr><tr><td class="l">2026-02-03 00:00:00</td><td class="l">《培育数据流通服务机构加快数据要素市场化价值化的意见》</td><td class="l">计算机</td><td>0.55</td><td class="l small">支持数据资产入表与数据跨境流通</td></tr><tr><td class="l">2026-02-03 00:00:00</td><td class="l">2026年中央一号文件发布</td><td class="l">农林牧渔</td><td>0.65</td><td class="l small">提出种业振兴与生物育种产业化</td></tr><tr><td class="l">2026-01-19 00:00:00</td><td class="l">央行下调结构性货币政策工具利率</td><td class="l">全市场</td><td>0.60</td><td class="l small">再贷款再贴现利率下调0.25个百分点</td></tr><tr><td class="l">2025-12-18 00:00:00</td><td class="l">海南自贸港启动全岛封关运作</td><td class="l">商贸零售</td><td>0.60</td><td class="l small">全岛封关带来免税与贸易增量</td></tr><tr><td class="l">2025-12-16 00:00:00</td><td class="l">证监会党委会议部署资本市场十五五规划</td><td class="l">非银金融</td><td>0.60</td><td class="l small">启动实施深化创业板改革</td></tr><tr><td class="l">2025-12-11 00:00:00</td><td class="l">中央经济工作会议部署2026年经济工作</td><td class="l">全市场</td><td>0.88</td><td class="l small">明确灵活高效运用降准降息</td></tr><tr><td class="l">2025-12-10 00:00:00</td><td class="l">2025年国家医保药品目录及商保创新药目录</td><td class="l">医药生物</td><td>0.55</td><td class="l small">首版商保创新药目录纳入19个药品（发布日期待核）</td></tr><tr><td class="l">2025-12-02 00:00:00</td><td class="l">全国统一电力市场评价制度建立</td><td class="l">公用事业</td><td>0.50</td><td class="l small">自2026年起开展统一电力市场评价</td></tr><tr><td class="l">2025-12-01 00:00:00</td><td class="l">商业航天司成立</td><td class="l">国防军工</td><td>0.50</td><td class="l small">商业航天获专职管理机构支持（媒体来源待核）</td></tr><tr><td class="l">2025-10-23 00:00:00</td><td class="l">二十届四中全会通过十五五规划建议</td><td class="l">全市场</td><td>0.75</td><td class="l small">部署十五五现代化产业体系建设</td></tr><tr><td class="l">2025-10-09 00:00:00</td><td class="l">商务部对境外相关稀土物项实施出口管制</td><td class="l">有色金属</td><td>0.75</td><td class="l small">含中国成分物项再出口需许可</td></tr><tr><td class="l">2025-09-26 00:00:00</td><td class="l">《石化化工行业稳增长工作方案（2025—2026年）》</td><td class="l">基础化工</td><td>0.45</td><td class="l small">推动行业平稳增长与结构优化（日期来源待核）</td></tr><tr><td class="l">2025-09-22 00:00:00</td><td class="l">《钢铁行业稳增长工作方案（2025—2026年）》</td><td class="l">钢铁</td><td>0.50</td><td class="l small">严禁新增产能并精准调控产量</td></tr><tr><td class="l">2025-09-05 00:00:00</td><td class="l">商务部等9部门扩大服务消费若干政策措施</td><td class="l">社会服务</td><td>0.60</td><td class="l small">扩大电信医疗教育开放并设中小学春秋假</td></tr><tr><td class="l">2025-08-26 00:00:00</td><td class="l">国务院《关于深入实施人工智能+行动的意见》</td><td class="l">计算机</td><td>0.85</td><td class="l small">提出2027年智能体应用普及率超70%</td></tr><tr><td class="l">2025-08-12 00:00:00</td><td class="l">个人消费贷款财政贴息政策实施方案</td><td class="l">汽车</td><td>0.55</td><td class="l small">家用汽车等消费贷款年贴息1个百分点</td></tr><tr><td class="l">2025-07-30 00:00:00</td><td class="l">中央政治局会议部署下半年经济工作</td><td class="l">全市场</td><td>0.65</td><td class="l small">宏观政策持续发力并适时加力</td></tr><tr><td class="l">2025-07-28 00:00:00</td><td class="l">中办国办印发《育儿补贴制度实施方案》</td><td class="l">社会服务</td><td>0.50</td><td class="l small">三周岁前每孩每年补贴3600元</td></tr><tr><td class="l">2025-07-15 00:00:00</td><td class="l">中央城市工作会议举行</td><td class="l">房地产</td><td>0.60</td><td class="l small">城市发展转向存量提质增效</td></tr><tr><td class="l">2025-07-03 00:00:00</td><td class="l">工信部召开光伏行业座谈会</td><td class="l">电力设备</td><td>0.55</td><td class="l small">综合治理低价无序竞争并退出落后产能</td></tr><tr><td class="l">2025-07-01 00:00:00</td><td class="l">中央财经委员会第六次会议</td><td class="l">全市场</td><td>0.55</td><td class="l small">纵深推进全国统一大市场建设</td></tr><tr><td class="l">2025-06-30 00:00:00</td><td class="l">《支持创新药高质量发展的若干措施》出台</td><td class="l">医药生物</td><td>0.75</td><td class="l small">五方面十六条支持创新药全链条发展</td></tr><tr><td class="l">2025-06-18 00:00:00</td><td class="l">证监会发布科创板1+6改革措施</td><td class="l">全市场</td><td>0.70</td><td class="l small">重启未盈利企业第五套标准并设科创成长层</td></tr><tr><td class="l">2025-05-07 00:00:00</td><td class="l">央行宣布降准0.5个百分点并下调政策利率</td><td class="l">全市场</td><td>0.60</td><td class="l small">流动性继续宽松</td></tr><tr><td class="l">2025-03-05 00:00:00</td><td class="l">政府工作报告强调培育未来产业与商业航天</td><td class="l">国防军工</td><td>0.55</td><td class="l small">新增量方向</td></tr><tr><td class="l">2025-03-05 00:00:00</td><td class="l">政府工作报告提出「人工智能+」行动</td><td class="l">电子</td><td>0.65</td><td class="l small">国产算力芯片与半导体自主可控</td></tr><tr><td class="l">2025-03-05 00:00:00</td><td class="l">政府工作报告提出「人工智能+」行动</td><td class="l">计算机</td><td>0.70</td><td class="l small">算力、模型与应用端同时受益</td></tr><tr><td class="l">2025-02-17 00:00:00</td><td class="l">民营企业座谈会召开</td><td class="l">全市场</td><td>0.60</td><td class="l small">提振民营企业与科技企业信心</td></tr><tr><td class="l">2025-01-08 00:00:00</td><td class="l">发改委加力扩围「两新」政策</td><td class="l">汽车</td><td>0.65</td><td class="l small">以旧换新补贴范围与力度扩大</td></tr><tr><td class="l">2025-01-08 00:00:00</td><td class="l">发改委加力扩围「两新」政策</td><td class="l">家用电器</td><td>0.65</td><td class="l small">以旧换新补贴范围与力度扩大</td></tr><tr><td class="l">2024-11-15 00:00:00</td><td class="l">证监会发布上市公司市值管理指引</td><td class="l">全市场</td><td>0.50</td><td class="l small">利好长期破净与低估值央国企</td></tr><tr><td class="l">2024-09-26 00:00:00</td><td class="l">中央政治局会议提出努力提振资本市场</td><td class="l">全市场</td><td>0.85</td><td class="l small">定调级别最高的一次资本市场表述</td></tr><tr><td class="l">2024-09-24 00:00:00</td><td class="l">央行降准降息并创设互换便利与回购增持再贷款</td><td class="l">全市场</td><td>0.90</td><td class="l small">标志性政策组合拳，直接为股市提供流动性</td></tr><tr><td class="l">2024-04-12 00:00:00</td><td class="l">国务院发布新「国九条」</td><td class="l">全市场</td><td>0.60</td><td class="l small">资本市场基础制度改革，强化分红与退市</td></tr></tbody></table></div></div></div><div id="sec-freshness"><h2>十、数据新鲜度（哪一块实时、哪一块天然滞后）</h2><div class="card"><p class="muted">下表逐项说明每类数据的<strong>最新时点</strong>、<strong>本地缓存的抓取时刻</strong>与<strong>刷新周期</strong>。行情类数据在实时模式下随每次运行刷新；宏观类数据受官方公布节奏限制，任何系统都无法让它变得更“实时”——这不是本系统的缺陷，而是数据的固有属性。</p><div class="scroll"><table><thead><tr><th class="l">数据项</th><th class="l">数据最新到</th><th class="l">缓存抓取时刻</th><th class="l">刷新周期</th><th class="l">说明</th></tr></thead><tbody><tr><td class="l">行情快照（价格 / PE-TTM / PB / 市值）</td><td class="l"><b>2026-10-08 20:23</b></td><td class="l">2026-10-08 20:23</td><td class="l">1 天</td><td class="l">非实时模式：默认 1 天内直接复用缓存快照，不重新抓取</td></tr><tr><td class="l">沪深300 指数日线（回测基准）</td><td class="l"><b>2026-09-30</b></td><td class="l">2026-10-08 12:37</td><td class="l">1 天</td><td class="l">日频，收盘后有新值；节假日期间会停留在上一个交易日（这是数据源的真实状态）</td></tr><tr><td class="l">PMI（制造业景气）</td><td class="l"><b>2026-09-30（manufacturing 50.1、non_manufacturing 50.2）</b></td><td class="l">-</td><td class="l">7 天</td><td class="l">月度指标，当月最后一天由国家统计局公布，公布后本系统即可见</td></tr><tr><td class="l">CPI（通胀）</td><td class="l"><b>2026-08-31（0.8）</b></td><td class="l">-</td><td class="l">7 天</td><td class="l">月度指标，次月中旬公布；本系统按 1 个月公布滞后对齐</td></tr><tr><td class="l">PPI（工业品价格）</td><td class="l"><b>2026-08-31（3.8）</b></td><td class="l">-</td><td class="l">7 天</td><td class="l">月度指标，次月中旬公布；本系统按 1 个月公布滞后对齐</td></tr><tr><td class="l">GDP（经济增长）</td><td class="l"><b>2026-06-30（4.7）</b></td><td class="l">-</td><td class="l">7 天</td><td class="l">季度指标，季后约 3 周公布；本系统按 1 个月公布滞后对齐</td></tr><tr><td class="l">中国 10 年期国债收益率</td><td class="l"><b>2026-10-08（1.69%）</b></td><td class="l">2026-10-08 20:04</td><td class="l">1 天</td><td class="l">日频，收盘后更新；它是市场数据，没有官方公布滞后</td></tr><tr><td class="l">美联储潮汐（美债 / 美元指数 / VIX）</td><td class="l"><b>2026-10-07（美国10年 5.28%）</b></td><td class="l">2026-10-08 20:10</td><td class="l">7 天</td><td class="l"></td></tr><tr><td class="l">个股估值历史（百度 PE / PB 五年）</td><td class="l"><b>-</b></td><td class="l">-</td><td class="l">1 天</td><td class="l">日频，收盘后更新；实时模式下改用盘中快照价重算分位</td></tr><tr><td class="l">个股财务 / 分红（季度与事件驱动）</td><td class="l"><b>-</b></td><td class="l">-</td><td class="l">30 天</td><td class="l">财报为季度披露、分红为事件披露，天生只有季度级新鲜度</td></tr></tbody></table></div></div></div><div id="sec-method">
+<h2>十一、方法与口径</h2>
+<div class="card">
+  <div class="grid2">
+    <div>
+      <h3 style="margin-top:0">宏观背景分权重</h3>
+      <div class="kv"><span>PMI 制造业景气</span><b>0.30</b></div>
+      <div class="kv"><span>PPI 工业品价格周期</span><b>0.25</b></div>
+      <div class="kv"><span>美联储潮汐</span><b>0.20</b></div>
+      <div class="kv"><span>CPI 通胀速度</span><b>0.15</b></div>
+      <div class="kv"><span>GDP 增长</span><b>0.10</b></div>
+    </div>
+    <div>
+      <h3 style="margin-top:0">个股分权重</h3>
+      <div class="kv"><span>估值（PE/PB/股息率）</span><b>0.45</b></div>
+      <div class="kv"><span>质量（ROE/现金流/负债/稳定性）</span><b>0.30</b></div>
+      <div class="kv"><span>股息（水平/连续性/利差）</span><b>0.15</b></div>
+      <div class="kv"><span>政策红利</span><b>0.10</b></div>
+    </div>
+  </div>
+  <h3>防未来函数</h3>
+  <ul class="small">
+    <li>所有分数只使用决策时点<b>已经公布</b>的数据；宏观序列按公布滞后整体后移（PMI 0 月、CPI/PPI/GDP 各 1 月）。</li>
+    <li>个股历史分位只用决策时点之前的历史；组合回测按 <code>point_in_time=True</code> 取当日 PE/PB/股价，并<b>禁用截面分位</b>。</li>
+    <li>政策事件按日期过滤，未来事件不参与打分。</li>
+  </ul>
+  <h3>必须知道的三个偏差</h3>
+  <ul class="small">
+    <li><b>幸存者偏差</b>：以当前在市股票回溯历史，已退市/被并购的股票不在样本里，会高估收益。</li>
+    <li><b>估值历史深度</b>：百度估值接口只提供近 5 年数据，更早的季度无法算个股历史分位，早年样本偏少。</li>
+    <li><b>截面分位缺失</b>：point-in-time 模式下没有历史全市场快照，因此关闭了「行业内/全市场估值分位」，只用个股自身历史分位。</li>
+  </ul>
+  <h3>数据源与本机网络限制</h3>
+  <p class="small muted">本机（2026-10）实测不可达、已绕开的源：</p>
+  <p><span class="svc">FRED（fred.stlouisfed.org）—— 本机网络不可达，美联储数据改用 Yahoo Finance</span><span class="svc">东方财富 push2 系（push2.eastmoney.com 及各分片）—— 不可达，所有 *_em 接口弃用</span><span class="svc">申万官网（www.swsresearch.com）—— SSL 失败，个股申万行业归属改用新浪行业板块</span><span class="svc">百度估值接口只有市盈率/市净率/市现率，**没有股息率**，股息率由分红明细自行计算</span></p>
+  <h3>数据源自身的已知偏差</h3>
+  <ul class="small"><li>行业归属来自新浪板块，对更名/借壳重组的公司会停留在旧行业：如 002555 三七互娱（原顺荣股份，做汽车部件）仍被归入『汽车制造』，002558 巨人网络（原世纪游轮）仍被归入『酒店旅游』。这会连带影响政策分与行业中性比较。</li><li>新浪『经营现金净流量与净利润的比率(%)』这一列的取值本身就是倍数，不是百分数，代码直接当倍数使用（已用 5 只股票逐年手算核对过）。</li><li>新浪财务表的 ROE / 净利率 / 增速是年内累计口径，跨期求均值无意义，本系统只对年报行（12 月）取均值。</li></ul>
+  <h3>本次运行的数据标记</h3><pre class="small" style="white-space:pre-wrap">{
+  &quot;staleness&quot;: {
+    &quot;pmi&quot;: {
+      &quot;last_period&quot;: &quot;2026-09-30&quot;,
+      &quot;value&quot;: {
+        &quot;manufacturing&quot;: 50.1,
+        &quot;non_manufacturing&quot;: 50.2
+      }
+    },
+    &quot;cpi&quot;: {
+      &quot;last_period&quot;: &quot;2026-08-31&quot;,
+      &quot;value&quot;: 0.8
+    },
+    &quot;ppi&quot;: {
+      &quot;last_period&quot;: &quot;2026-08-31&quot;,
+      &quot;value&quot;: 3.8
+    },
+    &quot;gdp&quot;: {
+      &quot;last_period&quot;: &quot;2026-06-30&quot;,
+      &quot;value&quot;: 4.7
+    }
+  },
+  &quot;unavailable&quot;: [],
+  &quot;scored&quot;: 300,
+  &quot;as_of&quot;: &quot;2026-10-08&quot;,
+  &quot;live&quot;: false
+}</pre>
+</div>
+</div></main><script src="site.js"></script><script src="app.js"></script></body></html>
