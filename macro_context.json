@@ -1,0 +1,111 @@
+{
+  "as_of": "2026-10-08",
+  "macro_score": 48.47,
+  "position": 0.546,
+  "regime": "中性（均衡配置）",
+  "weights": {
+    "pmi": 0.3,
+    "ppi": 0.25,
+    "fed": 0.2,
+    "cpi": 0.15,
+    "gdp": 0.1
+  },
+  "unavailable": [],
+  "rules": {
+    "pmi": {
+      "rule": "PMI",
+      "score": 48.74,
+      "state": "扩张上行（50.1，连续 2 个月上行）",
+      "explain": "最新 PMI 50.14（2026-09）。水平项 53 分（站上荣枯线 50，强扩张门槛 51.5）；动量项 46 分（3 个月均值较 3 个月前变化 -0.50，连续上行 2 个月）。规则依据：PMI 与股市正相关，大幅超过 50 或处于上升阶段时，股市大概率上涨。",
+      "pmi": 50.14,
+      "asof": "2026-09-30 00:00:00",
+      "level_score": 52.7,
+      "momentum_score": 45.5,
+      "ma_delta": -0.5,
+      "consecutive_up_months": 2
+    },
+    "ppi": {
+      "rule": "PPI",
+      "score": 93.9,
+      "state": "回撤至一半（51%）—— 用户规则的看多区间",
+      "explain": "最新 PPI 同比 3.80%（2026-09），近 60 个月周期高点 13.50%、低点 -5.40%，当前回撤比例 r=0.51（51%），PPI 近 3 个月下行 -0.10pct。钟形打分峰值设在 r=50%（用户规则：PPI 下跌到一半，股市领先上涨），谷值设在 r=85%~100%（用户规则：PPI 到底部时，股市已到顶峰）。",
+      "ppi_yoy": 3.8,
+      "asof": "2026-09-30 00:00:00",
+      "cycle_high": 13.5,
+      "cycle_low": -5.4,
+      "retracement": 0.513,
+      "ppi_3m_change": -0.1,
+      "direction": "下行"
+    },
+    "cpi": {
+      "rule": "CPI",
+      "score": 35.0,
+      "state": "通胀快速回落（CPI 0.80%，3 个月下行 -0.40pct）",
+      "explain": "最新 CPI 同比 0.80%（2026-09），3 个月变化 -0.40 个百分点。速度项 0 分（±0.3pct 为满分/零分界）；水平项 100 分（温和区间 0.5%~3%）。规则依据：CPI 涨得快利好股市和债市，涨得慢则不利。",
+      "cpi_yoy": 0.8,
+      "asof": "2026-09-30 00:00:00",
+      "delta_3m": -0.4,
+      "speed_score": 0.0,
+      "level_score": 100.0,
+      "stagflation": false
+    },
+    "gdp": {
+      "rule": "GDP",
+      "score": 23.75,
+      "state": "增速4.7%，低于近 8 季均值 -0.39pct，连续回升 0 个季度",
+      "explain": "最新 GDP 同比 4.7%（2026-07 可见）。水平项 43 分（3%~7% 映射 0~100）；动能项 11 分（较近 8 季均值 -0.39pct）。规则依据：GDP 与股市正相关。注意 GDP 为季度低频数据且滞后公布，权重低于 PMI。",
+      "gdp_yoy": 4.7,
+      "asof": "2026-07-30 00:00:00",
+      "level_score": 42.5,
+      "momentum_score": 11.2,
+      "delta_vs_mean": -0.39,
+      "consecutive_up_quarters": 0
+    },
+    "fed": {
+      "rule": "美联储潮汐",
+      "score": 13.75,
+      "state": "退潮（全球流动性紧缩）",
+      "explain": "美联储潮汐评分 14，退潮（全球流动性紧缩）。短端利率(13周美债，政策利率代理) 4.04%，近 6 个月 +45bp（上行/持平=退潮）；10 年期美债名义收益率 5.28%，近 6 个月 +0.89pct；美元指数 DXY 102.4，近 6 个月 +4.4%（走强压制风险偏好）；中美 10 年期利差 -360bp（中债 1.69% - 美债 5.29%）（倒挂，人民币资产吸引力弱）。规则依据：降息/扩表/长端利率下行/美元走弱 = 涨潮，利好 A 股；反之为退潮。注意：美联储总资产 数据缺席，已在其余子项间重新归一化权重。",
+      "short_rate": 4.04,
+      "short_rate_6m_change_bp": 45.2,
+      "rate_direction_score": 27.4,
+      "us_10y": 5.28,
+      "us_10y_6m_change": 0.89,
+      "dollar_index": 102.42,
+      "dollar_6m_change_pct": 4.42,
+      "china_10y": 1.69,
+      "us_10y_spread_ref": 5.29,
+      "cn_us_spread_bp": -360.0,
+      "sub_scores": {
+        "policy_rate": 25.6,
+        "long_rate": 3.3,
+        "dollar": 13.1,
+        "rate_spread": 6.6
+      },
+      "absent": [
+        "美联储总资产"
+      ]
+    }
+  },
+  "staleness": {
+    "pmi": {
+      "last_period": "2026-09-30",
+      "value": {
+        "manufacturing": 50.1,
+        "non_manufacturing": 50.2
+      }
+    },
+    "cpi": {
+      "last_period": "2026-08-31",
+      "value": 0.8
+    },
+    "ppi": {
+      "last_period": "2026-08-31",
+      "value": 3.8
+    },
+    "gdp": {
+      "last_period": "2026-06-30",
+      "value": 4.7
+    }
+  }
+}
