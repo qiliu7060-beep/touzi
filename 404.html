@@ -1,0 +1,115 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>找不到这个页面 · A 股长期投资系统</title><style>
+:root{--bg:#f5f7fa;--card:#fff;--ink:#15202b;--muted:#6b7683;--line:#e3e8ef;
+--blue:#2f6fed;--green:#12a150;--amber:#d99100;--red:#e5484d;--purple:#7c5cff;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font-family:-apple-system,"Segoe UI","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+font-size:14px;line-height:1.6}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
+h1{font-size:26px;margin:0 0 6px}
+h2{font-size:19px;margin:38px 0 14px;padding-left:10px;border-left:4px solid var(--blue)}
+h3{font-size:15px;margin:22px 0 10px;color:#2b3a4a}
+.sub{color:var(--muted);margin:0 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;
+margin:14px 0;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.grid5{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.kv:last-child{border-bottom:0}
+.kv b{font-weight:600}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child,th.l,td.l{text-align:left;white-space:normal}
+th{background:#eef2f7;font-weight:600;color:#33414f;position:sticky;top:0}
+tbody tr:hover{background:#f8fafc}
+.scroll{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.pill{display:inline-block;min-width:46px;padding:2px 9px;border-radius:999px;font-weight:700;
+font-size:12.5px;text-align:center;color:#fff}
+.pill.great{background:var(--green)}.pill.good{background:#3f9e6f}
+.pill.mid{background:var(--amber)}.pill.weak{background:#e07b39}
+.pill.bad{background:var(--red)}.pill.na{background:#b6bfca}
+.meter{height:8px;background:#e9eef5;border-radius:5px;overflow:hidden;margin-top:8px}
+.meter>i{display:block;height:100%;border-radius:5px}
+.v-great{background:var(--green)}.v-good{background:#3f9e6f}.v-mid{background:var(--amber)}
+.v-weak{background:#e07b39}.v-bad{background:var(--red)}.v-na{background:#c3cbd5}
+.big{font-size:30px;font-weight:700;letter-spacing:-.5px}
+.tag{display:inline-block;padding:1px 8px;border-radius:6px;font-size:12px;font-weight:600}
+.tag.ok{background:#e5f6ec;color:#0d7a3c}
+.tag.warn{background:#fff4e0;color:#9a6600}
+.tag.bad{background:#fdeaea;color:#b32227}
+.tag.info{background:#e8f0fe;color:#1a56c4}
+.chart{width:100%;height:auto;display:block}
+.grid{stroke:#e9eef5;stroke-width:1}
+.base{stroke:#c3cbd5;stroke-width:1.2;stroke-dasharray:4 4}
+.chart polyline{stroke-linejoin:round;stroke-linecap:round}
+.axt{font-size:10.5px;fill:#7b8794}
+.lg{font-size:11.5px;fill:#4a5768;font-weight:600}
+.svc{display:inline-block;padding:3px 10px;border:1px solid var(--line);border-radius:999px;
+margin:3px 4px 3px 0;font-size:12.5px;background:#fff}
+blockquote{margin:10px 0;padding:10px 14px;background:#fffaf0;border-left:4px solid var(--amber);
+border-radius:0 8px 8px 0}
+code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:12.5px}
+footer{color:var(--muted);font-size:12.5px;margin-top:40px;border-top:1px solid var(--line);
+padding-top:14px}
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0}
+.topbar{position:sticky;top:0;z-index:900;display:flex;align-items:center;gap:4px;
+ flex-wrap:wrap;padding:8px 16px;background:#0b1220cc;backdrop-filter:blur(8px);
+ border-bottom:1px solid #1f2937;font:14px/1.4 "Microsoft YaHei",system-ui,sans-serif}
+.topbar .brand{color:#fff;font-weight:700;text-decoration:none;margin-right:12px;
+ white-space:nowrap;letter-spacing:.3px}
+.topbar a.nv{color:#9ca3af;text-decoration:none;padding:6px 11px;border-radius:8px;
+ white-space:nowrap}
+.topbar a.nv:hover{background:#1f2937;color:#e5e7eb}
+.topbar a.nv.on{background:#2563eb;color:#fff;font-weight:600}
+.topbar .sp{flex:1 1 auto}
+.topbar .live{color:#9ca3af;font-size:12px;white-space:nowrap}
+.topbar .live b{color:#22c55e}
+main.wrap{padding-top:16px}
+.hero-links{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.hero-links a{display:inline-block;padding:8px 14px;border-radius:10px;background:#111827;
+ color:#e5e7eb;text-decoration:none;border:1px solid #1f2937;font-size:13px}
+.hero-links a:hover{border-color:#2563eb;color:#fff}
+.flash-up{animation:__fu 1.2s ease-out}
+.flash-dn{animation:__fd 1.2s ease-out}
+@keyframes __fu{0%{background:#065f46;color:#ecfdf5}100%{background:transparent}}
+@keyframes __fd{0%{background:#7f1d1d;color:#fef2f2}100%{background:transparent}}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b7280;
+ margin-right:6px;vertical-align:middle}
+.dot.ok{background:#22c55e;box-shadow:0 0 6px #22c55e}
+.dot.wait{background:#eab308}
+.dot.bad{background:#ef4444;box-shadow:0 0 6px #ef4444}
+.src{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;
+ border:1px solid #374151;color:#9ca3af;margin-left:4px}
+.src.live{border-color:#166534;color:#86efac}
+@media (prefers-reduced-motion:reduce){.flash-up,.flash-dn{animation:none!important}}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+h4{font-size:13.5px;margin:4px 0 8px;color:#9ca3af;font-weight:600}
+@media (max-width:900px){.grid3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.px{font-variant-numeric:tabular-nums}
+.pickbar{position:sticky;bottom:0;z-index:800;display:flex;gap:10px;align-items:center;
+ flex-wrap:wrap;padding:10px 14px;margin-top:12px;background:#0b1220ee;border:1px solid #1f2937;
+ border-radius:12px;font:13px/1.5 "Microsoft YaHei",system-ui,sans-serif}
+.pickbar input[type=date],.pickbar input[type=text]{background:#111827;color:#e5e7eb;
+ border:1px solid #374151;border-radius:7px;padding:6px 9px;font:inherit}
+button.b{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 15px;
+ cursor:pointer;font:inherit;font-weight:600}
+button.b:hover{background:#1d4ed8}
+button.b2{background:#374151;font-weight:400}
+button.b2:hover{background:#4b5563}
+button.b:disabled{opacity:.5;cursor:not-allowed}
+tr.picked{background:#0f2a1d}
+.hint{color:#9ca3af;font-size:12.5px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:70px;z-index:99998;
+ background:#111827;color:#e5e7eb;border:1px solid #374151;border-radius:10px;
+ padding:10px 18px;font:13px/1.6 "Microsoft YaHei",system-ui,sans-serif;
+ box-shadow:0 8px 24px rgba(0,0,0,.5);display:none}
+table input.ip,table input.is{width:78px;background:#111827;color:#e5e7eb;border:1px solid #374151;
+ border-radius:6px;padding:4px 6px;font:12.5px/1.2 inherit;text-align:right}
+@media print{.topbar,.pickbar,.toast{display:none}}
+</style></head><body><header class="topbar"><a class="brand" href="index.html">📈 A 股长期投资系统</a><a class="nv" href="index.html">总览</a><a class="nv" href="pick.html">选股 · 勾选建仓</a><a class="nv" href="my.html">我的持仓</a><a class="nv" href="report.html">完整报告</a><a class="nv" href="macro.html">宏观与政策</a><a class="nv" href="backtest.html">回测</a><a class="nv" href="data.html">数据新鲜度</a><a class="nv" href="rules.html">规则与费率</a><span class="sp"></span><span class="live" id="__navlive"><span class="dot" id="__dot"></span><span id="__livestate">连接中…</span>　·　报价 <b id="__livets">—</b>　·　<span id="__buildstate">—</span></span></header><main class="wrap"><h1>找不到这个页面</h1><p class="sub">地址可能写错了。回到总览重新点一次导航即可。</p><div class="hero-links"><a href="index.html">回到总览</a></div></main><script src="site.js"></script><script src="app.js"></script></body></html>
