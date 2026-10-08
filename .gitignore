@@ -1,0 +1,20 @@
+# 本机私有数据和运行产物
+config/holdings.csv
+data_cache/
+output/
+dist/
+dist.zip
+
+# 本机依赖与临时目录
+vendor/
+webapp/
+.tmp/
+__pycache__/
+*.py[cod]
+*.log
+
+# Windows / IDE
+Thumbs.db
+.DS_Store
+.idea/
+.vscode/
