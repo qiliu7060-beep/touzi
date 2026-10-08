@@ -1,0 +1,212 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>宏观与政策 · A 股长期投资系统</title><style>
+:root{--bg:#f5f7fa;--card:#fff;--ink:#15202b;--muted:#6b7683;--line:#e3e8ef;
+--blue:#2f6fed;--green:#12a150;--amber:#d99100;--red:#e5484d;--purple:#7c5cff;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font-family:-apple-system,"Segoe UI","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+font-size:14px;line-height:1.6}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
+h1{font-size:26px;margin:0 0 6px}
+h2{font-size:19px;margin:38px 0 14px;padding-left:10px;border-left:4px solid var(--blue)}
+h3{font-size:15px;margin:22px 0 10px;color:#2b3a4a}
+.sub{color:var(--muted);margin:0 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;
+margin:14px 0;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.grid5{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.kv:last-child{border-bottom:0}
+.kv b{font-weight:600}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child,th.l,td.l{text-align:left;white-space:normal}
+th{background:#eef2f7;font-weight:600;color:#33414f;position:sticky;top:0}
+tbody tr:hover{background:#f8fafc}
+.scroll{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.pill{display:inline-block;min-width:46px;padding:2px 9px;border-radius:999px;font-weight:700;
+font-size:12.5px;text-align:center;color:#fff}
+.pill.great{background:var(--green)}.pill.good{background:#3f9e6f}
+.pill.mid{background:var(--amber)}.pill.weak{background:#e07b39}
+.pill.bad{background:var(--red)}.pill.na{background:#b6bfca}
+.meter{height:8px;background:#e9eef5;border-radius:5px;overflow:hidden;margin-top:8px}
+.meter>i{display:block;height:100%;border-radius:5px}
+.v-great{background:var(--green)}.v-good{background:#3f9e6f}.v-mid{background:var(--amber)}
+.v-weak{background:#e07b39}.v-bad{background:var(--red)}.v-na{background:#c3cbd5}
+.big{font-size:30px;font-weight:700;letter-spacing:-.5px}
+.tag{display:inline-block;padding:1px 8px;border-radius:6px;font-size:12px;font-weight:600}
+.tag.ok{background:#e5f6ec;color:#0d7a3c}
+.tag.warn{background:#fff4e0;color:#9a6600}
+.tag.bad{background:#fdeaea;color:#b32227}
+.tag.info{background:#e8f0fe;color:#1a56c4}
+.chart{width:100%;height:auto;display:block}
+.grid{stroke:#e9eef5;stroke-width:1}
+.base{stroke:#c3cbd5;stroke-width:1.2;stroke-dasharray:4 4}
+.chart polyline{stroke-linejoin:round;stroke-linecap:round}
+.axt{font-size:10.5px;fill:#7b8794}
+.lg{font-size:11.5px;fill:#4a5768;font-weight:600}
+.svc{display:inline-block;padding:3px 10px;border:1px solid var(--line);border-radius:999px;
+margin:3px 4px 3px 0;font-size:12.5px;background:#fff}
+blockquote{margin:10px 0;padding:10px 14px;background:#fffaf0;border-left:4px solid var(--amber);
+border-radius:0 8px 8px 0}
+code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:12.5px}
+footer{color:var(--muted);font-size:12.5px;margin-top:40px;border-top:1px solid var(--line);
+padding-top:14px}
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0}
+.topbar{position:sticky;top:0;z-index:900;display:flex;align-items:center;gap:4px;
+ flex-wrap:wrap;padding:8px 16px;background:#0b1220cc;backdrop-filter:blur(8px);
+ border-bottom:1px solid #1f2937;font:14px/1.4 "Microsoft YaHei",system-ui,sans-serif}
+.topbar .brand{color:#fff;font-weight:700;text-decoration:none;margin-right:12px;
+ white-space:nowrap;letter-spacing:.3px}
+.topbar a.nv{color:#9ca3af;text-decoration:none;padding:6px 11px;border-radius:8px;
+ white-space:nowrap}
+.topbar a.nv:hover{background:#1f2937;color:#e5e7eb}
+.topbar a.nv.on{background:#2563eb;color:#fff;font-weight:600}
+.topbar .sp{flex:1 1 auto}
+.topbar .live{color:#9ca3af;font-size:12px;white-space:nowrap}
+.topbar .live b{color:#22c55e}
+main.wrap{padding-top:16px}
+.hero-links{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.hero-links a{display:inline-block;padding:8px 14px;border-radius:10px;background:#111827;
+ color:#e5e7eb;text-decoration:none;border:1px solid #1f2937;font-size:13px}
+.hero-links a:hover{border-color:#2563eb;color:#fff}
+.flash-up{animation:__fu 1.2s ease-out}
+.flash-dn{animation:__fd 1.2s ease-out}
+@keyframes __fu{0%{background:#065f46;color:#ecfdf5}100%{background:transparent}}
+@keyframes __fd{0%{background:#7f1d1d;color:#fef2f2}100%{background:transparent}}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b7280;
+ margin-right:6px;vertical-align:middle}
+.dot.ok{background:#22c55e;box-shadow:0 0 6px #22c55e}
+.dot.wait{background:#eab308}
+.dot.bad{background:#ef4444;box-shadow:0 0 6px #ef4444}
+.src{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;
+ border:1px solid #374151;color:#9ca3af;margin-left:4px}
+.src.live{border-color:#166534;color:#86efac}
+@media (prefers-reduced-motion:reduce){.flash-up,.flash-dn{animation:none!important}}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+h4{font-size:13.5px;margin:4px 0 8px;color:#9ca3af;font-weight:600}
+@media (max-width:900px){.grid3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.px{font-variant-numeric:tabular-nums}
+.pickbar{position:sticky;bottom:0;z-index:800;display:flex;gap:10px;align-items:center;
+ flex-wrap:wrap;padding:10px 14px;margin-top:12px;background:#0b1220ee;border:1px solid #1f2937;
+ border-radius:12px;font:13px/1.5 "Microsoft YaHei",system-ui,sans-serif}
+.pickbar input[type=date],.pickbar input[type=text]{background:#111827;color:#e5e7eb;
+ border:1px solid #374151;border-radius:7px;padding:6px 9px;font:inherit}
+button.b{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 15px;
+ cursor:pointer;font:inherit;font-weight:600}
+button.b:hover{background:#1d4ed8}
+button.b2{background:#374151;font-weight:400}
+button.b2:hover{background:#4b5563}
+button.b:disabled{opacity:.5;cursor:not-allowed}
+tr.picked{background:#0f2a1d}
+.hint{color:#9ca3af;font-size:12.5px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:70px;z-index:99998;
+ background:#111827;color:#e5e7eb;border:1px solid #374151;border-radius:10px;
+ padding:10px 18px;font:13px/1.6 "Microsoft YaHei",system-ui,sans-serif;
+ box-shadow:0 8px 24px rgba(0,0,0,.5);display:none}
+table input.ip,table input.is{width:78px;background:#111827;color:#e5e7eb;border:1px solid #374151;
+ border-radius:6px;padding:4px 6px;font:12.5px/1.2 inherit;text-align:right}
+@media print{.topbar,.pickbar,.toast{display:none}}
+</style></head><body><header class="topbar"><a class="brand" href="index.html">📈 A 股长期投资系统</a><a class="nv" href="index.html">总览</a><a class="nv" href="pick.html">选股 · 勾选建仓</a><a class="nv" href="my.html">我的持仓</a><a class="nv" href="report.html">完整报告</a><a class="nv on" href="macro.html">宏观与政策</a><a class="nv" href="backtest.html">回测</a><a class="nv" href="data.html">数据新鲜度</a><a class="nv" href="rules.html">规则与费率</a><span class="sp"></span><span class="live" id="__navlive"><span class="dot" id="__dot"></span><span id="__livestate">连接中…</span>　·　报价 <b id="__livets">—</b>　·　<span id="__buildstate">—</span></span></header><main class="wrap"><h1>宏观与政策</h1><p class="sub">宏观背景分决定目标仓位；7 条判断条件逐条做了 2011-2026 的历史验证，**证伪的也照原样列出**。</p><div class="hero-links"><a href="backtest.html">回测</a><a href="report.html">完整报告</a></div><div id="sec-macro">
+<h2>一、宏观背景分与目标仓位</h2>
+<div class="card">
+  <div class="grid2">
+    <div>
+      <div class="muted small">宏观背景分（0~100）</div>
+      <div class="big" style="color:var(--ink)">48.5</div>
+      <div class="meter"><i class="v-mid" style="width:48%"></i></div>
+      <div style="margin-top:10px"><span class="tag info">中性（均衡配置）</span></div>
+    </div>
+    <div>
+      <div class="muted small">对应目标仓位（该分数下的建议股票仓位）</div>
+      <div class="big" style="color:var(--blue)">55%</div>
+      <div class="meter"><i class="v-mid" style="width:55%"></i></div>
+      <p class="small muted" style="margin:8px 0 0">仓位阶梯：—</p>
+    </div>
+  </div>
+  <p class="small muted" style="margin:14px 0 4px">
+    数据截止：<b>2026-10-08</b>　口径：宏观数据已按公布滞后对齐（PMI 当月 0 个月、
+    CPI/PPI/GDP 各滞后 1 个月），T 时刻的分数只使用 T 时刻已经能看到的数字。
+  </p>
+  <div class="grid2" style="margin-top:8px">
+    <div><div class="kv"><span>pmi</span><b>{&#x27;last_period&#x27;: &#x27;2026-09-30&#x27;, &#x27;value&#x27;: {&#x27;manufacturing&#x27;: 50.1, &#x27;non_manufacturing&#x27;: 50.2}}</b></div><div class="kv"><span>cpi</span><b>{&#x27;last_period&#x27;: &#x27;2026-08-31&#x27;, &#x27;value&#x27;: 0.8}</b></div><div class="kv"><span>ppi</span><b>{&#x27;last_period&#x27;: &#x27;2026-08-31&#x27;, &#x27;value&#x27;: 3.8}</b></div><div class="kv"><span>gdp</span><b>{&#x27;last_period&#x27;: &#x27;2026-06-30&#x27;, &#x27;value&#x27;: 4.7}</b></div></div>
+    <div><div class="small muted">五个模块数据齐备。</div></div>
+  </div>
+</div>
+<div class="grid5"><div class="card"><div class="kv"><b>PMI（制造业景气）</b><span class="muted small">权重 0.30</span></div><div class="big">48.7<span class="muted" style="font-size:14px;font-weight:400"> /100</span></div><div class="meter"><i class="v-mid" style="width:49%"></i></div><div style="margin-top:8px"><span class="tag info">扩张上行（50.1，连续 2 个月上行）</span></div><p class="small muted" style="margin:8px 0 0">最新 PMI 50.14（2026-09）。水平项 53 分（站上荣枯线 50，强扩张门槛 51.5）；动量项 46 分（3 个月均值较 3 个月前变化 -0.50，连续上行 2 个月）。规则依据：PMI 与股市正相关，大幅超过 50 或处于上升阶段时，股市大概率上涨。</p></div><div class="card"><div class="kv"><b>PPI（工业品价格/盈利周期）</b><span class="muted small">权重 0.25</span></div><div class="big">93.9<span class="muted" style="font-size:14px;font-weight:400"> /100</span></div><div class="meter"><i class="v-great" style="width:94%"></i></div><div style="margin-top:8px"><span class="tag info">回撤至一半（51%）—— 用户规则的看多区间</span></div><p class="small muted" style="margin:8px 0 0">最新 PPI 同比 3.80%（2026-09），近 60 个月周期高点 13.50%、低点 -5.40%，当前回撤比例 r=0.51（51%），PPI 近 3 个月下行 -0.10pct。钟形打分峰值设在 r=50%（用户规则：PPI 下跌到一半，股市领先上涨），谷值设在 r=85%~100%（用户规则：PPI 到底部时，股市已到顶峰）。</p></div><div class="card"><div class="kv"><b>美联储潮汐（全球流动性）</b><span class="muted small">权重 0.20</span></div><div class="big">13.8<span class="muted" style="font-size:14px;font-weight:400"> /100</span></div><div class="meter"><i class="v-bad" style="width:14%"></i></div><div style="margin-top:8px"><span class="tag info">退潮（全球流动性紧缩）</span></div><p class="small muted" style="margin:8px 0 0">美联储潮汐评分 14，退潮（全球流动性紧缩）。短端利率(13周美债，政策利率代理) 4.04%，近 6 个月 +45bp（上行/持平=退潮）；10 年期美债名义收益率 5.28%，近 6 个月 +0.89pct；美元指数 DXY 102.4，近 6 个月 +4.4%（走强压制风险偏好）；中美 10 年期利差 -360bp（中债 1.69% - 美债 5.29%）（倒挂，人民币资产吸引力弱）。规则依据：降息/扩表/长端利率下行/美元走弱 = 涨潮，利好 A 股；反之为退潮。注意：美联储总资产 数据缺席，已在其余子项间重新归一化权重。</p></div><div class="card"><div class="kv"><b>CPI（通胀速度）</b><span class="muted small">权重 0.15</span></div><div class="big">35.0<span class="muted" style="font-size:14px;font-weight:400"> /100</span></div><div class="meter"><i class="v-weak" style="width:35%"></i></div><div style="margin-top:8px"><span class="tag info">通胀快速回落（CPI 0.80%，3 个月下行 -0.40pct）</span></div><p class="small muted" style="margin:8px 0 0">最新 CPI 同比 0.80%（2026-09），3 个月变化 -0.40 个百分点。速度项 0 分（±0.3pct 为满分/零分界）；水平项 100 分（温和区间 0.5%~3%）。规则依据：CPI 涨得快利好股市和债市，涨得慢则不利。</p></div><div class="card"><div class="kv"><b>GDP（经济增长）</b><span class="muted small">权重 0.10</span></div><div class="big">23.8<span class="muted" style="font-size:14px;font-weight:400"> /100</span></div><div class="meter"><i class="v-bad" style="width:24%"></i></div><div style="margin-top:8px"><span class="tag info">增速4.7%，低于近 8 季均值 -0.39pct，连续回升 0 个季度</span></div><p class="small muted" style="margin:8px 0 0">最新 GDP 同比 4.7%（2026-07 可见）。水平项 43 分（3%~7% 映射 0~100）；动能项 11 分（较近 8 季均值 -0.39pct）。规则依据：GDP 与股市正相关。注意 GDP 为季度低频数据且滞后公布，权重低于 PMI。</p></div></div>
+</div><div id="sec-verdicts">
+<h2>三、你提的 7 条判断条件：逐条落地 + 历史验证</h2>
+<div class="card">
+<p class="small muted">全样本基准（189 个月）：3 月 1.18%／6 月 2.57%／12 月 5.76%；胜率 50.50%／51.40%／54.80%</p>
+<div class="scroll"><table>
+<thead><tr><th class="l">你的说法</th><th class="l">结论</th><th class="l">对应状态实测</th>
+<th class="l">对照状态实测</th><th class="l">说明</th></tr></thead>
+<tbody><tr>
+<td class="l"><b>1. 看市盈率、市净率、股息率判断长期投资价值</b><br>
+  <span class="muted small">估值 + 股息模块　·　本题（长期投资选股）</span></td>
+<td class="l"><span class="tag warn">已落地</span></td>
+<td class="l"><span class="muted">—</span></td>
+<td class="l"><span class="muted">—</span></td>
+<td class="l small">PE/PB 用个股近 5 年历史分位＋行业/全市场截面分位；股息率用近 12 个月实际分红除以股价。三者在个股分里合计占 45%（估值）+ 15%（股息）。</td>
+</tr><tr>
+<td class="l"><b>2. 国家政策的红利（行业政策倾斜）</b><br>
+  <span class="muted small">政策模块　·　本题（长期投资选股）</span></td>
+<td class="l"><span class="tag warn">已落地（含主观成分）</span></td>
+<td class="l"><span class="muted">—</span></td>
+<td class="l"><span class="muted">—</span></td>
+<td class="l small">行业底分（31 个申万一级行业，人工打分）＋政策事件衰减加成。行业表是人工判断而非接口数据，是本系统唯一的主观输入，已在看板原样公开。</td>
+</tr><tr>
+<td class="l"><b>3. 美联储潮汐（全球流动性松紧）</b><br>
+  <span class="muted small">美联储模块　·　宏观择时规则</span></td>
+<td class="l"><span class="tag ok">短端成立</span></td>
+<td class="l">涨潮(≥60)<br><span class="muted small">n=35　前瞻均值 3/6/12 月：1.36% / 2.34% / 3.66%　胜率 54.3% / 54.3% / 51.4%</span></td>
+<td class="l">退潮(&lt;45)<br><span class="muted small">n=41　前瞻均值 3/6/12 月：-1.08% / 1.88% / 4.11%　胜率 39.5% / 51.4% / 61.8%</span></td>
+<td class="l small">退潮期 3 个月前瞻收益显著低于涨潮期，短端方向与说法一致；12 个月维度差异消失，说明它更像短周期择时信号而非长期信号。</td>
+</tr><tr>
+<td class="l"><b>4. GDP、PMI 与股市正相关；PMI 大幅超 50 或处于上升阶段，股市大概率上涨</b><br>
+  <span class="muted small">PMI + GDP 模块　·　宏观择时规则</span></td>
+<td class="l"><span class="tag warn">部分成立、部分证伪</span></td>
+<td class="l">≥51.5 强扩张<br><span class="muted small">n=95　前瞻均值 3/6/12 月：0.91% / 4.19% / 7.22%　胜率 46.3% / 48.4% / 51.6%</span></td>
+<td class="l">&lt;50 收缩<br><span class="muted small">n=31　前瞻均值 3/6/12 月：5.27% / 4.82% / 10.52%　胜率 75.9% / 60.7% / 75.0%</span></td>
+<td class="l small">PMI≥51.5 的 12 个月前瞻收益略高于全样本，方向对但幅度有限；反倒是 PMI&lt;50（收缩）时 3 个月胜率高达 75.9%，比扩张期更好——这是「坏消息→政策宽松→估值修复」的逆势效应，与「PMI 高才涨」相反。GDP 高于近年均值时 12 个月收益反而低于均值以下，正相关在 A 股不成立。</td>
+</tr><tr>
+<td class="l"><b>5. CPI 涨得快利好股市和债市，涨得慢不利于股市和债市</b><br>
+  <span class="muted small">CPI 模块　·　宏观择时规则</span></td>
+<td class="l"><span class="tag bad">被证伪（方向相反）</span></td>
+<td class="l">涨得快<br><span class="muted small">n=61　前瞻均值 3/6/12 月：-2.20% / 1.77% / 3.97%　胜率 39.3% / 48.3% / 50.9%</span></td>
+<td class="l">涨得慢<br><span class="muted small">n=64　前瞻均值 3/6/12 月：4.05% / 5.44% / 7.54%　胜率 58.1% / 56.5% / 54.1%</span></td>
+<td class="l small">样本内「涨得快」的 3 个月前瞻收益为负、胜率不足 40%；「涨得慢」反而是收益最好的一档。A 股对通胀的定价是「通胀上行→货币收紧→杀估值」，所以 CPI 加速是利空。代码仍按原规则保留该模块，但报告与看板都标注了证伪结论。</td>
+</tr><tr>
+<td class="l"><b>6. PPI 下跌到一半，股市会领先上涨</b><br>
+  <span class="muted small">PPI 模块　·　宏观择时规则</span></td>
+<td class="l"><span class="tag ok">强烈成立</span></td>
+<td class="l">半山腰(35%~65%)<br><span class="muted small">n=48　前瞻均值 3/6/12 月：1.12% / 6.83% / 22.36%　胜率 44.4% / 53.5% / 69.8%</span></td>
+<td class="l"><span class="muted">—</span></td>
+<td class="l small">PPI 回撤到周期一半（35%~65% 区间）时，12 个月前瞻平均收益远超全样本，胜率接近 70%。这是全部规则里区分度最强的一条，因此 PPI 在宏观权重里给到 0.25。</td>
+</tr><tr>
+<td class="l"><b>7. PPI 到底部时，股市已经到顶峰</b><br>
+  <span class="muted small">PPI 模块　·　宏观择时规则</span></td>
+<td class="l"><span class="tag ok">成立</span></td>
+<td class="l">底部区(≥85%)<br><span class="muted small">n=39　前瞻均值 3/6/12 月：1.54% / -0.55% / -0.51%　胜率 48.7% / 43.6% / 48.7%</span></td>
+<td class="l">高位区(&lt;35%)<br><span class="muted small">n=50　前瞻均值 3/6/12 月：-2.66% / -4.24% / -6.99%　胜率 42.0% / 30.0% / 30.0%</span></td>
+<td class="l small">回撤≥85%（逼近周期底部）时前瞻收益转负；而 PPI 处于高位（回撤&lt;35%）时12 个月收益为负、胜率仅 30%。两条合起来支持「PPI 见底≈股市见顶」的钟形判断，也是本系统给 PPI 用钟形曲线而非单调打分的原因。</td>
+</tr></tbody></table></div>
+<p class="small muted">表格里的实测数字来自 2011-01 至 2026-09、共 189 个月度样本的
+前瞻收益统计（回测A）。<b>「证伪」不是不实现</b>——代码仍按你的规则打分，但结论如实标注，
+免得把一条在 A 股历史上方向相反的说法当成买入理由。</p>
+</div>
+</div><div id="sec-macro_bt">
+<h2>四、宏观规则明细（回测A：这些说法在历史上成立吗）</h2>
+<div class="card">
+<p class="small muted">{&#x27;行数&#x27;: 189, &#x27;区间&#x27;: &#x27;2011-01 ~ 2026-09&#x27;, &#x27;基准(沪深300)&#x27;: {&#x27;3月均值%&#x27;: 1.18, &#x27;6月均值%&#x27;: 2.57, &#x27;12月均值%&#x27;: 5.76}}</p>
+<p class="small">做法：把 2011-01 起的每个自然月末当作一个决策点，只喂给它当时能看到的宏观数据，
+用<b>与实盘完全相同</b>的打分函数判定状态，再看沪深300 之后 3／6／12 个月的实际涨跌。
+这样「回测」和「实盘」不可能出现两套逻辑。</p>
+<h3>PMI水平</h3><div class="scroll" style="max-height:none"><table><thead><tr><th class="l">状态</th><th class="">样本数</th><th class="">3月均值%</th><th class="">3月胜率%</th><th class="">6月均值%</th><th class="">6月胜率%</th><th class="">12月均值%</th><th class="">12月胜率%</th></tr></thead><tbody><tr><td class="l">50~51.5 温和扩张</td><td>63.0</td><td>-0.33</td><td>45.2</td><td>-1.02</td><td>51.7</td><td>1.40</td><td>51.7</td></tr><tr><td class="l">&lt;50 收缩</td><td>31.0</td><td>5.27</td><td>75.9</td><td>4.82</td><td>60.7</td><td>10.52</td><td>75.0</td></tr><tr><td class="l">≥51.5 强扩张</td><td>95.0</td><td>0.91</td><td>46.3</td><td>4.19</td><td>48.4</td><td>7.22</td><td>51.6</td></tr><tr style="background:#f7faff"><td class="l"><b>【全样本基准】</b></td><td>189.0</td><td>1.18</td><td>50.5</td><td>2.57</td><td>51.4</td><td>5.76</td><td>54.8</td></tr></tbody></table></div><h3>PMI动量</h3><div class="scroll" style="max-height:none"><table><thead><tr><th class="l">状态</th><th class="">样本数</th><th class="">3月均值%</th><th class="">3月胜率%</th><th class="">6月均值%</th><th class="">6月胜率%</th><th class="">12月均值%</th><th class="">12月胜率%</th></tr></thead><tbody><tr><td class="l">上升阶段</td><td>69.0</td><td>-0.92</td><td>40.6</td><td>2.09</td><td>47.0</td><td>8.14</td><td>56.1</td></tr><tr><td class="l">下行阶段</td><td>74.0</td><td>3.22</td><td>53.4</td><td>3.98</td><td>53.4</td><td>5.89</td><td>51.4</td></tr><tr><td class="l">走平</td><td>46.0</td><td>1.08</td><td>61.4</td><td>0.97</td><td>54.5</td><td>1.49</td><td>59.0</td></tr><tr style="background:#f7faff"><td class="l"><b>【全样本基准】</b></td><td>189.0</td><td>1.18</td><td>50.5</td><td>2.57</td><td>51.4</td><td>5.76</td><td>54.8</td></tr></tbody></table></div><h3>CPI速度</h3><div class="scroll" style="max-height:none"><table><thead><tr><th class="l">状态</th><th class="">样本数</th><th class="">3月均值%</th><th class="">3月胜率%</th><th class="">6月均值%</th><th class="">6月胜率%</th><th class="">12月均值%</th><th class="">12月胜率%</th></tr></thead><tbody><tr><td class="l">基本走平</td><td>64.0</td><td>1.62</td><td>54.0</td><td>0.46</td><td>49.2</td><td>5.65</td><td>59.3</td></tr><tr><td class="l">涨得快</td><td>61.0</td><td>-2.20</td><td>39.3</td><td>1.77</td><td>48.3</td><td>3.97</td><td>50.9</td></tr><tr><td class="l">涨得慢</td><td>64.0</td><td>4.05</td><td>58.1</td><td>5.44</td><td>56.5</td><td>7.54</td><td>54.1</td></tr><tr style="background:#f7faff"><td class="l"><b>【全样本基准】</b></td><td>189.0</td><td>1.18</td><td>50.5</td><td>2.57</td><td>51.4</td><td>5.76</td><td>54.8</td></tr></tbody></table></div><h3>PPI回撤</h3><div class="scroll" style="max-height:none"><table><thead><tr><th class="l">状态</th><th class="">样本数</th><th class="">3月均值%</th><th class="">3月胜率%</th><th class="">6月均值%</th><th class="">6月胜率%</th><th class="">12月均值%</th><th class="">12月胜率%</th></tr></thead><tbody><tr><td class="l">半山腰(35%~65%)</td><td>48.0</td><td>1.12</td><td>44.4</td><td>6.83</td><td>53.5</td><td>22.36</td><td>69.8</td></tr><tr><td class="l">底部区(≥85%)</td><td>39.0</td><td>1.54</td><td>48.7</td><td>-0.55</td><td>43.6</td><td>-0.51</td><td>48.7</td></tr><tr><td class="l">深跌区(65%~85%)</td><td>52.0</td><td>4.64</td><td>65.4</td><td>8.05</td><td>76.5</td><td>9.50</td><td>73.3</td></tr><tr><td class="l">高位区(&lt;35%)</td><td>50.0</td><td>-2.66</td><td>42.0</td><td>-4.24</td><td>30.0</td><td>-6.99</td><td>30.0</td></tr><tr style="background:#f7faff"><td class="l"><b>【全样本基准】</b></td><td>189.0</td><td>1.18</td><td>50.5</td><td>2.57</td><td>51.4</td><td>5.76</td><td>54.8</td></tr></tbody></table></div><h3>GDP动能</h3><div class="scroll" style="max-height:none"><table><thead><tr><th class="l">状态</th><th class="">样本数</th><th class="">3月均值%</th><th class="">3月胜率%</th><th class="">6月均值%</th><th class="">6月胜率%</th><th class="">12月均值%</th><th class="">12月胜率%</th></tr></thead><tbody><tr><td class="l">低于近年均值</td><td>132.0</td><td>2.03</td><td>54.3</td><td>4.02</td><td>53.2</td><td>8.09</td><td>55.8</td></tr><tr><td class="l">高于近年均值</td><td>57.0</td><td>-0.76</td><td>42.1</td><td>-0.62</td><td>47.4</td><td>0.86</td><td>52.6</td></tr><tr style="background:#f7faff"><td class="l"><b>【全样本基准】</b></td><td>189.0</td><td>1.18</td><td>50.5</td><td>2.57</td><td>51.4</td><td>5.76</td><td>54.8</td></tr></tbody></table></div><h3>美联储潮汐</h3><div class="scroll" style="max-height:none"><table><thead><tr><th class="l">状态</th><th class="">样本数</th><th class="">3月均值%</th><th class="">3月胜率%</th><th class="">6月均值%</th><th class="">6月胜率%</th><th class="">12月均值%</th><th class="">12月胜率%</th></tr></thead><tbody><tr><td class="l">中性(45~60)</td><td>30.0</td><td>2.11</td><td>43.3</td><td>0.78</td><td>43.3</td><td>6.64</td><td>56.0</td></tr><tr><td class="l">涨潮(≥60)</td><td>35.0</td><td>1.36</td><td>54.3</td><td>2.34</td><td>54.3</td><td>3.66</td><td>51.4</td></tr><tr><td class="l">退潮(&lt;45)</td><td>41.0</td><td>-1.08</td><td>39.5</td><td>1.88</td><td>51.4</td><td>4.11</td><td>61.8</td></tr><tr style="background:#f7faff"><td class="l"><b>【全样本基准】</b></td><td>189.0</td><td>1.18</td><td>50.5</td><td>2.57</td><td>51.4</td><td>5.76</td><td>54.8</td></tr></tbody></table></div>
+</div>
+</div><div id="sec-policy"><h2>九、政策红利打分依据（主观成分，全量公开）</h2><div class="card"><p class="small">政策模块 = 行业底分（上限 80）+ 政策事件加成（上限 20）。事件按半衰期 180 天指数衰减，且<b>只使用 as_of 之前的事件</b>。下表是人工判断，不是接口数据——本系统唯一的主观输入，请自行复核。</p><h3>行业政策底分</h3><div class="scroll"><table><thead><tr><th class="l">行业</th><th>分数</th><th class="l">依据</th></tr></thead><tbody><tr><td class="l">电子</td><td>96</td><td class="l small">半导体与集成电路列为国家战略首位，大基金与税收优惠持续加码</td></tr><tr><td class="l">计算机</td><td>92</td><td class="l small">信创、人工智能、数据要素均属国家级战略方向</td></tr><tr><td class="l">电力设备</td><td>90</td><td class="l small">新能源装机与特高压持续受双碳目标驱动</td></tr><tr><td class="l">通信</td><td>88</td><td class="l small">5G/6G 与算力网络纳入新型基础设施，运营商资本开支受政策引导</td></tr><tr><td class="l">国防军工</td><td>87</td><td class="l small">国防预算稳定增长，装备现代化为长期确定方向</td></tr><tr><td class="l">机械设备</td><td>82</td><td class="l small">高端装备国产替代与工业母机专项支持</td></tr><tr><td class="l">汽车</td><td>80</td><td class="l small">新能源汽车购置税减免与以旧换新政策延续</td></tr><tr><td class="l">有色金属</td><td>74</td><td class="l small">新能源金属与战略小金属受资源安全政策支持</td></tr><tr><td class="l">医药生物</td><td>72</td><td class="l small">创新药审批加速与医保谈判并存，创新受益、仿制承压</td></tr><tr><td class="l">家用电器</td><td>70</td><td class="l small">以旧换新与家电下乡补贴直接拉动需求</td></tr><tr><td class="l">环保</td><td>70</td><td class="l small">美丽中国与双碳目标带来持续订单</td></tr><tr><td class="l">农林牧渔</td><td>68</td><td class="l small">粮食安全与种业振兴为长期政策主线</td></tr><tr><td class="l">公用事业</td><td>66</td><td class="l small">电力市场化改革与绿电消纳政策受益</td></tr><tr><td class="l">社会服务</td><td>64</td><td class="l small">文旅消费受促消费政策支持，波动较大</td></tr><tr><td class="l">食品饮料</td><td>62</td><td class="l small">促消费政策托底，但无专项产业扶持</td></tr><tr><td class="l">基础化工</td><td>60</td><td class="l small">新材料方向受支持，传统化工受能耗双控约束</td></tr><tr><td class="l">交通运输</td><td>60</td><td class="l small">物流降本与基建投资受益，政策中性偏支持</td></tr><tr><td class="l">商贸零售</td><td>58</td><td class="l small">消费刺激政策受益，但行业竞争格局分散</td></tr><tr><td class="l">银行</td><td>58</td><td class="l small">让利实体与净息差收窄压力，政策以稳定为主</td></tr><tr><td class="l">煤炭</td><td>56</td><td class="l small">能源保供要求下产量受控，双碳长期压制</td></tr><tr><td class="l">非银金融</td><td>56</td><td class="l small">资本市场改革利好券商，但监管趋严</td></tr><tr><td class="l">石油石化</td><td>54</td><td class="l small">能源安全托底，但双碳目标限制长期扩张</td></tr><tr><td class="l">纺织服饰</td><td>52</td><td class="l small">出口退税与产业转移政策，无显著倾斜</td></tr><tr><td class="l">轻工制造</td><td>52</td><td class="l small">政策中性</td></tr><tr><td class="l">美容护理</td><td>50</td><td class="l small">政策中性，主要由消费景气驱动</td></tr><tr><td class="l">综合</td><td>50</td><td class="l small">无明确行业政策方向</td></tr><tr><td class="l">钢铁</td><td>48</td><td class="l small">产能置换与超低排放改造带来成本压力，属调控行业</td></tr><tr><td class="l">建筑装饰</td><td>46</td><td class="l small">地方化债约束基建扩张，政策支持力度下降</td></tr><tr><td class="l">建筑材料</td><td>44</td><td class="l small">受地产链拖累，政策以稳为主而非扶持</td></tr><tr><td class="l">房地产</td><td>42</td><td class="l small">政策底已现但基调仍是「房住不炒」，去库存压力未解</td></tr></tbody></table></div><h3>政策事件（46 条）</h3><div class="scroll"><table><thead><tr><th class="l">日期</th><th class="l">事件</th><th class="l">行业</th><th>强度</th><th class="l">备注</th></tr></thead><tbody><tr><td class="l">2026-10-08 00:00:00</td><td class="l">中央金融机构注资特别国债一期发行</td><td class="l">银行</td><td>0.60</td><td class="l small">竞争性招标1500亿元支持国有大行</td></tr><tr><td class="l">2026-09-30 00:00:00</td><td class="l">2500亿元以旧换新资金全部下达</td><td class="l">家用电器</td><td>0.50</td><td class="l small">超长期特别国债资金已全部下达</td></tr><tr><td class="l">2026-09-28 00:00:00</td><td class="l">国常会研究宏观政策发力提效</td><td class="l">全市场</td><td>0.60</td><td class="l small">推出增量政策并研究稳定房地产市场</td></tr><tr><td class="l">2026-07-31 00:00:00</td><td class="l">国常会核准四个核电项目8台机组</td><td class="l">公用事业</td><td>0.55</td><td class="l small">总投资超1700亿元</td></tr><tr><td class="l">2026-07-30 00:00:00</td><td class="l">中央政治局会议部署下半年经济工作</td><td class="l">全市场</td><td>0.70</td><td class="l small">加大逆周期调节并出台增量政策</td></tr><tr><td class="l">2026-06-29 00:00:00</td><td class="l">国常会听取人工智能发展情况汇报</td><td class="l">电子</td><td>0.60</td><td class="l small">加快超大规模智算集群建设</td></tr><tr><td class="l">2026-05-28 00:00:00</td><td class="l">国务院印发《城市更新十五五规划》</td><td class="l">建筑装饰</td><td>0.60</td><td class="l small">部署14项重大工程和行动</td></tr><tr><td class="l">2026-05-20 00:00:00</td><td class="l">《2026年数字经济发展工作要点》印发</td><td class="l">通信</td><td>0.45</td><td class="l small">部署数字经济与算力基础设施建设</td></tr><tr><td class="l">2026-04-28 00:00:00</td><td class="l">中央政治局会议分析研究经济形势</td><td class="l">全市场</td><td>0.70</td><td class="l small">全面实施人工智能+行动</td></tr><tr><td class="l">2026-04-17 00:00:00</td><td class="l">四部门联合召开光伏行业座谈会</td><td class="l">电力设备</td><td>0.55</td><td class="l small">推进产能调控与兼并重组</td></tr><tr><td class="l">2026-03-10 00:00:00</td><td class="l">2026年国防支出预算增长6.9%</td><td class="l">国防军工</td><td>0.60</td><td class="l small">全国国防支出1.94万亿元</td></tr><tr><td class="l">2026-03-05 00:00:00</td><td class="l">2026年政府工作报告</td><td class="l">全市场</td><td>0.85</td><td class="l small">赤字率4%左右并发行1.3万亿元特别国债</td></tr><tr><td class="l">2026-02-03 00:00:00</td><td class="l">《培育数据流通服务机构加快数据要素市场化价值化的意见》</td><td class="l">计算机</td><td>0.55</td><td class="l small">支持数据资产入表与数据跨境流通</td></tr><tr><td class="l">2026-02-03 00:00:00</td><td class="l">2026年中央一号文件发布</td><td class="l">农林牧渔</td><td>0.65</td><td class="l small">提出种业振兴与生物育种产业化</td></tr><tr><td class="l">2026-01-19 00:00:00</td><td class="l">央行下调结构性货币政策工具利率</td><td class="l">全市场</td><td>0.60</td><td class="l small">再贷款再贴现利率下调0.25个百分点</td></tr><tr><td class="l">2025-12-18 00:00:00</td><td class="l">海南自贸港启动全岛封关运作</td><td class="l">商贸零售</td><td>0.60</td><td class="l small">全岛封关带来免税与贸易增量</td></tr><tr><td class="l">2025-12-16 00:00:00</td><td class="l">证监会党委会议部署资本市场十五五规划</td><td class="l">非银金融</td><td>0.60</td><td class="l small">启动实施深化创业板改革</td></tr><tr><td class="l">2025-12-11 00:00:00</td><td class="l">中央经济工作会议部署2026年经济工作</td><td class="l">全市场</td><td>0.88</td><td class="l small">明确灵活高效运用降准降息</td></tr><tr><td class="l">2025-12-10 00:00:00</td><td class="l">2025年国家医保药品目录及商保创新药目录</td><td class="l">医药生物</td><td>0.55</td><td class="l small">首版商保创新药目录纳入19个药品（发布日期待核）</td></tr><tr><td class="l">2025-12-02 00:00:00</td><td class="l">全国统一电力市场评价制度建立</td><td class="l">公用事业</td><td>0.50</td><td class="l small">自2026年起开展统一电力市场评价</td></tr><tr><td class="l">2025-12-01 00:00:00</td><td class="l">商业航天司成立</td><td class="l">国防军工</td><td>0.50</td><td class="l small">商业航天获专职管理机构支持（媒体来源待核）</td></tr><tr><td class="l">2025-10-23 00:00:00</td><td class="l">二十届四中全会通过十五五规划建议</td><td class="l">全市场</td><td>0.75</td><td class="l small">部署十五五现代化产业体系建设</td></tr><tr><td class="l">2025-10-09 00:00:00</td><td class="l">商务部对境外相关稀土物项实施出口管制</td><td class="l">有色金属</td><td>0.75</td><td class="l small">含中国成分物项再出口需许可</td></tr><tr><td class="l">2025-09-26 00:00:00</td><td class="l">《石化化工行业稳增长工作方案（2025—2026年）》</td><td class="l">基础化工</td><td>0.45</td><td class="l small">推动行业平稳增长与结构优化（日期来源待核）</td></tr><tr><td class="l">2025-09-22 00:00:00</td><td class="l">《钢铁行业稳增长工作方案（2025—2026年）》</td><td class="l">钢铁</td><td>0.50</td><td class="l small">严禁新增产能并精准调控产量</td></tr><tr><td class="l">2025-09-05 00:00:00</td><td class="l">商务部等9部门扩大服务消费若干政策措施</td><td class="l">社会服务</td><td>0.60</td><td class="l small">扩大电信医疗教育开放并设中小学春秋假</td></tr><tr><td class="l">2025-08-26 00:00:00</td><td class="l">国务院《关于深入实施人工智能+行动的意见》</td><td class="l">计算机</td><td>0.85</td><td class="l small">提出2027年智能体应用普及率超70%</td></tr><tr><td class="l">2025-08-12 00:00:00</td><td class="l">个人消费贷款财政贴息政策实施方案</td><td class="l">汽车</td><td>0.55</td><td class="l small">家用汽车等消费贷款年贴息1个百分点</td></tr><tr><td class="l">2025-07-30 00:00:00</td><td class="l">中央政治局会议部署下半年经济工作</td><td class="l">全市场</td><td>0.65</td><td class="l small">宏观政策持续发力并适时加力</td></tr><tr><td class="l">2025-07-28 00:00:00</td><td class="l">中办国办印发《育儿补贴制度实施方案》</td><td class="l">社会服务</td><td>0.50</td><td class="l small">三周岁前每孩每年补贴3600元</td></tr><tr><td class="l">2025-07-15 00:00:00</td><td class="l">中央城市工作会议举行</td><td class="l">房地产</td><td>0.60</td><td class="l small">城市发展转向存量提质增效</td></tr><tr><td class="l">2025-07-03 00:00:00</td><td class="l">工信部召开光伏行业座谈会</td><td class="l">电力设备</td><td>0.55</td><td class="l small">综合治理低价无序竞争并退出落后产能</td></tr><tr><td class="l">2025-07-01 00:00:00</td><td class="l">中央财经委员会第六次会议</td><td class="l">全市场</td><td>0.55</td><td class="l small">纵深推进全国统一大市场建设</td></tr><tr><td class="l">2025-06-30 00:00:00</td><td class="l">《支持创新药高质量发展的若干措施》出台</td><td class="l">医药生物</td><td>0.75</td><td class="l small">五方面十六条支持创新药全链条发展</td></tr><tr><td class="l">2025-06-18 00:00:00</td><td class="l">证监会发布科创板1+6改革措施</td><td class="l">全市场</td><td>0.70</td><td class="l small">重启未盈利企业第五套标准并设科创成长层</td></tr><tr><td class="l">2025-05-07 00:00:00</td><td class="l">央行宣布降准0.5个百分点并下调政策利率</td><td class="l">全市场</td><td>0.60</td><td class="l small">流动性继续宽松</td></tr><tr><td class="l">2025-03-05 00:00:00</td><td class="l">政府工作报告强调培育未来产业与商业航天</td><td class="l">国防军工</td><td>0.55</td><td class="l small">新增量方向</td></tr><tr><td class="l">2025-03-05 00:00:00</td><td class="l">政府工作报告提出「人工智能+」行动</td><td class="l">电子</td><td>0.65</td><td class="l small">国产算力芯片与半导体自主可控</td></tr><tr><td class="l">2025-03-05 00:00:00</td><td class="l">政府工作报告提出「人工智能+」行动</td><td class="l">计算机</td><td>0.70</td><td class="l small">算力、模型与应用端同时受益</td></tr><tr><td class="l">2025-02-17 00:00:00</td><td class="l">民营企业座谈会召开</td><td class="l">全市场</td><td>0.60</td><td class="l small">提振民营企业与科技企业信心</td></tr><tr><td class="l">2025-01-08 00:00:00</td><td class="l">发改委加力扩围「两新」政策</td><td class="l">汽车</td><td>0.65</td><td class="l small">以旧换新补贴范围与力度扩大</td></tr><tr><td class="l">2025-01-08 00:00:00</td><td class="l">发改委加力扩围「两新」政策</td><td class="l">家用电器</td><td>0.65</td><td class="l small">以旧换新补贴范围与力度扩大</td></tr><tr><td class="l">2024-11-15 00:00:00</td><td class="l">证监会发布上市公司市值管理指引</td><td class="l">全市场</td><td>0.50</td><td class="l small">利好长期破净与低估值央国企</td></tr><tr><td class="l">2024-09-26 00:00:00</td><td class="l">中央政治局会议提出努力提振资本市场</td><td class="l">全市场</td><td>0.85</td><td class="l small">定调级别最高的一次资本市场表述</td></tr><tr><td class="l">2024-09-24 00:00:00</td><td class="l">央行降准降息并创设互换便利与回购增持再贷款</td><td class="l">全市场</td><td>0.90</td><td class="l small">标志性政策组合拳，直接为股市提供流动性</td></tr><tr><td class="l">2024-04-12 00:00:00</td><td class="l">国务院发布新「国九条」</td><td class="l">全市场</td><td>0.60</td><td class="l small">资本市场基础制度改革，强化分红与退市</td></tr></tbody></table></div></div></div></main><script src="site.js"></script><script src="app.js"></script></body></html>
