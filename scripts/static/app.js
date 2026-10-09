@@ -340,7 +340,7 @@
       summary: {},
       meta: {
         count: codes.length,
-        quote_time: qt ? qt.slice(11) : '',
+        quote_time: qt || '',
         error: err || null,
         source: 'tencent'
       },
@@ -759,7 +759,7 @@
   function boot() {
     loadLedger();
     var bs = document.getElementById('__buildstate');
-    if (bs) { bs.textContent = '发布于 ' + (SITE.built_at || '—'); }
+    if (bs) { bs.textContent = '评分计算于 ' + (SITE.built_at || '—') + '（北京时间）'; }
     if (document.getElementById('__ledger') || document.getElementById('__kpi')) { window.__renderAll(); }
     var d = el('f_date'); if (d && !d.value) { d.value = today(); }
     var pd = el('__pdate'); if (pd && !pd.value) { pd.value = today(); }

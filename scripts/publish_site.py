@@ -33,11 +33,13 @@ rules.html app.js site.js report.md scores.csv tracking.csv macro_context.json
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import json
 import re
 import shutil
 import sys
 import time
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -214,7 +216,7 @@ def site_js(res: dict, cfg, thr: dict | None = None) -> str:
     js_plan["reduce_ratio"] = reduce_ratio
 
     payload = {
-        "built_at": time.strftime("%Y-%m-%d %H:%M"),
+        "built_at": datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M"),
         "as_of": _s(flags.get("as_of")),
         "interval": int(webui.LIVE_INTERVAL),
         "fees": {"commission_rate": fees.commission_rate,
