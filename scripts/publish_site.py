@@ -57,7 +57,8 @@ from touzi.data.stock import fetch_valuation_history  # noqa: E402
 from touzi.portfolio import load_fees  # noqa: E402
 from touzi.util import Cache, is_live, setup_logging  # noqa: E402
 
-SITE_JS = '<script src="site.js"></script><script src="app.js"></script>'
+SITE_JS = ('<script src="site.js?v=__ASSET_VERSION__"></script>'
+           '<script src="app.js?v=__ASSET_VERSION__"></script>')
 NAV = [(href, key, label) for href, key, label in webui.NAV_ITEMS]
 
 # 页面文件名（不带 .html）：与本机版的 8 条路由一一对应
@@ -333,6 +334,8 @@ def my_body(cfg) -> str:
 # --------------------------------------------------------------------------- #
 def export(res: dict, cfg, dist: Path) -> list[Path]:
     dist.mkdir(parents=True, exist_ok=True)
+    # 每次发布生成新的查询参数，绕过浏览器和 Pages CDN 对旧 JS 的短时缓存。
+    scripts = SITE_JS.replace("__ASSET_VERSION__", str(int(time.time())))
     # 静态资源先摆好：页面里的 <script src> 是相对路径
     shutil.copy2(ROOT / "scripts" / "static" / "app.js", dist / "app.js")
     (dist / "site.js").write_text(site_js(res, cfg), encoding="utf-8")
@@ -358,7 +361,7 @@ def export(res: dict, cfg, dist: Path) -> list[Path]:
             body = webui.view_data(res)
         else:
             body = webui.view_rules(res, cfg)
-        html = webui.page(label, key, body, cfg=cfg, script=SITE_JS)
+        html = webui.page(label, key, body, cfg=cfg, script=scripts)
         html = relink(html)
         p = dist / f"{name}.html"
         p.write_text(html, encoding="utf-8")
@@ -376,7 +379,7 @@ def export(res: dict, cfg, dist: Path) -> list[Path]:
         relink(webui.page("找不到这个页面", "", webui.hero(
             "找不到这个页面",
             "地址可能写错了。回到总览重新点一次导航即可。",
-            [("/", "回到总览")]), cfg=cfg, script=SITE_JS)),
+            [("/", "回到总览")]), cfg=cfg, script=scripts)),
         encoding="utf-8")
     written.append(dist / "404.html")
     return written
