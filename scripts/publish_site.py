@@ -55,7 +55,7 @@ import webui  # noqa: E402
 from touzi.config import load_config  # noqa: E402
 from touzi.data.stock import fetch_valuation_history  # noqa: E402
 from touzi.portfolio import load_fees  # noqa: E402
-from touzi.util import Cache, is_live, setup_logging  # noqa: E402
+from touzi.util import Cache, cached_fetch, is_live, setup_logging  # noqa: E402
 
 SITE_JS = ('<script src="site.js?v=__ASSET_VERSION__"></script>'
            '<script src="app.js?v=__ASSET_VERSION__"></script>')
@@ -158,7 +158,72 @@ def valuation_thresholds(cache, codes, plan: dict, ttl_days: float) -> dict[str,
     return out
 
 
-def site_js(res: dict, cfg, thr: dict | None = None) -> str:
+BENCHMARK_ETFS = (
+    ("510300", "沪深300 ETF", "#60a5fa"),
+    ("510050", "上证50 ETF", "#f59e0b"),
+    ("513500", "标普500 ETF", "#34d399"),
+    ("513100", "纳指 ETF", "#f472b6"),
+)
+
+
+def benchmark_history(cache: Cache, ttl_days: float = 1.0) -> dict:
+    """给浏览器端收益对比烘入四只 ETF 的周线。
+
+    用可成交的人民币 ETF，而不是不可直接买入的指数点位。周线足以画长期比较图，
+    同时把静态 ``site.js`` 控制在很小的体积内。单只抓取失败不会拖垮整站发布。
+    """
+    instruments = []
+    for code, label, color in BENCHMARK_ETFS:
+        try:
+            import requests
+
+            def _fetch_weekly(code=code):
+                symbol = f"sh{code}"
+                resp = requests.get(
+                    "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get",
+                    params={"param": f"{symbol},week,,,1000,qfq"},
+                    timeout=30,
+                    headers={"User-Agent": "Mozilla/5.0 touzi/0.1"},
+                )
+                resp.raise_for_status()
+                bag = ((resp.json().get("data") or {}).get(symbol) or {})
+                rows = bag.get("qfqweek") or bag.get("week") or []
+                if not rows:
+                    raise RuntimeError("腾讯 ETF 周线为空")
+                return pd.DataFrame({"date": [r[0] for r in rows],
+                                     "close": [r[2] for r in rows]})
+
+            raw = cached_fetch(
+                cache, f"benchmark_etf_qfqweek_sh{code}_v1", _fetch_weekly,
+                ttl_days=ttl_days, retries=1, sleep=1.0,
+            )
+            df = raw.copy()
+            df["date"] = pd.to_datetime(df.get("date"), errors="coerce")
+            df["close"] = pd.to_numeric(df.get("close"), errors="coerce")
+            close = df.dropna(subset=["date", "close"]).set_index("date")["close"]
+            close = close[close.index >= pd.Timestamp("2013-01-01")]
+            close = close[close > 0]
+            weekly = close
+            weekly = weekly[~weekly.index.duplicated(keep="last")].sort_index()
+            instruments.append({
+                "code": code, "label": label, "color": color,
+                "prices": [[d.strftime("%Y-%m-%d"), round(float(v), 4)]
+                           for d, v in weekly.items()],
+            })
+        except Exception as exc:  # noqa: BLE001
+            print(f"  ! 对比基准 {label}({code}) 历史行情不可用：{exc}")
+    last_dates = [x["prices"][-1][0] for x in instruments if x.get("prices")]
+    return {
+        "as_of": max(last_dates) if last_dates else "",
+        "instruments": instruments,
+        "lot_size": 100,
+        # ETF 在交易所买卖：沿用券商佣金（含最低佣金），不收股票印花税和过户费。
+        "fee_note": "ETF 买卖佣金按当前配置计算（含最低佣金）；不计股票印花税和过户费。",
+    }
+
+
+def site_js(res: dict, cfg, thr: dict | None = None,
+            benchmarks: dict | None = None) -> str:
     """生成 ``site.js``：静态站唯一的数据来源（结论 + 费率 + 减仓比例）。"""
     fees = load_fees(cfg)
     plan = cfg.get("plan", {}) or {}
@@ -229,6 +294,7 @@ def site_js(res: dict, cfg, thr: dict | None = None) -> str:
         # 有了它，浏览器就能用实时 PE 精确判「分位 ≥ 80%」这条卖出规则。
         "thr": thr or {},
         "entries": entries,
+        "benchmarks": benchmarks or {"as_of": "", "instruments": [], "lot_size": 100},
     }
     return ("/* 由 scripts/publish_site.py 生成，不要手改。\n"
             "   结论是发布那一刻的；价格由浏览器直接向腾讯行情取，是实时的。 */\n"
@@ -321,10 +387,16 @@ def my_body(cfg) -> str:
         "「建议动作」来自发布时的规则结论；「到账金额」「扣费后净盈利」按你自己填的买入价实时算。"))
     body.append('<h2>实时盈亏</h2><div class="grid grid3" id="__kpi"></div>')
     body.append(webui.card(
-        "④ 备份 / 迁移 / 换浏览器",
+        "④ 与四等分指数 ETF 组合对比",
+        '<div id="__compare" class="compare-wrap">'
+        '<p class="muted small">正在读取持仓并计算历史对比…</p></div>',
+        "按你的每笔实际投入日期与含费金额，同步把资金四等分投入沪深300、上证50、标普500和纳指 ETF；"
+        "采用整手交易并保留未成交现金。"))
+    body.append(webui.card(
+        "⑤ 备份 / 迁移 / 换浏览器",
         _MY_TOOLS,
         "持仓不上传，所以删缓存就没了——想留就点上面的「导出」。"))
-    body.append(webui.card("⑤ 手续费口径", webui._fees_table(fees),
+    body.append(webui.card("⑥ 手续费口径", webui._fees_table(fees),
                            "和本机版用的是同一份配置（config/settings.toml 的 [fees]）。"))
     return "".join(body)
 
@@ -332,13 +404,13 @@ def my_body(cfg) -> str:
 # --------------------------------------------------------------------------- #
 # 导出
 # --------------------------------------------------------------------------- #
-def export(res: dict, cfg, dist: Path) -> list[Path]:
+def export(res: dict, cfg, dist: Path, benchmarks: dict | None = None) -> list[Path]:
     dist.mkdir(parents=True, exist_ok=True)
     # 每次发布生成新的查询参数，绕过浏览器和 Pages CDN 对旧 JS 的短时缓存。
     scripts = SITE_JS.replace("__ASSET_VERSION__", str(int(time.time())))
     # 静态资源先摆好：页面里的 <script src> 是相对路径
     shutil.copy2(ROOT / "scripts" / "static" / "app.js", dist / "app.js")
-    (dist / "site.js").write_text(site_js(res, cfg), encoding="utf-8")
+    (dist / "site.js").write_text(site_js(res, cfg, benchmarks=benchmarks), encoding="utf-8")
     (dist / ".nojekyll").write_text("", encoding="utf-8")
 
     written: list[Path] = [dist / "app.js", dist / "site.js"]
@@ -428,6 +500,8 @@ def verify(dist: Path, limit: int = 60) -> list[str]:
         for mid in ("__ledger", "__live", "f_code", "f_price", "f_shares", "f_date"):
             if f'id="{mid}"' not in h:
                 bad.append(f"my.html 缺少 {mid}")
+        if 'id="__compare"' not in h:
+            bad.append("my.html 缺少收益对比挂载点 __compare")
     pick = dist / "pick.html"
     if pick.exists():
         h = pick.read_text(encoding="utf-8")
@@ -454,6 +528,9 @@ def verify(dist: Path, limit: int = 60) -> list[str]:
                 bad.append(f"site.js 的 entries 只有 {n} 只，太少了（应该上百）")
             if not d.get("built_at"):
                 bad.append("site.js 没有 built_at")
+            bench = d.get("benchmarks") or {}
+            if len(bench.get("instruments") or []) != 4:
+                bad.append("site.js 的四等分 ETF 基准数据不完整")
     return bad
 
 
@@ -481,6 +558,8 @@ def main() -> int:
     ap.add_argument("--reuse", action="store_true", help="复用已有回测结果，跳过重跑")
     ap.add_argument("--skip-backtest", action="store_true",
                     help="跳过历史回测，只更新宏观、选股、评分和网站（适合定时发布）")
+    ap.add_argument("--weekly-macro", action="store_true",
+                    help="同一北京时间自然周复用宏观评分，个股仍每次重算")
     ap.add_argument("--offline", action="store_true", help="只用缓存，不联网")
     ap.add_argument("--out", default="dist", help="导出目录（默认 dist）")
     ap.add_argument("--serve", type=int, default=0, metavar="PORT",
@@ -503,13 +582,16 @@ def main() -> int:
     args.reuse_backtest = bool(ns.reuse)
     args.skip_backtest = bool(ns.skip_backtest)
     args.skip_stocks_backtest = bool(ns.skip_backtest)
+    args.weekly_macro = bool(ns.weekly_macro)
     args.live = not ns.offline
     cfg["general"]["live"] = bool(args.live)
     cache = Cache(cfg.resolve(cfg.general.get("cache_dir", "data_cache")))
     proxy = cfg.general.get("proxy") or None
 
     res = run_all.run_once(cfg, args, cache, proxy, out_dir)
-    written = export(res, cfg, dist)
+    print("\n准备四等分 ETF 对比周线…")
+    benchmarks = benchmark_history(cache, ttl_days=1.0)
+    written = export(res, cfg, dist, benchmarks=benchmarks)
     bad = verify(dist)
 
     total = sum(p.stat().st_size for p in dist.rglob("*") if p.is_file())
@@ -535,3 +617,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

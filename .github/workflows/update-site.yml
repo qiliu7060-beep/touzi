@@ -3,15 +3,9 @@ name: Update and deploy investment site
 on:
   workflow_dispatch:
   schedule:
-    # A 股交易日上午：北京时间 09:25、09:55、10:25、10:55、11:25。
-    - cron: "25,55 1,2 * * 1-5"
-    - cron: "25 3 * * 1-5"
-    # A 股交易日下午：北京时间 13:00、13:30、14:00、14:30、15:00。
-    - cron: "0,30 5,6 * * 1-5"
-    - cron: "0 7 * * 1-5"
-    # 收盘后补算：北京时间 15:20；晚间最终更新：北京时间 18:30。
-    - cron: "20 7 * * 1-5"
-    - cron: "30 10 * * 1-5"
+    # 北京时间工作日 17:23，收盘后重新选股、重算个股评分。
+    # 宏观评分由 --weekly-macro 按北京时间自然周复用。
+    - cron: "23 9 * * 1-5"
   push:
     branches: [main]
     paths:
@@ -56,14 +50,16 @@ jobs:
           restore-keys: |
             touzi-data-v1-
 
+      - name: Check weekly macro reuse
+        run: python tests/test_weekly_macro.py
+
       - name: Recalculate data and build site
         env:
           PYTHONUTF8: "1"
           TOUZI_PROXY: ""
-        run: python scripts/publish_site.py --limit 300 --skip-backtest
+        run: python scripts/publish_site.py --limit 300 --skip-backtest --weekly-macro
 
       - name: Save final market-data cache
-        if: github.event_name != 'schedule' || github.event.schedule == '30 10 * * 1-5'
         uses: actions/cache/save@v4
         with:
           path: data_cache
@@ -88,3 +84,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+

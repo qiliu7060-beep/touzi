@@ -24,7 +24,9 @@ import argparse
 import json
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "vendor"))
@@ -75,6 +77,51 @@ def _load_stock_backtest(cfg, out_dir: Path) -> dict | None:
     }
 
 
+def _weekly_macro(cache: Cache, build, now: datetime | None = None):
+    """同一北京时间自然周复用宏观评分，周切换或快照无效时重算。"""
+    from touzi.regime import MacroContext
+    from touzi.signals.macro import RuleResult
+
+    current = now or datetime.now(ZoneInfo("Asia/Shanghai"))
+    year, week, _ = current.isocalendar()
+    week_key = f"{year}-W{week:02d}"
+    path = cache.dir / "macro_weekly_snapshot.json"
+    if path.exists():
+        try:
+            saved = json.loads(path.read_text(encoding="utf-8"))
+            if saved.get("week") == week_key:
+                data = saved["macro"]
+                rules = {}
+                for key, item in data["rules"].items():
+                    detail = {k: v for k, v in item.items()
+                              if k not in {"rule", "score", "state", "explain"}}
+                    rules[key] = RuleResult(
+                        name=item["rule"], score=float(item["score"]),
+                        state=item["state"], detail=detail, explain=item["explain"],
+                    )
+                if not rules or data.get("macro_score") is None:
+                    raise ValueError("宏观快照缺少评分")
+                return MacroContext(
+                    as_of=pd.Timestamp(data["as_of"]), results=rules,
+                    weights={k: float(v) for k, v in data["weights"].items()},
+                    macro_score=float(data["macro_score"]),
+                    position=float(data["position"]), regime=data["regime"],
+                    staleness=data.get("staleness") or {},
+                    unavailable=data.get("unavailable") or [],
+                )
+        except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError):
+            print("      宏观周快照损坏，重新计算")
+
+    macro = build()
+    if macro is not None and pd.notna(macro.macro_score):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"week": week_key, "macro": macro.as_dict()},
+                                  ensure_ascii=False, default=str), encoding="utf-8")
+        tmp.replace(path)
+    return macro
+
+
 def run_once(cfg, args, cache: Cache, proxy: str | None, out_dir: Path) -> dict:
     """跑一轮完整流程，返回本轮的关键产出（供 --watch 循环复用）。"""
     from touzi import report as R
@@ -93,11 +140,14 @@ def run_once(cfg, args, cache: Cache, proxy: str | None, out_dir: Path) -> dict:
     macro = None
     if not args.skip_macro:
         print("[1/5] 计算宏观背景分与目标仓位 …")
-        macro = build_macro_context(cfg, cache=cache, proxy=proxy, as_of=as_of)
+        build_macro = lambda: build_macro_context(cfg, cache=cache, proxy=proxy, as_of=as_of)
+        weekly_macro = bool(getattr(args, "weekly_macro", False))
+        macro = _weekly_macro(cache, build_macro) if weekly_macro else build_macro()
         (out_dir / "macro_context.json").write_text(
             json.dumps(macro.as_dict(), ensure_ascii=False, indent=2, default=str), encoding="utf-8"
         )
-        as_of = macro.as_of
+        if not weekly_macro:
+            as_of = macro.as_of
         print(f"      宏观背景分 {macro.macro_score:.1f} → 目标仓位 {macro.position * 100:.0f}%"
               f"（{macro.regime}）")
         for k, r in macro.results.items():
@@ -408,3 +458,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
