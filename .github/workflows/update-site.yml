@@ -3,8 +3,10 @@ name: Update and deploy investment site
 on:
   workflow_dispatch:
   schedule:
-    # 北京时间工作日 17:23，收盘后重新选股、重算个股评分。
+    # 北京时间工作日 09:45（开盘后）与 17:23（收盘后）重新选股、重算个股评分。
+    # GitHub 定时任务可能延迟；行情抓取失败时页面必须显示实际数据日期。
     # 宏观评分由 --weekly-macro 按北京时间自然周复用。
+    - cron: "45 1 * * 1-5"
     - cron: "23 9 * * 1-5"
 permissions:
   contents: read

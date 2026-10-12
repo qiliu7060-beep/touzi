@@ -322,6 +322,9 @@ def run_once(cfg, args, cache: Cache, proxy: str | None, out_dir: Path) -> dict:
     if len(scores):
         flags["scored"] = int(len(scores))
         flags["as_of"] = str(pd.Timestamp(as_of).date()) if as_of is not None else None
+    quotes_at = getattr(screener, "quotes_at", None)
+    flags["quote_at"] = (quotes_at.astimezone(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M")
+                         if quotes_at is not None else None)
     flags["live"] = is_live(cfg)
 
     dash = R.build_dashboard(
