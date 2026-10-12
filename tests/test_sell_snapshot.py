@@ -27,6 +27,7 @@ class SellSnapshotTests(unittest.TestCase):
         payload = json.loads(script.split("window.__SITE__ = ", 1)[1].removesuffix(";\n"))
         snapshot = payload["entries"]["000001"]["sell_snapshot"]
         self.assertTrue(any("总分" in label for label in snapshot["exit"]))
+        self.assertTrue(any("自身历史分位" in label for label in snapshot["missing"]))
         self.assertFalse(any("相对成本" in label for label in snapshot["exit"]))
         self.assertNotIn("买入价", script)
         self.assertNotIn("股数", script)

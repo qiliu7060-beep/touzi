@@ -156,9 +156,14 @@
 
   function sellDecision(h, e, quote) {
     var snap = e.sell_snapshot;
-    var exit = snap ? (snap.exit || []).slice() : [];
-    var reduce = snap ? (snap.reduce || []).slice() : [];
-    var warn = snap ? (snap.warn || []).slice() : [];
+    var age = Date.parse(String(SITE.as_of || '') + 'T00:00:00+08:00');
+    var fresh = isFinite(age) && Date.now() - age <= 7 * 86400000;
+    var exit = snap && fresh ? (snap.exit || []).slice() : [];
+    var reduce = snap && fresh ? (snap.reduce || []).slice() : [];
+    var warn = snap && fresh ? (snap.warn || []).slice() : [];
+    var missing = !snap ? ['本轮没有该股公共评分数据']
+      : !fresh ? ['公开评分超过7天或日期缺失']
+        : Array.isArray(snap.missing) ? snap.missing.slice() : ['公开评分未提供数据覆盖清单'];
     var price = num(quote && quote.price);
     var buy = Number(h['买入价']);
     var hasPrice = isFinite(price) && price > 0;
@@ -176,11 +181,13 @@
           + (pnl * 100).toFixed(2) + '%）');
       }
     }
-    if (exit.length) { return { action: '清仓', triggers: exit.join('；'), warn: warn.join('；') }; }
-    if (reduce.length) { return { action: '减仓', triggers: reduce.join('；'), warn: warn.join('；') }; }
-    if (!snap || !hasPrice || !hasCost) {
-      return { action: '无法评估', triggers: '', warn: !snap ? '本轮没有该股公共评分数据'
-        : (!hasPrice ? '没有现价，无法判断个人止损/止盈' : '缺少买入价，无法判断个人止损/止盈') };
+    if (exit.length) { return { action: '清仓', triggers: exit.join('；'), warn: warn.concat(missing).join('；') }; }
+    if (reduce.length) { return { action: '减仓', triggers: reduce.join('；'), warn: warn.concat(missing).join('；') }; }
+    if (!hasPrice || !hasCost) {
+      missing.push(!hasPrice ? '没有现价，无法判断个人止损/止盈' : '缺少买入价，无法判断个人止损/止盈');
+    }
+    if (missing.length) {
+      return { action: '无法评估', triggers: '', warn: warn.concat(missing).join('；') };
     }
     return { action: '一切照旧', triggers: '', warn: warn.join('；') };
   }

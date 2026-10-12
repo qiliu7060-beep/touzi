@@ -2,6 +2,16 @@ name: Update and deploy investment site
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/update-site.yml'
+      - 'touzi/plans.py'
+      - 'scripts/publish_site.py'
+      - 'scripts/static/app.js'
+      - 'tests/test_buy_decision.py'
+      - 'tests/test_sell_snapshot.py'
+      - 'tests/test_sell_decision.js'
   schedule:
     # 北京时间工作日 09:45（开盘后）与 17:23（收盘后）重新选股、重算个股评分。
     # GitHub 定时任务可能延迟；行情抓取失败时页面必须显示实际数据日期。
@@ -48,6 +58,7 @@ jobs:
 
       - name: Check holding sell decisions
         run: |
+          python tests/test_buy_decision.py
           python tests/test_sell_snapshot.py
           node tests/test_sell_decision.js
 

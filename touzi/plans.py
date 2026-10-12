@@ -147,6 +147,7 @@ class Check:
     threshold: Any = None
     level: str = ""
     note: str = ""
+    known: bool = True
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -157,10 +158,11 @@ class Check:
             "threshold": self.threshold,
             "level": self.level,
             "note": self.note,
+            "known": bool(self.known),
         }
 
     def text(self) -> str:
-        mark = "✔" if self.hit else "✘"
+        mark = "?" if not self.known else ("✔" if self.hit else "✘")
         val = "—" if _is_nan(self.value) else _fmt(self.value)
         thr = "—" if _is_nan(self.threshold) else _fmt(self.threshold)
         s = f"{mark} {self.label}（实际 {val}，门槛 {thr}）"
@@ -307,50 +309,61 @@ def evaluate_buy(score, cfg, macro_score: float = float("nan"),
     p = plan_settings(cfg)
     checks: list[Check] = []
 
-    def add(key, label, value, threshold, ok, note=""):
-        checks.append(Check(key=key, label=label, hit=bool(ok), value=value,
-                            threshold=threshold, note=note))
+    def add(key, label, value, threshold, ok, note="", known=True):
+        checks.append(Check(key=key, label=label, hit=bool(ok) and known, value=value,
+                            threshold=threshold, note=note, known=known))
 
-    total = float(_attr(score, "total") or float("nan"))
+    total_raw = _attr(score, "total")
+    total = float(total_raw) if total_raw is not None else float("nan")
     quality = _part_score(score, "quality")
     pe = _attr(score, "pe_ttm")
     pb = _attr(score, "pb")
     dy = _attr(score, "dividend_yield")
     pe_pctl = _detail(score, "valuation", "pe_percentile")
     pb_pctl = _detail(score, "valuation", "pb_percentile")
+    pe_source = _detail(score, "valuation", "pe_percentile_source")
+    pb_source = _detail(score, "valuation", "pb_percentile_source")
 
     # 1. 总分
     thr = float(p["buy_min_total"])
-    add("total", f"总分 ≥ {_fmt(thr)}（A 级）", total, thr, np.isfinite(total) and total >= thr)
+    add("total", f"总分 ≥ {_fmt(thr)}（A 级）", total, thr, np.isfinite(total) and total >= thr,
+        "总分数据缺失" if not np.isfinite(total) else "", np.isfinite(total))
 
     # 2. 质量分
     thr = float(p["buy_min_quality"])
     add("quality", f"质量分 ≥ {_fmt(thr)}（便宜但烂的公司不买）", quality, thr,
-        np.isfinite(quality) and quality >= thr, "" if np.isfinite(quality) else "质量数据缺失")
+        np.isfinite(quality) and quality >= thr, "" if np.isfinite(quality) else "质量数据缺失",
+        np.isfinite(quality))
 
     # 3. PE 历史分位
     thr = float(p["buy_max_pe_percentile"])
-    add("pe_percentile", f"PE 处于自身历史分位 ≤ {thr:.0%}", pe_pctl, thr,
-        pe_pctl is not None and np.isfinite(float(pe_pctl)) and float(pe_pctl) <= thr,
-        "" if pe_pctl is not None else "无 PE 历史分位，视为不满足")
+    pe_known = (pe_pctl is not None and np.isfinite(float(pe_pctl))
+                and pe_source == "个股5年历史")
+    add("pe_percentile", f"PE 处于自身历史分位 ≤ {thr:.0%}", pe_pctl if pe_known else None, thr,
+        pe_known and float(pe_pctl) <= thr,
+        "" if pe_known else f"自身历史分位缺失；{pe_source or '无替代数据'}不能代替", pe_known)
 
     # 4. PB 历史分位
     thr = float(p["buy_max_pb_percentile"])
-    add("pb_percentile", f"PB 处于自身历史分位 ≤ {thr:.0%}", pb_pctl, thr,
-        pb_pctl is not None and np.isfinite(float(pb_pctl)) and float(pb_pctl) <= thr,
-        "" if pb_pctl is not None else "无 PB 历史分位，视为不满足")
+    pb_known = (pb_pctl is not None and np.isfinite(float(pb_pctl))
+                and pb_source == "个股5年历史")
+    add("pb_percentile", f"PB 处于自身历史分位 ≤ {thr:.0%}", pb_pctl if pb_known else None, thr,
+        pb_known and float(pb_pctl) <= thr,
+        "" if pb_known else f"自身历史分位缺失；{pb_source or '无替代数据'}不能代替", pb_known)
 
     # 5. 股息率绝对水平
     thr = float(p["buy_min_dividend_yield"])
     add("dividend_yield", f"股息率 ≥ {_fmt(thr)}%", dy, thr,
         not _is_nan(dy) and float(dy) >= thr,
-        "" if not _is_nan(dy) else "无股息率数据（不分红）")
+        "" if not _is_nan(dy) else "股息率数据缺失，不能据此认定不分红",
+        not _is_nan(dy))
 
     # 6. PE 绝对水平
     thr = float(p["buy_max_pe_abs"])
     add("pe_abs", f"市盈率 ≤ {_fmt(thr)} 倍", pe, thr,
         not _is_nan(pe) and 0 < float(pe) <= thr,
-        "PE 为负（亏损）" if not _is_nan(pe) and float(pe) <= 0 else "")
+        "PE 为负（亏损）" if not _is_nan(pe) and float(pe) <= 0 else
+        ("PE 数据缺失" if _is_nan(pe) else ""), not _is_nan(pe))
 
     # 7. 格雷厄姆数
     thr = float(p["buy_max_graham"])
@@ -358,18 +371,23 @@ def evaluate_buy(score, cfg, macro_score: float = float("nan"),
     if gp is None and not _is_nan(pe) and not _is_nan(pb) and float(pe) > 0 and float(pb) > 0:
         gp = float(pe) * float(pb)
     add("graham", f"PE × PB ≤ {_fmt(thr)}（格雷厄姆门槛）", gp, thr,
-        gp is not None and np.isfinite(float(gp)) and float(gp) <= thr)
+        gp is not None and np.isfinite(float(gp)) and float(gp) <= thr,
+        "PE 或 PB 数据缺失" if _is_nan(pe) or _is_nan(pb) else "",
+        not _is_nan(pe) and not _is_nan(pb))
 
     # 8. 宏观背景分
     thr = float(p["buy_min_macro_score"])
     add("macro", f"宏观背景分 ≥ {_fmt(thr)}（大盘环境太差时先等）", macro_score, thr,
-        np.isfinite(macro_score) and macro_score >= thr)
+        np.isfinite(macro_score) and macro_score >= thr,
+        "宏观评分数据缺失" if not np.isfinite(macro_score) else "", np.isfinite(macro_score))
 
     # 9. 排名（可选）
     thr = float(p.get("buy_max_rank_pct") or 0.0)
     if thr > 0:
         add("rank", f"本次候选池内总分排名前 {thr:.0%}", rank_pct, thr,
-            rank_pct is not None and np.isfinite(float(rank_pct)) and float(rank_pct) <= thr)
+            rank_pct is not None and np.isfinite(float(rank_pct)) and float(rank_pct) <= thr,
+            "候选池排名数据缺失" if rank_pct is None else "",
+            rank_pct is not None and np.isfinite(float(rank_pct)))
     return checks
 
 
@@ -406,12 +424,15 @@ def evaluate_sell(score, cfg, macro_score: float = float("nan"),
         checks.append(Check(key=key, label=label, hit=bool(hit), value=value,
                             threshold=threshold, level=level, note=note))
 
-    total = float(_attr(score, "total") or float("nan"))
+    total_raw = _attr(score, "total")
+    total = float(total_raw) if total_raw is not None else float("nan")
     pe = _attr(score, "pe_ttm")
     pb = _attr(score, "pb")
     dy = _attr(score, "dividend_yield")
     pe_pctl = _detail(score, "valuation", "pe_percentile")
     pb_pctl = _detail(score, "valuation", "pb_percentile")
+    pe_source = _detail(score, "valuation", "pe_percentile_source")
+    pb_source = _detail(score, "valuation", "pb_percentile_source")
     graham = _detail(score, "valuation", "graham_product")
     ocf = _detail(score, "quality", "ocf_to_profit")
     roe_series = _detail(score, "quality", "roe_series") or []
@@ -420,11 +441,15 @@ def evaluate_sell(score, cfg, macro_score: float = float("nan"),
     # ---- 估值止盈
     thr = float(p["sell_pe_percentile"])
     add("sell_pe_percentile", f"PE 回到自身历史分位 ≥ {thr:.0%}", pe_pctl, thr,
-        pe_pctl is not None and np.isfinite(float(pe_pctl)) and float(pe_pctl) >= thr, EXIT)
+        pe_source == "个股5年历史" and pe_pctl is not None
+        and np.isfinite(float(pe_pctl)) and float(pe_pctl) >= thr, EXIT,
+        "" if pe_source == "个股5年历史" else "自身历史分位缺失，不能用截面分位触发清仓")
 
     thr = float(p["sell_pb_percentile"])
     add("sell_pb_percentile", f"PB 回到自身历史分位 ≥ {thr:.0%}", pb_pctl, thr,
-        pb_pctl is not None and np.isfinite(float(pb_pctl)) and float(pb_pctl) >= thr, EXIT)
+        pb_source == "个股5年历史" and pb_pctl is not None
+        and np.isfinite(float(pb_pctl)) and float(pb_pctl) >= thr, EXIT,
+        "" if pb_source == "个股5年历史" else "自身历史分位缺失，不能用截面分位触发清仓")
 
     # ---- 绝对估值过高
     thr = float(p["sell_graham"])
@@ -442,7 +467,7 @@ def evaluate_sell(score, cfg, macro_score: float = float("nan"),
     thr = float(p["sell_dividend_yield"])
     dy_low = (not _is_nan(dy)) and float(dy) < thr
     add("sell_dividend_yield", f"股息率 < {_fmt(thr)}%", dy, thr, dy_low, EXIT,
-        "已不分红" if _is_nan(dy) else "")
+        "股息率数据缺失，不能据此认定已不分红" if _is_nan(dy) else "")
 
     # ---- 总分掉档
     thr = float(p["sell_total"])
@@ -503,6 +528,34 @@ def evaluate_sell(score, cfg, macro_score: float = float("nan"),
         _negative_streak(growth_series, n), WARN,
         "" if len(list(growth_series)) >= n else "年报样本不足")
 
+    # 公共卖出快照必须区分“确认未触发”和“根本无法核验”。
+    def finite(value):
+        try:
+            return value is not None and bool(np.isfinite(float(value)))
+        except (TypeError, ValueError):
+            return False
+
+    known = {
+        "sell_pe_percentile": pe_source == "个股5年历史" and finite(pe_pctl),
+        "sell_pb_percentile": pb_source == "个股5年历史" and finite(pb_pctl),
+        "sell_graham": finite(graham),
+        "sell_pe_abs": finite(pe),
+        "sell_dividend_yield": finite(dy),
+        "sell_total": finite(total),
+        "sell_reduce_total": finite(total),
+        "sell_macro_score": finite(macro_score),
+        "sell_macro_reduce_score": finite(macro_score),
+        "sell_stop_loss": pnl is not None,
+        "sell_take_profit": pnl is not None,
+        "sell_cashflow": finite(ocf),
+        "sell_roe_decline": sum(finite(v) for v in roe_series) >= n + 1,
+        "sell_growth_negative": sum(finite(v) for v in growth_series) >= n,
+    }
+    for check in checks:
+        check.known = known.get(check.key, True)
+        if not check.known and not check.note:
+            check.note = "数据缺失，未核验"
+
     return checks
 
 
@@ -529,7 +582,8 @@ def decide(score, cfg, macro_score: float = float("nan"),
     px = price if price is not None else _attr(score, "price")
     sell = evaluate_sell(score, cfg, macro_score=macro_score, holding=holding, price=px)
 
-    total = float(_attr(score, "total") or float("nan"))
+    total_raw = _attr(score, "total")
+    total = float(total_raw) if total_raw is not None else float("nan")
     code = str(_attr(score, "code") or "")
     name = str(_attr(score, "name") or "")
 
@@ -573,8 +627,13 @@ def decide(score, cfg, macro_score: float = float("nan"),
             reasons.append("买入门槛全部通过：" + "；".join(c.label for c in buy))
         else:
             missed = [c for c in buy if not c.hit]
+            unknown = [c for c in missed if not c.known]
             slack = int(plan_settings(cfg).get("buy_near_miss") or 0)
-            if len(missed) <= slack:
+            if unknown:
+                action = "观望"
+                reasons.append("买入数据待核验：" + "；".join(c.label for c in unknown)
+                               + "；不能算作仅差一项已知条件")
+            elif len(missed) <= slack:
                 action = "接近建仓"
                 reasons.append(
                     f"买入门槛只差 {len(missed)} 条"
