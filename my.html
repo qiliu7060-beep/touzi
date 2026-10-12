@@ -117,7 +117,7 @@ table input.ip,table input.is{width:78px;background:#111827;color:#e5e7eb;border
   <div>
     <div class="kv"><span>股票代码</span><b><input class="ip" id="f_code" type="text" placeholder="600519" style="width:110px"></b></div>
     <div class="kv"><span>名称（可留空）</span><b><input class="ip" id="f_name" type="text" placeholder="自动带出" style="width:150px"></b></div>
-    <div class="kv"><span>买入日期</span><b><input class="ip" id="f_date" type="date" value="2026-10-08" style="width:150px"></b></div>
+    <div class="kv"><span>买入日期</span><b><input class="ip" id="f_date" type="date" value="2026-10-12" style="width:150px"></b></div>
   </div>
   <div>
     <div class="kv"><span>买入价</span><b><input class="ip" id="f_price" type="text" placeholder="1450.00" style="width:110px"></b></div>
@@ -131,7 +131,7 @@ table input.ip,table input.is{width:78px;background:#111827;color:#e5e7eb;border
   <button class="b" type="button" onclick="__holdSave()">保存</button>
   <button class="b b2" type="button" onclick="__holdClear()">清空表单</button>
 </p>
-</div><div class="card"><h3>② 持仓台账</h3><p class="small muted" style="margin:0 0 10px">网站读写的就是浏览器的本地存储，没有服务器。</p><div class="scroll"><table><tbody id="__ledger"><tr><td colspan="8" class="muted">正在读取本地台账…</td></tr></tbody></table></div><p class="small muted" id="__ledgernote"></p></div><div class="card"><h3>③ 现在该怎么办</h3><p class="small muted" style="margin:0 0 10px">「建议动作」来自发布时的规则结论；「到账金额」「扣费后净盈利」按你自己填的买入价实时算。</p><div class="scroll"><table><tbody id="__live"><tr><td class="muted">正在读取本地台账…</td></tr></tbody></table></div></div><h2>实时盈亏</h2><div class="grid grid3" id="__kpi"></div><div class="card"><h3>④ 备份 / 迁移 / 换浏览器</h3><p class="small muted" style="margin:0 0 10px">持仓不上传，所以删缓存就没了——想留就点上面的「导出」。</p>
+</div><div class="card"><h3>② 持仓台账</h3><p class="small muted" style="margin:0 0 10px">网站读写的就是浏览器的本地存储，没有服务器。</p><div class="scroll"><table><tbody id="__ledger"><tr><td colspan="8" class="muted">正在读取本地台账…</td></tr></tbody></table></div><p class="small muted" id="__ledgernote"></p></div><div class="card"><h3>③ 现在该怎么办</h3><p class="small muted" style="margin:0 0 10px">「建议动作」来自发布时的规则结论；「到账金额」「扣费后净盈利」按你自己填的买入价实时算。</p><div class="scroll"><table><tbody id="__live"><tr><td class="muted">正在读取本地台账…</td></tr></tbody></table></div></div><h2>实时盈亏</h2><div class="grid grid3" id="__kpi"></div><div class="card"><h3>④ 与四等分指数 ETF 组合对比</h3><p class="small muted" style="margin:0 0 10px">按你的每笔实际投入日期与含费金额，同步把资金四等分投入沪深300、上证50、标普500和纳指 ETF；采用整手交易并保留未成交现金。</p><div id="__compare" class="compare-wrap"><p class="muted small">正在读取持仓并计算历史对比…</p></div></div><div class="card"><h3>⑤ 备份 / 迁移 / 换浏览器</h3><p class="small muted" style="margin:0 0 10px">持仓不上传，所以删缓存就没了——想留就点上面的「导出」。</p>
 <p class="small muted">
   台账只存在<b>你这台浏览器</b>里，不会上传。换浏览器/清缓存就没了，所以：
 </p>
@@ -141,4 +141,4 @@ table input.ip,table input.is{width:78px;background:#111827;color:#e5e7eb;border
 </p>
 <textarea id="f_import" rows="3" style="width:100%" placeholder="把 holdings.csv 的内容粘到这里（第一行要留表头），然后点下面这个按钮"></textarea>
 <p><button class="b b2" type="button" onclick="__holdImport()">从上面的文本导入</button></p>
-</div><div class="card"><h3>⑤ 手续费口径</h3><p class="small muted" style="margin:0 0 10px">和本机版用的是同一份配置（config/settings.toml 的 [fees]）。</p><p class="small muted">买入成本 = 成交金额 + 佣金（最低 5 元）+ 过户费；卖出到账 = 成交金额 − 佣金 − 印花税 − 过户费。</p><p class="small muted"><b>扣费后净盈利 = 卖出到账金额 − 该部分对应的「含费成本」</b>。用含费成本而不是成交金额，是因为买入时付的佣金也是你的成本；小额买入被最低 5 元佣金拖累是真实存在的情况，这里不抹掉。</p><div class="kv"><span>佣金费率</span><b>0.00025</b></div><div class="kv"><span>佣金最低</span><b>5.0</b></div><div class="kv"><span>印花税率</span><b>0.0005</b></div><div class="kv"><span>过户费率</span><b>1e-05</b></div></div></main><script src="site.js"></script><script src="app.js"></script></body></html>
+</div><div class="card"><h3>⑥ 手续费口径</h3><p class="small muted" style="margin:0 0 10px">和本机版用的是同一份配置（config/settings.toml 的 [fees]）。</p><p class="small muted">买入成本 = 成交金额 + 佣金（最低 5 元）+ 过户费；卖出到账 = 成交金额 − 佣金 − 印花税 − 过户费。</p><p class="small muted"><b>扣费后净盈利 = 卖出到账金额 − 该部分对应的「含费成本」</b>。用含费成本而不是成交金额，是因为买入时付的佣金也是你的成本；小额买入被最低 5 元佣金拖累是真实存在的情况，这里不抹掉。</p><div class="kv"><span>佣金费率</span><b>0.00025</b></div><div class="kv"><span>佣金最低</span><b>5.0</b></div><div class="kv"><span>印花税率</span><b>0.0005</b></div><div class="kv"><span>过户费率</span><b>1e-05</b></div></div></main><script src="site.js?v=1791779935"></script><script src="app.js?v=1791779935"></script></body></html>
