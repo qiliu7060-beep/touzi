@@ -6,15 +6,6 @@ on:
     # 北京时间工作日 17:23，收盘后重新选股、重算个股评分。
     # 宏观评分由 --weekly-macro 按北京时间自然周复用。
     - cron: "23 9 * * 1-5"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/update-site.yml"
-      - "requirements.txt"
-      - "config/**"
-      - "scripts/**"
-      - "touzi/**"
-
 permissions:
   contents: read
   pages: write
