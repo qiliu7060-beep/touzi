@@ -7,8 +7,8 @@
  *   1. 行情：浏览器**直连腾讯** https://qt.gtimg.cn（实测返回
  *      `Access-Control-Allow-Origin: *`，所以任何域名的页面都能直接 fetch）。
  *   2. 持仓台账：存在**浏览器本地** localStorage，不上传任何地方。
- *      「建议动作 / 触发的卖出条件 / 预警」这类结论取决于打分与规则，浏览器算不了，
- *      所以由发布脚本在 `site.json` 的 `entries` 里烘好，按代码取用。
+ *      公共财务、估值与宏观卖出条件由定时发布任务计算；个人止损/止盈按报价和
+ *      本地买入价现算。两者任一触发就给出减仓或清仓，未覆盖的股票不报平安。
  *   3. 钱（现价 / 市值 / 浮动盈亏 / 扣费后净盈利）用与 `touzi/portfolio.py`
  *      **逐行对齐**的公式现算 —— 费率、最低佣金、印花税、过户费、卖出比例、
  *      向下取整到 100 股，全部照抄，见下面 fee* / oneRow()。
@@ -27,6 +27,7 @@
   var ENTRIES = SITE.entries || {};
   var FEES = SITE.fees || {};
   var PLAN = SITE.plan || {};
+  var BENCHMARKS = SITE.benchmarks || { instruments: [] };
   var IV = (SITE.interval || 15) * 1000;
   var LEDGER_KEY = 'touzi.ledger.v1';
 
@@ -153,6 +154,37 @@
   function num(v) { return (typeof v === 'number' && isFinite(v)) ? v : NaN; }
   function r2(v) { return isFinite(v) ? Math.round(v * 100) / 100 : null; }
 
+  function sellDecision(h, e, quote) {
+    var snap = e.sell_snapshot;
+    var exit = snap ? (snap.exit || []).slice() : [];
+    var reduce = snap ? (snap.reduce || []).slice() : [];
+    var warn = snap ? (snap.warn || []).slice() : [];
+    var price = num(quote && quote.price);
+    var buy = Number(h['买入价']);
+    var hasPrice = isFinite(price) && price > 0;
+    var hasCost = isFinite(buy) && buy > 0;
+    if (hasPrice && hasCost) {
+      var pnl = price / buy - 1;
+      var stop = Number(PLAN.sell_stop_loss);
+      var take = Number(PLAN.sell_take_profit);
+      if (isFinite(stop) && pnl <= stop) {
+        exit.push('相对买入价浮亏 ≤ ' + (stop * 100).toFixed(0) + '%（当前 '
+          + (pnl * 100).toFixed(2) + '%）');
+      }
+      if (isFinite(take) && pnl >= take) {
+        reduce.push('相对买入价浮盈 ≥ +' + (take * 100).toFixed(0) + '%（当前 +'
+          + (pnl * 100).toFixed(2) + '%）');
+      }
+    }
+    if (exit.length) { return { action: '清仓', triggers: exit.join('；'), warn: warn.join('；') }; }
+    if (reduce.length) { return { action: '减仓', triggers: reduce.join('；'), warn: warn.join('；') }; }
+    if (!snap || !hasPrice || !hasCost) {
+      return { action: '无法评估', triggers: '', warn: !snap ? '本轮没有该股公共评分数据'
+        : (!hasPrice ? '没有现价，无法判断个人止损/止盈' : '缺少买入价，无法判断个人止损/止盈') };
+    }
+    return { action: '一切照旧', triggers: '', warn: warn.join('；') };
+  }
+
   /* --------------------------------------------------- 单笔：与 _one() 对齐 */
   function oneRow(h, quote) {
     var shares = Number(h['股数']) || 0;
@@ -169,7 +201,8 @@
     var unreal = isFinite(mv) ? mv - costAmount : NaN;
     var unrealPct = (isFinite(unreal) && costAmount > 0) ? unreal / costAmount * 100 : NaN;
 
-    var action = String(e.action || '');
+    var decision = sellDecision(h, e, quote);
+    var action = decision.action;
     var ratio = sellRatioFor(action);
     var sellSh = planSellShares(shares, ratio);
     var sellAmount = NaN, sellFee = NaN, netIn = NaN, netProfit = NaN, netPct = NaN;
@@ -185,7 +218,7 @@
     }
 
     var al = alertFor(action, ratio, sellSh, netProfit, netPct,
-      String(e.triggers || ''), String(e.warn || ''), hasPrice, hasShares);
+      decision.triggers, decision.warn, hasPrice, hasShares);
 
     return {
       code: String(h['代码']),
@@ -219,15 +252,18 @@
     if (isFinite(netProfit)) {
       money = '。这部分扣费后净盈利 ¥' + fmtMoney(netProfit) + '（' + (netPct >= 0 ? '+' : '') + netPct.toFixed(2) + '%）';
     }
-    if (!hasPrice) { return ['没有现价（不在本次打分范围内，或已停牌），无法计算盈亏', 'na']; }
-    if (!hasShares) {
-      return ['没填「股数」，只给买卖建议、不算金额。想看到「卖多少股 / 净赚多少」，请在台账里补上股数。', 'watch'];
-    }
     if (action === '清仓') {
-      return ['🚨 **清仓**：卖出全部 ' + sellSh + ' 股（100%）。触发：' + (triggers || '详见规则') + money, 'act'];
+      return ['🚨 **清仓条件已触发**：' + (hasShares ? ('卖出全部 ' + sellSh + ' 股（100%）。') : '请补填股数。')
+        + '触发：' + triggers + (hasPrice ? money : '。现价不可用，无法计算成交金额'), 'act'];
     }
     if (action === '减仓') {
-      return ['⚠️ **减仓 ' + Math.round(ratio * 100) + '%**：卖出 ' + sellSh + ' 股。触发：' + (triggers || '详见规则') + money, 'act'];
+      return ['⚠️ **减仓条件已触发**：' + (hasShares ? ('建议卖出 ' + sellSh + ' 股（' + Math.round(ratio * 100) + '%）。') : '请补填股数。')
+        + '触发：' + triggers + (hasPrice ? money : '。现价不可用，无法计算成交金额'), 'act'];
+    }
+    if (action === '无法评估') { return ['无法评估：' + (warn || '本轮没有完整卖出判断所需的数据'), 'na']; }
+    if (!hasShares) { return ['没填股数，无法计算卖出金额；请在台账里补上股数。', 'watch']; }
+    if (action === '一切照旧') {
+      return [warn ? ('一切照旧；但需留意：' + warn) : '一切照旧：当前已核验的卖出条件均未触发', warn ? 'watch' : 'hold'];
     }
     if (action === '加仓') { return ['买入门槛全部通过、无卖出条件触发，且未到止损止盈——可考虑加仓', 'watch']; }
     if (warn) { return ['继续持有。留意：' + warn, 'watch']; }
@@ -441,7 +477,8 @@
   };
 
   /* ------------------------------------------- 我的持仓：台账 + 实时盈亏 */
-  var TONE = { '清仓': 'bad', '减仓': 'weak', '持有': 'good', '加仓': 'great' };
+  var TONE = { '清仓': 'bad', '减仓': 'weak', '持有': 'good', '加仓': 'great',
+    '一切照旧': 'good', '无法评估': 'mid' };
   var LEDGER_COLS = ['代码', '名称', '买入日期', '买入价', '股数', '备注'];
 
   function renderLedger() {
@@ -529,6 +566,7 @@
     LAST_SIG = structSig(p);
     renderLedger(); renderLive(); renderKpi();
     apply(p);
+    scheduleComparison();
     tickSoon();
   };
 
@@ -567,6 +605,240 @@
         live ? ('留意 ' + (s['留意'] || 0) + ' 只') : '', '', '', 0)
     ];
     host.innerHTML = cards.join('');
+  }
+
+  /* ----------------------------------------- 持仓 vs 四等分 ETF 收益对比 */
+  var HISTORY = {};
+  var COMPARE_SIG = '';
+  var COMPARE_BUSY = false;
+
+  function historyUrl(code) {
+    return 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param='
+      + encodeURIComponent(txSym(code) + ',week,,,1000,qfq');
+  }
+
+  function parseHistory(payload, code) {
+    var bag = payload && payload.data && payload.data[txSym(code)];
+    if (!bag) { return []; }
+    var raw = bag.qfqweek || bag.week || bag.qfqday || bag.day || [];
+    var out = [];
+    for (var i = 0; i < raw.length; i++) {
+      var px = Number(raw[i] && raw[i][2]);
+      var dt = String(raw[i] && raw[i][0] || '').slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dt) && isFinite(px) && px > 0) { out.push([dt, px]); }
+    }
+    return out;
+  }
+
+  function fetchHistory(code) {
+    if (HISTORY[code]) { return HISTORY[code]; }
+    HISTORY[code] = fetch(historyUrl(code), { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.json(); })
+      .then(function (o) { return parseHistory(o, code); })
+      .catch(function () { return []; });
+    return HISTORY[code];
+  }
+
+  function pointOnOrAfter(prices, date) {
+    for (var i = 0; i < prices.length; i++) { if (prices[i][0] >= date) { return prices[i]; } }
+    return null;
+  }
+
+  function etfBuy(state, price, lotSize) {
+    if (!(price > 0) || !(state.cash > 0)) { return; }
+    var shares = Math.floor(state.cash / price / lotSize) * lotSize;
+    while (shares > 0 && shares * price + commission(shares * price) > state.cash + 0.00001) {
+      shares -= lotSize;
+    }
+    if (shares <= 0) { return; }
+    var amount = shares * price;
+    state.cash -= amount + commission(amount);
+    state.shares += shares;
+  }
+
+  function comparisonData(ledger, histories, benchmark) {
+    var ins = (benchmark && benchmark.instruments) || [];
+    if (ins.length !== 4) { return { error: '四只 ETF 的历史行情不完整，请重新发布网站后再试。' }; }
+    var lots = [], total = 0;
+    for (var i = 0; i < ledger.length; i++) {
+      var h = ledger[i], buy = Number(h['买入价']), shares = Number(h['股数']);
+      var date = String(h['买入日期'] || '').slice(0, 10), code = String(h['代码'] || '');
+      if (!(buy > 0) || !(shares > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { continue; }
+      var cost = buy * shares + buyFees(buy * shares);
+      lots.push({ code: code, date: date, buy: buy, shares: shares, cost: cost });
+      total += cost;
+    }
+    if (!lots.length) { return { error: '至少需要一笔填了买入日期、买入价和股数的持仓。' }; }
+    lots.sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+
+    var dateSet = {};
+    for (var j = 0; j < ins.length; j++) {
+      var bp = ins[j].prices || [];
+      for (var k = 0; k < bp.length; k++) { if (bp[k][0] >= lots[0].date) { dateSet[bp[k][0]] = 1; } }
+    }
+    var dates = Object.keys(dateSet).sort();
+    if (!dates.length) { return { error: '你的买入日期晚于基准行情日期，请更新网站数据。' }; }
+
+    var personalLots = [], missed = 0;
+    for (var l = 0; l < lots.length; l++) {
+      var hp = histories[lots[l].code] || [];
+      var anchor = pointOnOrAfter(hp, lots[l].date);
+      if (!anchor) { missed += 1; continue; }
+      personalLots.push({ lot: lots[l], prices: hp, anchorDate: anchor[0],
+        anchor: anchor[1], cursor: -1, price: NaN });
+    }
+
+    var states = [], cursors = [];
+    for (var s = 0; s < 4; s++) { states.push({ cash: 0, shares: 0, price: NaN }); cursors.push(-1); }
+    var nextFlow = 0, contributed = 0, lotSize = Number(benchmark.lot_size) || 100;
+    var series = [{ label: '我的持仓', color: '#e5e7eb', points: [] }];
+    for (var z = 0; z < ins.length; z++) {
+      series.push({ label: ins[z].label, color: ins[z].color, points: [] });
+    }
+    series.push({ label: '四等分组合', color: '#a78bfa', points: [] });
+
+    for (var d = 0; d < dates.length; d++) {
+      var day = dates[d];
+      while (nextFlow < lots.length && lots[nextFlow].date <= day) {
+        contributed += lots[nextFlow].cost;
+        for (var a = 0; a < 4; a++) { states[a].cash += lots[nextFlow].cost / 4; }
+        nextFlow += 1;
+      }
+      for (var x = 0; x < 4; x++) {
+        var xp = ins[x].prices || [];
+        while (cursors[x] + 1 < xp.length && xp[cursors[x] + 1][0] <= day) {
+          cursors[x] += 1; states[x].price = Number(xp[cursors[x]][1]);
+        }
+        etfBuy(states[x], states[x].price, lotSize);
+      }
+      if (!(contributed > 0)) { continue; }
+
+      var actualValue = 0, actualInvested = 0;
+      for (var p = 0; p < personalLots.length; p++) {
+        var pl = personalLots[p], pp = pl.prices;
+        while (pl.cursor + 1 < pp.length && pp[pl.cursor + 1][0] <= day) {
+          pl.cursor += 1; pl.price = Number(pp[pl.cursor][1]);
+        }
+        if (pl.anchorDate <= day && isFinite(pl.price) && pl.price > 0) {
+          var gross = pl.lot.buy * pl.lot.shares * (pl.price / pl.anchor);
+          actualValue += gross - sellFees(gross);
+          actualInvested += pl.lot.cost;
+        }
+      }
+      if (actualInvested > 0) {
+        series[0].points.push([day, (actualValue / actualInvested - 1) * 100]);
+      }
+
+      var combined = 0;
+      for (var q = 0; q < 4; q++) {
+        var market = (states[q].shares > 0 && isFinite(states[q].price))
+          ? states[q].shares * states[q].price : 0;
+        var value = states[q].cash + market - (market > 0 ? commission(market) : 0);
+        combined += value;
+        series[q + 1].points.push([day, (value / (contributed / 4) - 1) * 100]);
+      }
+      series[5].points.push([day, (combined / contributed - 1) * 100]);
+    }
+
+    var summaries = [];
+    for (var si = 0; si < series.length; si++) {
+      var pts = series[si].points, last = pts.length ? pts[pts.length - 1][1] : null;
+      summaries.push({ label: series[si].label, color: series[si].color, returnPct: last });
+    }
+    return { series: series, summaries: summaries, invested: total, missed: missed,
+      start: dates[0], end: dates[dates.length - 1] };
+  }
+
+  function downsample(points, max) {
+    if (points.length <= max) { return points; }
+    var out = [], step = (points.length - 1) / (max - 1);
+    for (var i = 0; i < max; i++) { out.push(points[Math.round(i * step)]); }
+    return out;
+  }
+
+  function renderComparison(result) {
+    var host = document.getElementById('__compare');
+    if (!host) { return; }
+    if (result.error) { host.innerHTML = '<p class="muted small">' + esc(result.error) + '</p>'; return; }
+    var all = [], minT = Infinity, maxT = -Infinity, minY = 0, maxY = 0;
+    for (var i = 0; i < result.series.length; i++) {
+      var pts = downsample(result.series[i].points, 240), arr = [];
+      for (var j = 0; j < pts.length; j++) {
+        var t = Date.parse(pts[j][0] + 'T00:00:00Z'), y = Number(pts[j][1]);
+        if (!isFinite(t) || !isFinite(y)) { continue; }
+        arr.push([t, y]); minT = Math.min(minT, t); maxT = Math.max(maxT, t);
+        minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+      }
+      all.push(arr);
+    }
+    if (!(maxT > minT)) { host.innerHTML = '<p class="muted small">可用历史点不足，暂时无法画图。</p>'; return; }
+    if (maxY - minY < 1) { maxY += 0.5; minY -= 0.5; }
+    var w = 920, h = 390, left = 66, right = 18, top = 20, bottom = 44;
+    function xx(t) { return left + (t - minT) / (maxT - minT) * (w - left - right); }
+    function yy(v) { return top + (maxY - v) / (maxY - minY) * (h - top - bottom); }
+    var svg = ['<svg class="compare-chart" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="收益率折线图">'];
+    for (var gy = 0; gy <= 4; gy++) {
+      var val = maxY - (maxY - minY) * gy / 4, py = yy(val);
+      svg.push('<line x1="' + left + '" y1="' + py.toFixed(1) + '" x2="' + (w - right) + '" y2="' + py.toFixed(1) + '" stroke="#263244" stroke-width="1"/>');
+      svg.push('<text x="' + (left - 8) + '" y="' + (py + 4).toFixed(1) + '" text-anchor="end" fill="#9ca3af" font-size="11">' + val.toFixed(1) + '%</text>');
+    }
+    for (var si = 0; si < all.length; si++) {
+      var coords = all[si].map(function (p) { return xx(p[0]).toFixed(1) + ',' + yy(p[1]).toFixed(1); }).join(' ');
+      svg.push('<polyline points="' + coords + '" fill="none" stroke="' + result.series[si].color
+        + '" stroke-width="' + (si === 0 || si === 5 ? 2.8 : 1.7) + '" opacity="' + (si === 0 || si === 5 ? 1 : 0.78) + '"/>');
+    }
+    var zeroY = yy(0);
+    if (zeroY >= top && zeroY <= h - bottom) {
+      svg.push('<line x1="' + left + '" y1="' + zeroY.toFixed(1) + '" x2="' + (w - right) + '" y2="' + zeroY.toFixed(1) + '" stroke="#6b7280" stroke-dasharray="5 4"/>');
+    }
+    svg.push('<text x="' + left + '" y="' + (h - 12) + '" fill="#9ca3af" font-size="11">' + esc(result.start) + '</text>');
+    svg.push('<text x="' + (w - right) + '" y="' + (h - 12) + '" text-anchor="end" fill="#9ca3af" font-size="11">' + esc(result.end) + '</text></svg>');
+    var legend = ['<div class="compare-legend">'];
+    for (var lg = 0; lg < result.series.length; lg++) {
+      legend.push('<span><i style="background:' + result.series[lg].color + '"></i>' + esc(result.series[lg].label) + '</span>');
+    }
+    legend.push('</div>');
+    var rows = ['<div class="scroll compare-summary"><table><tr><th>方案</th><th class="num">期末收益率</th></tr>'];
+    for (var sm = 0; sm < result.summaries.length; sm++) {
+      var rv = result.summaries[sm].returnPct;
+      rows.push('<tr><td><span style="color:' + result.summaries[sm].color + '">●</span> '
+        + esc(result.summaries[sm].label) + '</td><td class="num ' + (rv >= 0 ? 'v-good' : 'v-bad') + '">'
+        + (rv === null ? '—' : ((rv >= 0 ? '+' : '') + rv.toFixed(2) + '%')) + '</td></tr>');
+    }
+    rows.push('</table></div>');
+    var note = '<p class="compare-note">投入金额按你的台账合计：<b>¥' + fmtMoney(result.invested) + '</b>。'
+      + '每笔现金流在对应日期同步四等分；ETF 按 100 份整手买入，零头保留现金。'
+      + esc(BENCHMARKS.fee_note || '')
+      + '“我的持仓”使用腾讯前复权周线按买入日锚定，并按当前股票费率模拟期末卖出。'
+      + (result.missed ? ('有 ' + result.missed + ' 笔缺少历史行情，未纳入“我的持仓”曲线。') : '')
+      + '标普500与纳指使用境内 ETF 代理，包含汇率、溢折价及跟踪误差，不等同于指数本身。</p>';
+    host.innerHTML = legend.join('') + svg.join('') + rows.join('') + note;
+  }
+
+  function scheduleComparison() {
+    var host = document.getElementById('__compare');
+    if (!host || COMPARE_BUSY) { return; }
+    var sig = JSON.stringify(LEDGER.map(function (r) {
+      return [r['代码'], r['买入日期'], r['买入价'], r['股数']];
+    }));
+    if (sig === COMPARE_SIG) { return; }
+    COMPARE_SIG = sig;
+    if (!LEDGER.length) { renderComparison({ error: '录入持仓后，这里会按相同投入日期和金额自动生成对比。' }); return; }
+    var codes = [], seen = {};
+    for (var i = 0; i < LEDGER.length; i++) {
+      var code = String(LEDGER[i]['代码'] || '');
+      if (/^\d{6}$/.test(code) && !seen[code]) { seen[code] = 1; codes.push(code); }
+    }
+    host.innerHTML = '<p class="muted small">正在获取 ' + codes.length + ' 只持仓的历史周线并计算…</p>';
+    COMPARE_BUSY = true;
+    Promise.all(codes.map(function (c) { return fetchHistory(c).then(function (p) { return [c, p]; }); }))
+      .then(function (pairs) {
+        var histories = {};
+        for (var j = 0; j < pairs.length; j++) { histories[pairs[j][0]] = pairs[j][1]; }
+        renderComparison(comparisonData(LEDGER, histories, BENCHMARKS));
+      })
+      .catch(function (e) { renderComparison({ error: '历史行情获取失败：' + String(e && e.message || e) }); })
+      .then(function () { COMPARE_BUSY = false; });
   }
 
   /* ------------------------------------------------------------- 表单 */
@@ -620,7 +892,7 @@
     el('f_msg').textContent = (how === 'upsert' ? '已覆盖同一笔（代码+日期+价都相同）。' : '已新增一笔。')
       + '现在共 ' + LEDGER.length + ' 行，存在这台浏览器里。';
     window.__renderAll();
-    window.__toast('已保存。价格 15 秒内刷新；「建议动作」要等下次发布更新。');
+    window.__toast('已保存。个人止损随报价刷新；公开评分按网站发布快照更新。');
   };
 
   /* ------------------------------------------- 导入 / 导出 / 清空（本地） */
@@ -777,8 +1049,10 @@
 
   // 给 Node 单元测试用
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { parseQuoteText: parseQuoteText, oneRow: oneRow, summarize: summarize,
+    module.exports = { parseQuoteText: parseQuoteText, oneRow: oneRow, sellDecision: sellDecision,
+      summarize: summarize,
       planSellShares: planSellShares, sellRatioFor: sellRatioFor, buyFees: buyFees,
-      sellFees: sellFees, txSym: txSym, alertFor: alertFor };
+      sellFees: sellFees, txSym: txSym, alertFor: alertFor, parseHistory: parseHistory,
+      comparisonData: comparisonData };
   }
 })();

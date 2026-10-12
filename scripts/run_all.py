@@ -347,6 +347,7 @@ def run_once(cfg, args, cache: Cache, proxy: str | None, out_dir: Path) -> dict:
     return {
         "macro": macro,
         "scores": scores,
+        "stock_results": screener.results,
         "dash": dash,
         "md": md,
         "my_port": my_port,
@@ -461,4 +462,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

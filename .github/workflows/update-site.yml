@@ -46,6 +46,11 @@ jobs:
       - name: Check weekly macro reuse
         run: python tests/test_weekly_macro.py
 
+      - name: Check holding sell decisions
+        run: |
+          python tests/test_sell_snapshot.py
+          node tests/test_sell_decision.js
+
       - name: Recalculate data and build site
         env:
           PYTHONUTF8: "1"
@@ -77,4 +82,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
-

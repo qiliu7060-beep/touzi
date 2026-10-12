@@ -10,9 +10,9 @@
    静态站没有后端可代理，所以这一路必须是浏览器直连。
 2. **持仓台账**：改存浏览器 ``localStorage``（``scripts/static/app.js``）。
    公开托管的仓库里**不会**出现任何人的真实持仓。
-3. **结论**（建议动作 / 触发的卖出条件 / 预警）：浏览器算不了（要估值分位、
-   打分、规则表），所以在这里就由 ``run_all`` 算好、烘进 ``site.js`` 的 ``entries``。
-   长期投资的结论本来就是「一天一变」，可以接受；钱是实时的。
+3. **卖出结论**：公共财务、估值与宏观条件由 ``run_all`` 算好并写入
+   ``site.js``；个人成本相关的止损/止盈在浏览器里随报价重新判断。
+   未覆盖的股票或报价缺失时显示无法评估，不沿用选股时的动作。
 
 输入是 ``run_all.run_once()`` 的返回值（和 ``serve.py`` 用的是同一批对象），
 所以静态站与本机站看到的是**同一套口径**，不会出现两个版本的结论。
@@ -55,6 +55,7 @@ import webui  # noqa: E402
 from touzi.config import load_config  # noqa: E402
 from touzi.data.stock import fetch_valuation_history  # noqa: E402
 from touzi.portfolio import load_fees  # noqa: E402
+from touzi.plans import evaluate_sell  # noqa: E402
 from touzi.util import Cache, cached_fetch, is_live, setup_logging  # noqa: E402
 
 SITE_JS = ('<script src="site.js?v=__ASSET_VERSION__"></script>'
@@ -120,8 +121,8 @@ def valuation_thresholds(cache, codes, plan: dict, ttl_days: float) -> dict[str,
     于是浏览器只要拿腾讯行情里的实时 PE/PB 跟这个数比一下，就和 Python 端
     `evaluate_sell()` 的判断**完全一致**，不必把 5 年日频序列搬到前端。
 
-    这样「PE/PB 回到自身历史分位 ≥ 80% 就该卖」这条规则从「发布时冻结」
-    变成了「打开网页实时判」——而它正是回测里表现最好的那条卖出规则。
+    目前此函数尚未接入导出流程；页面上的 PE/PB 分位卖出判断仍使用
+    最近一次发布时的公共风险快照，不能声称浏览器会实时更新该分位。
     """
     import numpy as np
 
@@ -252,6 +253,24 @@ def site_js(res: dict, cfg, thr: dict | None = None,
                 "triggers": "", "failed": "", "warn": "",
             }
 
+    # 公共卖出条件覆盖本轮所有已评分股票，不受跟踪表 top 40 的截断影响。
+    # 不把任何浏览器持仓、成本或数量写入公开快照；相对成本止损在浏览器现算。
+    macro = res.get("macro")
+    macro_score = getattr(macro, "macro_score", float("nan"))
+    for score in res.get("stock_results") or []:
+        code = re.sub(r"\D", "", _s(getattr(score, "code", ""))).zfill(6)
+        if not re.fullmatch(r"\d{6}", code):
+            continue
+        e = entries.setdefault(code, {"name": _s(getattr(score, "name", "")),
+                                      "action": "候选", "triggers": "", "failed": "", "warn": ""})
+        checks = evaluate_sell(score, cfg, macro_score=macro_score, holding=None)
+        public_checks = [c for c in checks if c.key not in {"sell_stop_loss", "sell_take_profit"}]
+        e["sell_snapshot"] = {
+            "exit": [c.label for c in public_checks if c.hit and c.level == "清仓"],
+            "reduce": [c.label for c in public_checks if c.hit and c.level == "减仓"],
+            "warn": [c.label for c in public_checks if c.hit and c.level == "预警"],
+        }
+
     track = res.get("track")
     if track is not None and len(track):
         for _, r in track.iterrows():
@@ -301,7 +320,7 @@ def site_js(res: dict, cfg, thr: dict | None = None,
         "benchmarks": benchmarks or {"as_of": "", "instruments": [], "lot_size": 100},
     }
     return ("/* 由 scripts/publish_site.py 生成，不要手改。\n"
-            "   结论是发布那一刻的；价格由浏览器直接向腾讯行情取，是实时的。 */\n"
+            "   公共风险信号在发布时计算；个人止损/止盈由浏览器按报价计算。 */\n"
             "window.__SITE__ = " + json.dumps(payload, ensure_ascii=False,
                                              separators=(",", ":")) + ";\n")
 
@@ -323,7 +342,8 @@ def overview_body(res: dict) -> str:
         '<p class="hint">这几格按<b>你自己浏览器里存的持仓</b>实时算——'
         '所以换个浏览器、换台电脑就是空的，这是有意为之：'
         '公开的网站上不该有任何人的真实持仓。'
-        '买入门槛、卖出触发这类结论仍然是发布那一刻算好的。</p>')
+        '买入筛选与公共风险信号按最近一次发布计算，个人止损/止盈随报价重算；'
+        '没有完整数据时会显示「无法评估」。</p>')
     body.append(webui.R.render_overview(
         macro=res.get("macro"), my_port=None,
         track=res.get("track"), freshness=res.get("freshness")))
@@ -371,7 +391,7 @@ def my_body(cfg) -> str:
     body = [webui.hero(
         "我的持仓",
         "录入之后系统持续跟踪：现价、市值、浮动盈亏 <b>每 15 秒自动刷新</b>；"
-        "卖出提醒、建议卖出股数、扣掉手续费后的净盈利，来自发布那一刻算好的规则结论。",
+        "个人止损/止盈随报价重算；财务、估值和宏观卖出条件按网站最近一次发布的公共快照判断。",
         [("/pick", "去选股 · 勾选建仓"), ("/rules", "看卖出规则")])]
     body.append(webui.card(
         "① 录入 / 修改一笔持仓",
@@ -388,7 +408,10 @@ def my_body(cfg) -> str:
         "③ 现在该怎么办",
         '<div class="scroll"><table><tbody id="__live">'
         '<tr><td class="muted">正在读取本地台账…</td></tr></tbody></table></div>',
-        "「建议动作」来自发布时的规则结论；「到账金额」「扣费后净盈利」按你自己填的买入价实时算。"))
+        "任一清仓条件优先于减仓条件；都未触发时显示「一切照旧」。缺少该股评分或报价时显示「无法评估」，不假装安全。"
+        "公开条件以页面显示的评分发布时间为准，价格条件以页面显示的报价时间为准。"
+        "触发后请在可交易时段核对报价；本页不自动下单。"
+        "「到账金额」「扣费后净盈利」按你自己填的买入价和当前报价计算；实际成交以交易所为准。"))
     body.append('<h2>实时盈亏</h2><div class="grid grid3" id="__kpi"></div>')
     body.append(webui.card(
         "④ 与四等分指数 ETF 组合对比",
@@ -621,4 +644,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
