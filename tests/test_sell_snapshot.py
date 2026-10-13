@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from publish_site import site_js
 from touzi.config import load_config
+from touzi.plans import evaluate_sell
 
 
 class SellSnapshotTests(unittest.TestCase):
@@ -25,6 +26,9 @@ class SellSnapshotTests(unittest.TestCase):
         }
         script = site_js(result, cfg)
         payload = json.loads(script.split("window.__SITE__ = ", 1)[1].removesuffix(";\n"))
+        self.assertEqual(payload["sell_rules"], [
+            {"level": c.level, "label": c.label} for c in evaluate_sell(None, cfg)
+        ])
         snapshot = payload["entries"]["000001"]["sell_snapshot"]
         self.assertTrue(any("总分" in label for label in snapshot["exit"]))
         self.assertTrue(any("自身历史分位" in label for label in snapshot["missing"]))

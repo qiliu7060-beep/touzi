@@ -50,6 +50,7 @@ from .data.stock import (
     fetch_industry_map,
     fetch_market_snapshot,
     fetch_price_history,
+    fetch_realtime_quote,
     fetch_stock_list,
     fetch_valuation_history,
     parallel_map,
@@ -111,6 +112,35 @@ def _clip_history(obj: Any, as_of: pd.Timestamp) -> Any:
     if isinstance(idx, pd.DatetimeIndex):
         return obj[idx <= as_of]
     return obj
+
+
+def _merge_live_quotes(candidates: pd.DataFrame, quotes: pd.DataFrame
+                       ) -> tuple[pd.DataFrame, pd.Timestamp | None, float]:
+    """只合并同一交易日的真实报价，并返回其交易时间与覆盖率。"""
+    if candidates.empty or quotes is None or quotes.empty or "quote_ts" not in quotes:
+        return candidates, None, 0.0
+    valid = quotes.copy()
+    valid["quote_ts"] = pd.to_datetime(valid["quote_ts"], errors="coerce")
+    valid["price"] = pd.to_numeric(valid["price"], errors="coerce")
+    valid = valid[valid["quote_ts"].notna() & (valid["price"] > 0)]
+    if valid.empty:
+        return candidates, None, 0.0
+    quote_date = valid["quote_ts"].dt.date.mode().iloc[0]
+    valid = valid[valid["quote_ts"].dt.date == quote_date].drop_duplicates("code", keep="last")
+    matched = valid[valid["code"].isin(candidates["code"].astype(str))]
+    coverage = len(matched) / len(candidates)
+    if matched.empty:
+        return candidates, None, 0.0
+    quote_at = pd.Timestamp(matched["quote_ts"].max()).tz_localize("Asia/Shanghai")
+    # 无真实报价的股票本轮不发布新评分，避免个别旧缓存混进今日名单。
+    updated = candidates[candidates["code"].astype(str).isin(matched["code"])].copy()
+    by_code = matched.set_index("code")
+    for key in ("price", "pe_ttm", "pb", "float_mktcap_yi", "turnover_rate"):
+        if key not in updated or key not in by_code:
+            continue
+        fresh = pd.to_numeric(updated["code"].astype(str).map(by_code[key]), errors="coerce")
+        updated[key] = fresh.where(fresh.notna(), updated[key])
+    return updated, quote_at, coverage
 
 
 @dataclass
@@ -183,6 +213,8 @@ class Screener:
         self.live = is_live(cfg)
         self.ttls = resolve_ttls(cfg)
         self.quotes_at: pd.Timestamp | None = None   # 本次快照的抓取时刻
+        self.score_quote_at: pd.Timestamp | None = None  # 行情源给出的真实报价时间
+        self.score_quote_coverage: float = 0.0
         self._policy_table = None
         self._events = None
         self._universe: pd.DataFrame | None = None
@@ -513,6 +545,13 @@ class Screener:
         else:
             kept, _ = self.prefilter()
             cand = self._select_candidates(kept, limit=limit)
+
+        if self.live and len(cand):
+            # 按候选股直接取带交易时间的报价，覆盖可能回退旧缓存的全市场快照。
+            # 报价失败仍可生成报告，但发布层不能把它标成今日收盘评分。
+            live_quotes = fetch_realtime_quote(cand["code"].astype(str).tolist(), self.proxy)
+            cand, self.score_quote_at, self.score_quote_coverage = _merge_live_quotes(cand, live_quotes)
+            self.quotes_at = self.score_quote_at
 
         metas = {str(r["code"]): r for _, r in cand.iterrows()}
         LOG.info("开始抓取 %d 只股票的明细（并发 %d）…", len(metas), workers)

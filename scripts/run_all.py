@@ -321,10 +321,17 @@ def run_once(cfg, args, cache: Cache, proxy: str | None, out_dir: Path) -> dict:
         flags["unavailable"] = macro.unavailable
     if len(scores):
         flags["scored"] = int(len(scores))
+    score_quote_at = getattr(screener, "score_quote_at", None)
+    if is_live(cfg):
+        # 发布日期取行情源的交易时间，不能拿程序运行的日期冒充最新评分日期。
+        flags["as_of"] = score_quote_at.strftime("%Y-%m-%d") if score_quote_at is not None else None
+        flags["quote_at"] = score_quote_at.strftime("%Y-%m-%d %H:%M") if score_quote_at is not None else None
+        flags["quote_coverage"] = float(getattr(screener, "score_quote_coverage", 0.0))
+    else:
         flags["as_of"] = str(pd.Timestamp(as_of).date()) if as_of is not None else None
-    quotes_at = getattr(screener, "quotes_at", None)
-    flags["quote_at"] = (quotes_at.astimezone(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M")
-                         if quotes_at is not None else None)
+        quotes_at = getattr(screener, "quotes_at", None)
+        flags["quote_at"] = (quotes_at.astimezone(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M")
+                             if quotes_at is not None else None)
     flags["live"] = is_live(cfg)
 
     dash = R.build_dashboard(

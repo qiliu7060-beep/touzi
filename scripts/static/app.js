@@ -154,10 +154,28 @@
   function num(v) { return (typeof v === 'number' && isFinite(v)) ? v : NaN; }
   function r2(v) { return isFinite(v) ? Math.round(v * 100) / 100 : null; }
 
+  function publicScoreFresh(now) {
+    var age = Date.parse(String(SITE.as_of || '') + 'T00:00:00+08:00');
+    var quoteAt = Date.parse(String(SITE.quote_at || '').replace(' ', 'T') + '+08:00');
+    var coverage = Number(SITE.quote_coverage);
+    if (!isFinite(age) || !isFinite(quoteAt) || now - age > 7 * 86400000
+      || now - age < -86400000 || quoteAt > now + 5 * 60000
+      || !isFinite(coverage) || coverage < 0.9) { return false; }
+    var local = new Date(now + 8 * 3600000), quote = new Date(quoteAt + 8 * 3600000);
+    var today = local.toISOString().slice(0, 10), day = quote.toISOString().slice(0, 10);
+    var time = local.toISOString().slice(11, 16), quoteTime = quote.toISOString().slice(11, 16);
+    if (String(SITE.as_of) !== day) { return false; }
+    if (local.getUTCDay() >= 1 && local.getUTCDay() <= 5) {
+      if (time >= '16:00' && (day !== today || quoteTime < '15:00')) { return false; }
+      if (time >= '10:30' && time < '15:00'
+        && (day !== today || quoteTime < '09:30')) { return false; }
+    }
+    return true;
+  }
+
   function sellDecision(h, e, quote) {
     var snap = e.sell_snapshot;
-    var age = Date.parse(String(SITE.as_of || '') + 'T00:00:00+08:00');
-    var fresh = isFinite(age) && Date.now() - age <= 7 * 86400000;
+    var fresh = publicScoreFresh(Date.now());
     var exit = snap && fresh ? (snap.exit || []).slice() : [];
     var reduce = snap && fresh ? (snap.reduce || []).slice() : [];
     var warn = snap && fresh ? (snap.warn || []).slice() : [];
@@ -167,7 +185,7 @@
       }));
     }
     var missing = !snap ? ['本轮没有该股公共评分数据']
-      : !fresh ? ['公开评分超过7天或日期缺失']
+      : !fresh ? ['公开评分未通过最近一轮开盘/收盘行情核验']
         : Array.isArray(snap.missing) ? snap.missing.slice() : ['公开评分未提供数据覆盖清单'];
     var price = num(quote && quote.price);
     var buy = Number(h['买入价']);

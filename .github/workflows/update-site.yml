@@ -7,17 +7,23 @@ on:
     paths:
       - '.github/workflows/update-site.yml'
       - 'touzi/plans.py'
+      - 'touzi/report.py'
+      - 'touzi/screener.py'
+      - 'scripts/run_all.py'
       - 'scripts/publish_site.py'
       - 'scripts/static/app.js'
       - 'tests/test_buy_decision.py'
       - 'tests/test_sell_snapshot.py'
       - 'tests/test_sell_decision.js'
+      - 'tests/test_plan_rule_display.py'
+      - 'tests/test_score_quote_freshness.py'
   schedule:
-    # 北京时间工作日 09:45（开盘后）与 17:23（收盘后）重新选股、重算个股评分。
-    # GitHub 定时任务可能延迟；行情抓取失败时页面必须显示实际数据日期。
+    # 北京时间工作日 09:45、17:23 重算；18:23 复核一次收盘数据。
+    # 定时任务可能延迟，发布前必须核验行情源的真实交易时间与覆盖率。
     # 宏观评分由 --weekly-macro 按北京时间自然周复用。
     - cron: "45 1 * * 1-5"
     - cron: "23 9 * * 1-5"
+    - cron: "23 10 * * 1-5"
 permissions:
   contents: read
   pages: write
@@ -60,13 +66,23 @@ jobs:
         run: |
           python tests/test_buy_decision.py
           python tests/test_sell_snapshot.py
+          python tests/test_plan_rule_display.py
+          python tests/test_score_quote_freshness.py
           node tests/test_sell_decision.js
 
       - name: Recalculate data and build site
         env:
           PYTHONUTF8: "1"
           TOUZI_PROXY: ""
-        run: python scripts/publish_site.py --limit 300 --skip-backtest --weekly-macro
+        run: |
+          extra=()
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            case "${{ github.event.schedule }}" in
+              "23 9 * * 1-5"|"23 10 * * 1-5") extra=(--min-quote-time "15:00") ;;
+              *) extra=(--min-quote-time "09:30") ;;
+            esac
+          fi
+          python scripts/publish_site.py --limit 300 --skip-backtest --weekly-macro "${extra[@]}"
 
       - name: Save final market-data cache
         uses: actions/cache/save@v4

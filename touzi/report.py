@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from .regime import MACRO_LABELS
+from .plans import evaluate_sell
 
 CN_NUMS = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十",
            "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"]
@@ -955,32 +956,22 @@ def render_plan_rules(plan: dict[str, Any] | None) -> str:
         rank_on = float(g("buy_max_rank_pct", 0.0) or 0.0) > 0.0
     except Exception:  # noqa: BLE001
         rank_on = False
+
     buy_rows.append(("⑨ 候选池内排名",
                      f"≤ {float(g('buy_max_rank_pct', 0.0)):.0%}" if rank_on else "默认关闭",
                      "该分位随候选池大小漂移，故默认不做硬门槛"))
 
-    sell_rows = [
-        ("清仓", "PE 自身历史分位", f"≥ {fnum('sell_pe_percentile')}"),
-        ("清仓", "PB 自身历史分位", f"≥ {fnum('sell_pb_percentile')}"),
-        ("清仓", "PE × PB", f"≥ {fnum('sell_graham')}"),
-        ("清仓", "PE 绝对值", f"≥ {fnum('sell_pe_abs')}"),
-        ("清仓", "股息率", f"≤ {fnum('sell_dividend_yield')}%"),
-        ("清仓", "总分", f"≤ {fnum('sell_total')}"),
-        ("清仓", "宏观背景分", f"≤ {fnum('sell_macro_score')}"),
-        ("清仓", "现金流 / 净利润", f"≤ {fnum('sell_cashflow_floor')}"),
-        ("清仓", f"净利润连降 ≥ {fnum('sell_negative_growth_years')} 个年报", "——"),
-        ("清仓", "止损（相对成本）", f"≤ {float(g('sell_stop_loss', -0.25)):.0%}"),
-        ("清仓", "止盈（相对成本）", f"≥ +{float(g('sell_take_profit', 1.5)):.0%}"),
-        ("减仓", "总分", f"≤ {fnum('sell_reduce_total')}"),
-        ("减仓", "宏观背景分", f"≤ {fnum('sell_macro_reduce_score')}"),
-    ]
+    # 展示直接取实际执行引擎的级别与阈值，避免规则表独立抄写后走样。
+    sell_checks = evaluate_sell(None, {"plan": p})
+    action_count = sum(c.level != "预警" for c in sell_checks)
+    warn_count = len(sell_checks) - action_count
 
     buy_html = "".join(
         f'<tr><td class="l">{_esc(a)}</td><td class="l"><b>{_esc(b)}</b></td>'
         f'<td class="l small">{_esc(c)}</td></tr>' for a, b, c in buy_rows)
     sell_html = "".join(
-        f'<tr><td>{_badge(lv)}</td><td class="l">{_esc(a)}</td>'
-        f'<td class="l"><b>{_esc(b)}</b></td></tr>' for lv, a, b in sell_rows)
+        f'<tr><td>{_badge(c.level)}</td><td class="l">{_esc(c.label)}</td></tr>'
+        for c in sell_checks)
 
     return (
         '<h3>规则总表（只在 config/settings.toml 的 [plan] 段，可改）</h3>'
@@ -988,14 +979,15 @@ def render_plan_rules(plan: dict[str, Any] | None) -> str:
         '<div class="scroll"><table><thead><tr><th class="l">条件</th>'
         '<th class="l">阈值</th><th class="l">为什么这么定</th></tr></thead>'
         f"<tbody>{buy_html}</tbody></table></div>"
-        '<h4>卖出门槛：13 条 OR —— 任一触发就动手</h4>'
-        '<div class="scroll"><table><thead><tr><th>级别</th><th class="l">条件</th>'
-        '<th class="l">阈值</th></tr></thead>'
+        f'<h4>卖出动作：{action_count} 条 OR；另有 {warn_count} 条预警</h4>'
+        '<p class="small">任一清仓条件触发优先清仓；否则任一减仓条件触发才减仓。'
+        '预警只提示，不单独要求卖出；数据缺失时不能当作条件未触发。</p>'
+        '<div class="scroll"><table><thead><tr><th>级别</th><th class="l">实际执行条件与阈值</th>'
+        '</tr></thead>'
         f"<tbody>{sell_html}</tbody></table></div>"
-        '<p class="small"><b>「减仓」只做一次</b>：同一轮建仓里「总分 ≤ 67 / 宏观 ≤ 40」'
-        '只触发一次减半，之后要等「加仓」复位。原因写在回测里——原先它会月月触发，'
-        '每次卖掉剩余的一半，仓位几何衰减到几乎归零，等于被反复割肉。'
-        '差 1 条以内记为<b>「接近建仓」</b>，一并列出。</p>')
+        '<p class="small">回测中同一轮建仓的减仓动作只执行一次；网页不能获知你是否已经成交，'
+        '条件持续触发时仍会显示「减仓」，不会自动重复下单。'
+        '买入仅差 1 条已知门槛时记为「接近建仓」，并非可以买入。</p>')
 
 
 def _badge(level: str) -> str:
@@ -1023,6 +1015,10 @@ def _plan_rules_md(plan: dict[str, Any] | None) -> str:
     except Exception:  # noqa: BLE001
         rank_on = False
 
+    sell_checks = evaluate_sell(None, {"plan": plan})
+    action_count = sum(c.level != "预警" for c in sell_checks)
+    warn_count = len(sell_checks) - action_count
+
     L = ["**买入门槛（8 条 AND，全通过才建仓；差 ≤ "
          f"{int(g('buy_near_miss', 1))} 条记为「接近建仓」）**", "",
          "| 条件 | 阈值 |", "|---|---|",
@@ -1038,25 +1034,12 @@ def _plan_rules_md(plan: dict[str, Any] | None) -> str:
          ("| 候选池内排名 | ≤ " + f"{float(g('buy_max_rank_pct', 0.0)):.0%}"
           + " |") if rank_on else "| 候选池内排名 | 默认关闭（该分位随候选池大小漂移） |",
          "",
-         "**卖出门槛（13 条 OR，任一触发就动手）**", "",
-         "| 级别 | 条件 | 阈值 |", "|---|---|---|",
-         f"| 清仓 | PE 自身历史分位 | ≥ {fnum('sell_pe_percentile')} |",
-         f"| 清仓 | PB 自身历史分位 | ≥ {fnum('sell_pb_percentile')} |",
-         f"| 清仓 | PE × PB | ≥ {fnum('sell_graham')} |",
-         f"| 清仓 | PE 绝对值 | ≥ {fnum('sell_pe_abs')} |",
-         f"| 清仓 | 股息率 | ≤ {fnum('sell_dividend_yield')}% |",
-         f"| 清仓 | 总分 | ≤ {fnum('sell_total')} |",
-         f"| 清仓 | 宏观背景分 | ≤ {fnum('sell_macro_score')} |",
-         f"| 清仓 | 现金流 / 净利润 | ≤ {fnum('sell_cashflow_floor')} |",
-         f"| 清仓 | 净利润连降 | ≥ {fnum('sell_negative_growth_years')} 个年报 |",
-         f"| 清仓 | 止损（相对成本） | ≤ {float(g('sell_stop_loss', -0.25)):.0%} |",
-         f"| 清仓 | 止盈（相对成本） | ≥ +{float(g('sell_take_profit', 1.5)):.0%} |",
-         f"| 减仓 | 总分 | ≤ {fnum('sell_reduce_total')} |",
-         f"| 减仓 | 宏观背景分 | ≤ {fnum('sell_macro_reduce_score')} |",
+         f"**卖出动作（{action_count} 条 OR；另有 {warn_count} 条预警）**", "",
+         "| 级别 | 实际执行条件与阈值 |", "|---|---|",
+         *(f"| {c.level} | {c.label} |" for c in sell_checks),
          "",
-         "**「减仓」只做一次**：同一轮建仓里「总分 ≤ 67 / 宏观 ≤ 40」只触发一次减半，"
-         "之后要等「加仓」复位。原因写在回测里——原先它会月月触发，每次卖掉剩余的一半，"
-         "仓位几何衰减到几乎归零，等于被反复割肉。"]
+         "任一清仓条件优先于减仓；预警不单独触发卖出。数据缺失不能视为未触发。",
+         "回测中同一轮建仓只执行一次减仓；网页不知道是否已成交，条件持续触发时仍会显示减仓。"]
     return "\n".join(L)
 
 

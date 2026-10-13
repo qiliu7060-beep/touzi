@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 global.window = {
   __SITE__: {
     as_of: new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10),
+    quote_at: new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 16).replace('T', ' '),
+    quote_coverage: 1,
     plan: { sell_stop_loss: -0.25, sell_take_profit: 1.5, reduce_ratio: 0.5 },
     fees: { commission_rate: 0.00025, commission_min: 5, stamp_duty_rate: 0.0005, transfer_fee_rate: 0.00001 },
     entries: {

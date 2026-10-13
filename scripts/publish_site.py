@@ -33,7 +33,7 @@ rules.html app.js site.js report.md scores.csv tracking.csv macro_context.json
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import re
 import shutil
@@ -309,12 +309,15 @@ def site_js(res: dict, cfg, thr: dict | None = None,
         "built_at": datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M"),
         "as_of": _s(flags.get("as_of")),
         "quote_at": _s(flags.get("quote_at")),
+        "quote_coverage": _f(flags.get("quote_coverage")),
         "interval": int(webui.LIVE_INTERVAL),
         "fees": {"commission_rate": fees.commission_rate,
                  "commission_min": fees.commission_min,
                  "stamp_duty_rate": fees.stamp_duty_rate,
                  "transfer_fee_rate": fees.transfer_fee_rate},
         "plan": js_plan,
+        "sell_rules": [{"level": c.level, "label": c.label}
+                       for c in evaluate_sell(None, cfg)],
         # thr[code] = {pe_sell: 该股 PE 自身历史分位到 80% 时的 PE 值, ...}
         # 有了它，浏览器就能用实时 PE 精确判「分位 ≥ 80%」这条卖出规则。
         "thr": thr or {},
@@ -580,6 +583,31 @@ def serve_dist(dist: Path, port: int) -> None:
         print("\n已停止预览。")
 
 
+def validate_quote_freshness(flags: dict, min_quote_time: str,
+                             now: datetime | None = None) -> list[str]:
+    """定时发布前核验行情源时间；不把旧缓存包装成今日开盘/收盘评分。"""
+    current = now or datetime.now(ZoneInfo("Asia/Shanghai"))
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=ZoneInfo("Asia/Shanghai"))
+    quote_text = str(flags.get("quote_at") or "")
+    try:
+        quote_at = datetime.strptime(quote_text, "%Y-%m-%d %H:%M").replace(
+            tzinfo=ZoneInfo("Asia/Shanghai"))
+    except ValueError:
+        return ["行情源未返回真实报价时间"]
+    errors: list[str] = []
+    if quote_at.date() != current.date():
+        errors.append(f"报价交易日 {quote_at.date()} 不是今日 {current.date()}")
+    if quote_at.strftime("%H:%M") < min_quote_time:
+        errors.append(f"报价时间 {quote_at:%H:%M} 早于要求的 {min_quote_time}")
+    if quote_at > current.astimezone(ZoneInfo("Asia/Shanghai")) + timedelta(minutes=5):
+        errors.append("报价时间晚于当前时间，数据不可信")
+    coverage = _f(flags.get("quote_coverage")) or 0.0
+    if coverage < 0.9:
+        errors.append(f"有真实报价的候选股仅占 {coverage:.1%}，低于 90%")
+    return errors
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="把 touzi 导出成纯静态网站（dist/）")
     ap.add_argument("--config", default=None)
@@ -590,6 +618,8 @@ def main() -> int:
     ap.add_argument("--weekly-macro", action="store_true",
                     help="同一北京时间自然周复用宏观评分，个股仍每次重算")
     ap.add_argument("--offline", action="store_true", help="只用缓存，不联网")
+    ap.add_argument("--min-quote-time", choices=("09:30", "15:00"), default=None,
+                    help="定时发布门槛：要求今日真实报价达到开盘后或收盘时段")
     ap.add_argument("--out", default="dist", help="导出目录（默认 dist）")
     ap.add_argument("--serve", type=int, default=0, metavar="PORT",
                     help="导出后起本地静态服务预览")
@@ -618,6 +648,11 @@ def main() -> int:
     proxy = cfg.general.get("proxy") or None
 
     res = run_all.run_once(cfg, args, cache, proxy, out_dir)
+    if ns.min_quote_time:
+        freshness_errors = validate_quote_freshness(res.get("flags") or {}, ns.min_quote_time)
+        if freshness_errors:
+            print("不发布过期评分：" + "；".join(freshness_errors))
+            return 1
     print("\n准备四等分 ETF 对比周线…")
     benchmarks = benchmark_history(cache, ttl_days=1.0)
     written = export(res, cfg, dist, benchmarks=benchmarks)
