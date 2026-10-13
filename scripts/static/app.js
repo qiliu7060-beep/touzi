@@ -1043,6 +1043,7 @@
   function tick() {
     TIMER = null;
     if (BUSY || document.hidden) { schedule(IV); return; }
+    refreshBuildState();
     BUSY = true;
     fetchQuotes(wantedCodes(), function (q, err) {
       QUOTES = q;
@@ -1058,14 +1059,61 @@
     });
   }
 
+  function refreshBuildState() {
+    var bs = document.getElementById('__buildstate');
+    if (!bs) { return; }
+    bs.textContent = (publicScoreFresh(Date.now()) ? '' : '⚠️ 评分待新行情核验；')
+      + '评分生成于 ' + (SITE.built_at || '—')
+      + '；行情报价 ' + (SITE.quote_at || '—') + '（北京时间）';
+  }
+
+  function checkPublishedScore() {
+    var active = document.activeElement;
+    if (document.hidden || (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) {
+      setTimeout(checkPublishedScore, 60000);
+      return;
+    }
+    var script = document.createElement('script');
+    script.src = 'site.js?poll=' + Math.floor(Date.now() / 300000);
+    script.onload = function () {
+      script.remove();
+      var latest = window.__SITE__ || {};
+      if (latest.built_at && latest.built_at !== SITE.built_at) {
+        var key = 'touzi_last_score_reload';
+        try {
+          if (sessionStorage.getItem(key) === latest.built_at) {
+            var notice = document.getElementById('__buildstate');
+            if (notice) { notice.textContent = '发现新评分，请手动刷新页面'; }
+            return;
+          }
+          sessionStorage.setItem(key, latest.built_at);
+        } catch (e) {
+          var fallback = document.getElementById('__buildstate');
+          if (fallback) { fallback.textContent = '发现新评分，请手动刷新页面'; }
+          return;
+        }
+        window.location.reload();
+        return;
+      }
+      window.__SITE__ = SITE;
+      setTimeout(checkPublishedScore, 300000);
+    };
+    script.onerror = function () {
+      script.remove();
+      window.__SITE__ = SITE;
+      setTimeout(checkPublishedScore, 300000);
+    };
+    document.head.appendChild(script);
+  }
+
   function boot() {
     loadLedger();
-    var bs = document.getElementById('__buildstate');
-    if (bs) { bs.textContent = '评分计算于 ' + (SITE.built_at || '—') + '（北京时间）'; }
+    refreshBuildState();
     if (document.getElementById('__ledger') || document.getElementById('__kpi')) { window.__renderAll(); }
     var d = el('f_date'); if (d && !d.value) { d.value = today(); }
     var pd = el('__pdate'); if (pd && !pd.value) { pd.value = today(); }
     tick();
+    setTimeout(checkPublishedScore, 300000);
   }
 
   if (HAS_DOM) {
