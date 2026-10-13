@@ -269,7 +269,8 @@ def site_js(res: dict, cfg, thr: dict | None = None,
             "exit": [c.label for c in public_checks if c.hit and c.level == "清仓"],
             "reduce": [c.label for c in public_checks if c.hit and c.level == "减仓"],
             "warn": [c.label for c in public_checks if c.hit and c.level == "预警"],
-            "missing": [c.label for c in public_checks if not c.known],
+            "missing": [c.label for c in public_checks if not c.known and c.level != "预警"],
+            "missing_warn": [c.label for c in public_checks if not c.known and c.level == "预警"],
         }
 
     track = res.get("track")

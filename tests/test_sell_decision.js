@@ -6,7 +6,8 @@ global.window = {
     plan: { sell_stop_loss: -0.25, sell_take_profit: 1.5, reduce_ratio: 0.5 },
     fees: { commission_rate: 0.00025, commission_min: 5, stamp_duty_rate: 0.0005, transfer_fee_rate: 0.00001 },
     entries: {
-      '000001': { name: '测试股票', sell_snapshot: { exit: [], reduce: [], warn: [], missing: [] } },
+      '000001': { name: '测试股票', sell_snapshot: { exit: [], reduce: [], warn: [], missing: [],
+        missing_warn: ['净利润增速连续 2 个年报为负'] } },
       '000002': { name: '公开清仓', sell_snapshot: { exit: ['总分 ≤ 62'], reduce: [], warn: [], missing: [] } },
       '000003': { name: '公开减仓', sell_snapshot: { exit: [], reduce: ['总分 ≤ 67'], warn: [], missing: [] } },
       '000005': { name: '缺失数据', sell_snapshot: { exit: [], reduce: [], warn: [], missing: ['PE 自身分位'] } },
@@ -23,7 +24,8 @@ function row(code, price, buy = 10) {
 }
 
 assert.equal(row('000001', 10).action, '一切照旧');
-assert.equal(row('000001', 10).level, 'hold');
+assert.match(row('000001', 10).alert, /预警数据待核验/);
+assert.equal(row('000001', 10).level, 'watch');
 assert.equal(row('000001', 7.5).action, '清仓');
 assert.equal(row('000001', 7.5).sellShares, 100);
 assert.match(row('000001', 7.5).alert, /相对买入价浮亏/);

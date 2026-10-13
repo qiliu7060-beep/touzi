@@ -161,6 +161,11 @@
     var exit = snap && fresh ? (snap.exit || []).slice() : [];
     var reduce = snap && fresh ? (snap.reduce || []).slice() : [];
     var warn = snap && fresh ? (snap.warn || []).slice() : [];
+    if (snap && fresh && Array.isArray(snap.missing_warn)) {
+      warn = warn.concat(snap.missing_warn.map(function (label) {
+        return '预警数据待核验：' + label;
+      }));
+    }
     var missing = !snap ? ['本轮没有该股公共评分数据']
       : !fresh ? ['公开评分超过7天或日期缺失']
         : Array.isArray(snap.missing) ? snap.missing.slice() : ['公开评分未提供数据覆盖清单'];
