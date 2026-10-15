@@ -586,21 +586,32 @@ def serve_dist(dist: Path, port: int) -> None:
 def validate_quote_freshness(flags: dict, min_quote_time: str,
                              now: datetime | None = None) -> list[str]:
     """定时发布前核验行情源时间；不把旧缓存包装成今日开盘/收盘评分。"""
-    current = now or datetime.now(ZoneInfo("Asia/Shanghai"))
+    shanghai_tz = ZoneInfo("Asia/Shanghai")
+    current = now or datetime.now(shanghai_tz)
     if current.tzinfo is None:
-        current = current.replace(tzinfo=ZoneInfo("Asia/Shanghai"))
+        current = current.replace(tzinfo=shanghai_tz)
+    else:
+        current = current.astimezone(shanghai_tz)
     quote_text = str(flags.get("quote_at") or "")
     try:
         quote_at = datetime.strptime(quote_text, "%Y-%m-%d %H:%M").replace(
-            tzinfo=ZoneInfo("Asia/Shanghai"))
+            tzinfo=shanghai_tz)
     except ValueError:
         return ["行情源未返回真实报价时间"]
     errors: list[str] = []
-    if quote_at.date() != current.date():
-        errors.append(f"报价交易日 {quote_at.date()} 不是今日 {current.date()}")
+    is_same_day = quote_at.date() == current.date()
+    is_previous_close = (
+        (current.hour, current.minute) < (9, 30)
+        and quote_at.date() == current.date() - timedelta(days=1)
+        and quote_at.strftime("%H:%M") >= "15:00"
+    )
+    if not (is_same_day or is_previous_close):
+        errors.append(
+            f"报价时间 {quote_at:%Y-%m-%d %H:%M} 不在当前有效交易窗口"
+        )
     if quote_at.strftime("%H:%M") < min_quote_time:
         errors.append(f"报价时间 {quote_at:%H:%M} 早于要求的 {min_quote_time}")
-    if quote_at > current.astimezone(ZoneInfo("Asia/Shanghai")) + timedelta(minutes=5):
+    if quote_at > current + timedelta(minutes=5):
         errors.append("报价时间晚于当前时间，数据不可信")
     coverage = _f(flags.get("quote_coverage")) or 0.0
     if coverage < 0.9:
@@ -681,3 +692,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

@@ -37,19 +37,47 @@ class ScoreQuoteFreshnessTests(unittest.TestCase):
         self.assertEqual(quote_at.strftime("%Y-%m-%d %H:%M"), "2026-10-13 15:00")
         self.assertAlmostEqual(coverage, 2 / 3)
 
-    def test_close_publish_requires_today_close_and_coverage(self):
+    def test_same_day_close_requires_minimum_time_and_coverage(self):
         now = datetime(2026, 10, 13, 17, 23, tzinfo=ZoneInfo("Asia/Shanghai"))
         good = {"quote_at": "2026-10-13 15:00", "quote_coverage": 0.97}
         self.assertEqual(validate_quote_freshness(good, "15:00", now), [])
-        self.assertTrue(validate_quote_freshness({**good, "quote_at": "2026-10-12 15:00"},
-                                                 "15:00", now))
         self.assertTrue(validate_quote_freshness({**good, "quote_at": "2026-10-13 14:59"},
                                                  "15:00", now))
         self.assertTrue(validate_quote_freshness({**good, "quote_coverage": 0.89},
                                                  "15:00", now))
+
+    def test_delayed_close_publish_allows_previous_day_before_market_open(self):
+        now = datetime(2026, 10, 14, 1, 0, tzinfo=ZoneInfo("Asia/Shanghai"))
+        flags = {"quote_at": "2026-10-13 16:14", "quote_coverage": 1.0}
+        self.assertEqual(validate_quote_freshness(flags, "15:00", now), [])
+        self.assertEqual(validate_quote_freshness(flags, "09:30", now), [])
+
+    def test_previous_day_exception_rejects_intraday_or_expired_quotes(self):
+        before_open = datetime(2026, 10, 14, 9, 29,
+                               tzinfo=ZoneInfo("Asia/Shanghai"))
+        at_open = datetime(2026, 10, 14, 9, 30,
+                           tzinfo=ZoneInfo("Asia/Shanghai"))
+        good = {"quote_at": "2026-10-13 15:00", "quote_coverage": 1.0}
+        self.assertEqual(validate_quote_freshness(good, "15:00", before_open), [])
+        self.assertTrue(validate_quote_freshness(
+            {**good, "quote_at": "2026-10-13 14:59"}, "09:30", before_open))
+        self.assertTrue(validate_quote_freshness(good, "15:00", at_open))
+        self.assertTrue(validate_quote_freshness(
+            {**good, "quote_at": "2026-10-12 15:00"}, "15:00", before_open))
+
+    def test_future_or_invalid_quote_metadata_is_rejected(self):
+        now = datetime(2026, 10, 13, 17, 23, tzinfo=ZoneInfo("Asia/Shanghai"))
+        good = {"quote_at": "2026-10-13 15:00", "quote_coverage": 1.0}
+        self.assertEqual(validate_quote_freshness(
+            {**good, "quote_at": "2026-10-13 17:28"}, "15:00", now), [])
+        self.assertTrue(validate_quote_freshness(
+            {**good, "quote_at": "2026-10-13 17:29"}, "15:00", now))
         self.assertTrue(validate_quote_freshness({"quote_at": "", "quote_coverage": 1.0},
                                                  "15:00", now))
+        self.assertTrue(validate_quote_freshness(
+            {"quote_at": "not-a-time", "quote_coverage": 1.0}, "15:00", now))
 
 
 if __name__ == "__main__":
     unittest.main()
+
