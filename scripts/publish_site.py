@@ -11,7 +11,7 @@
 2. **持仓台账**：改存浏览器 ``localStorage``（``scripts/static/app.js``）。
    公开托管的仓库里**不会**出现任何人的真实持仓。
 3. **卖出结论**：公共财务、估值与宏观条件由 ``run_all`` 算好并写入
-   ``site.js``；个人成本相关的止损/止盈在浏览器里随报价重新判断。
+   ``site.js``；PE/PB 自身历史分位及个人止损/止盈在浏览器里随有效报价重新判断。
    未覆盖的股票或报价缺失时显示无法评估，不沿用选股时的动作。
 
 输入是 ``run_all.run_once()`` 的返回值（和 ``serve.py`` 用的是同一批对象），
@@ -53,10 +53,9 @@ import run_all  # noqa: E402  （复用 run_once，保证静态站与本机站�
 import webui  # noqa: E402
 
 from touzi.config import load_config  # noqa: E402
-from touzi.data.stock import fetch_valuation_history  # noqa: E402
 from touzi.portfolio import load_fees  # noqa: E402
 from touzi.plans import evaluate_sell  # noqa: E402
-from touzi.util import Cache, cached_fetch, is_live, setup_logging  # noqa: E402
+from touzi.util import Cache, cached_fetch, is_live, resolve_ttls, setup_logging  # noqa: E402
 
 SITE_JS = ('<script src="site.js?v=__ASSET_VERSION__"></script>'
            '<script src="app.js?v=__ASSET_VERSION__"></script>')
@@ -112,50 +111,52 @@ def relink(html: str) -> str:
     return html
 
 
-def valuation_thresholds(cache, codes, plan: dict, ttl_days: float) -> dict[str, dict]:
-    """给每只股票烘一个「PE/PB 涨到这个数就等于自身历史分位到了 X%」的门槛值。
+def valuation_thresholds(cache, codes, plan: dict, ttl_days: float,
+                         as_of: str) -> dict[str, dict]:
+    """只读本轮评分已使用的百度「近五年」缓存，不新增网络请求。
 
-    为什么这样可以做到**精确**：`percentile_of(v, pool)` 的定义是
-    ``count(pool < v) / n``，它是 v 的**单调阶梯函数**。所以
-    「分位 ≥ 80%」等价于「v > pool 排序后第 ceil(0.8n) 个值」——一个数就能定死。
-    于是浏览器只要拿腾讯行情里的实时 PE/PB 跟这个数比一下，就和 Python 端
-    `evaluate_sell()` 的判断**完全一致**，不必把 5 年日频序列搬到前端。
-
-    目前此函数尚未接入导出流程；页面上的 PE/PB 分位卖出判断仍使用
-    最近一次发布时的公共风险快照，不能声称浏览器会实时更新该分位。
+    与 screener 一样：按 as_of 截断、原序列 >20 项、正有限样本 >=5。
+    percentile_of 使用 count(pool < v)/n，score_valuation 再 round(..., 4)。
+    找到最小满足实际评分比较的计数 k，导出未舍入的 ordered[k-1]；
+    浏览器必须用严格 >。重复样本、非整数百分比及评分舍入均保持一致。
+    截面、行业、价格推算值及过期缓存绝不作为个股五年历史。
     """
     import numpy as np
 
-    def n_of(scale_key: str, default: float) -> int:
-        try:
-            return int(round(100 * float(plan.get(scale_key, default) or default)))
-        except (TypeError, ValueError):
-            return int(round(100 * default))
-
-    buy_pct = n_of("buy_max_pe_percentile", 0.40)
-    out: dict[str, dict] = {}
-    for code in codes:
-        rec: dict[str, float] = {}
-        for metric, indicator, prefix in (("pe", "市盈率(TTM)", "pe"), ("pb", "市净率", "pb")):
+    out = {}
+    cutoff = pd.to_datetime(as_of, errors="coerce")
+    if pd.isna(cutoff):
+        return out
+    for code in sorted(set(codes)):
+        rec = {"as_of": as_of, "source": "个股5年历史"}
+        for metric, indicator in (("pe", "市盈率(TTM)"), ("pb", "市净率")):
+            item = {"known": False, "reason": "有效个股五年历史缓存缺失或样本不足"}
+            rec[metric] = item
             try:
-                s = fetch_valuation_history(code, cache, indicator, "近五年", ttl_days=ttl_days)
-            except Exception:  # noqa: BLE001
-                continue
-            arr = pd.to_numeric(s, errors="coerce").to_numpy(dtype=float)
-            arr = arr[np.isfinite(arr) & (arr > 0)]
-            if len(arr) < 60:
-                continue
-            ordered = np.sort(arr)
-            n = len(ordered)
-            for q, key in ((n_of("sell_%s_percentile" % metric, 0.80), f"{prefix}_sell"),
-                           (n_of("buy_max_%s_percentile" % metric, 0.40), f"{prefix}_buy")):
-                need = int(np.ceil(q / 100.0 * n))
-                if need <= 0:
+                raw = cache.get(f"val_baidu_{code}_{indicator}_近五年", ttl_days=ttl_days)
+                if raw is None:
                     continue
-                # percentile(v) >= q/100  ⟺  v > ordered[need-1]
-                rec[key] = round(float(ordered[need - 1]), 4)
-        if rec:
-            out[code] = rec
+                dates = pd.to_datetime(raw["date"], errors="coerce")
+                series = pd.Series(pd.to_numeric(raw["value"], errors="coerce").to_numpy(),
+                                   index=pd.DatetimeIndex(dates))
+                series = series[~series.index.isna()].dropna().sort_index()
+                series = series[~series.index.duplicated(keep="last")]
+                series = series[series.index <= cutoff]
+                arr = series.to_numpy(dtype=float)
+                arr = np.sort(arr[np.isfinite(arr) & (arr > 0)])
+                if len(series) <= 20 or len(arr) < 5:
+                    continue
+                q = float(plan[f"sell_{metric}_percentile"])
+                if not np.isfinite(q) or not 0 <= q <= 1:
+                    continue
+                n = len(arr)
+                k = next(k for k in range(n + 1) if round(k / n, 4) >= q)
+                item.update(known=True, boundary=float(arr[k - 1]) if k else 0.0,
+                            samples=n, percentile=q, history_end=series.index[-1].strftime("%Y-%m-%d"),
+                            reason="")
+            except (KeyError, TypeError, ValueError, OSError):
+                continue
+        out[code] = rec
     return out
 
 
@@ -266,6 +267,8 @@ def site_js(res: dict, cfg, thr: dict | None = None,
         checks = evaluate_sell(score, cfg, macro_score=macro_score, holding=None)
         public_checks = [c for c in checks if c.key not in {"sell_stop_loss", "sell_take_profit"}]
         e["sell_snapshot"] = {
+            "percentile_labels": {c.key: c.label for c in public_checks
+                                  if c.key in {"sell_pe_percentile", "sell_pb_percentile"}},
             "exit": [c.label for c in public_checks if c.hit and c.level == "清仓"],
             "reduce": [c.label for c in public_checks if c.hit and c.level == "减仓"],
             "warn": [c.label for c in public_checks if c.hit and c.level == "预警"],
@@ -298,6 +301,7 @@ def site_js(res: dict, cfg, thr: dict | None = None,
     # 前端要用的阈值原样带过去，免得 JS 里再抄一遍数字（抄了就会走样）
     js_plan = {}
     for k in ("sell_stop_loss", "sell_take_profit", "sell_pe_abs", "sell_graham",
+              "sell_pe_percentile", "sell_pb_percentile",
               "sell_dividend_yield", "sell_total", "sell_macro_score",
               "sell_reduce_total", "sell_macro_reduce_score"):
         v = _f(plan.get(k))
@@ -325,7 +329,7 @@ def site_js(res: dict, cfg, thr: dict | None = None,
         "benchmarks": benchmarks or {"as_of": "", "instruments": [], "lot_size": 100},
     }
     return ("/* 由 scripts/publish_site.py 生成，不要手改。\n"
-            "   公共风险信号在发布时计算；个人止损/止盈由浏览器按报价计算。 */\n"
+            "   公共快照在发布时计算；历史分位及个人止损/止盈由浏览器按有效报价计算。 */\n"
             "window.__SITE__ = " + json.dumps(payload, ensure_ascii=False,
                                              separators=(",", ":")) + ";\n")
 
@@ -436,13 +440,20 @@ def my_body(cfg) -> str:
 # --------------------------------------------------------------------------- #
 # 导出
 # --------------------------------------------------------------------------- #
-def export(res: dict, cfg, dist: Path, benchmarks: dict | None = None) -> list[Path]:
+def export(res: dict, cfg, dist: Path, benchmarks: dict | None = None,
+           cache: Cache | None = None) -> list[Path]:
     dist.mkdir(parents=True, exist_ok=True)
     # 每次发布生成新的查询参数，绕过浏览器和 Pages CDN 对旧 JS 的短时缓存。
     scripts = SITE_JS.replace("__ASSET_VERSION__", str(int(time.time())))
     # 静态资源先摆好：页面里的 <script src> 是相对路径
     shutil.copy2(ROOT / "scripts" / "static" / "app.js", dist / "app.js")
-    (dist / "site.js").write_text(site_js(res, cfg, benchmarks=benchmarks), encoding="utf-8")
+    if cache is None:
+        cache = Cache(cfg.resolve(cfg.general.get("cache_dir", "data_cache")))
+    codes = [str(score.code).zfill(6) for score in res.get("stock_results") or []]
+    thresholds = valuation_thresholds(cache, codes, cfg.get("plan", {}) or {},
+                                      resolve_ttls(cfg)["history"],
+                                      _s((res.get("flags") or {}).get("as_of")))
+    (dist / "site.js").write_text(site_js(res, cfg, thr=thresholds, benchmarks=benchmarks), encoding="utf-8")
     (dist / ".nojekyll").write_text("", encoding="utf-8")
 
     written: list[Path] = [dist / "app.js", dist / "site.js"]
@@ -666,7 +677,7 @@ def main() -> int:
             return 1
     print("\n准备四等分 ETF 对比周线…")
     benchmarks = benchmark_history(cache, ttl_days=1.0)
-    written = export(res, cfg, dist, benchmarks=benchmarks)
+    written = export(res, cfg, dist, benchmarks=benchmarks, cache=cache)
     bad = verify(dist)
 
     total = sum(p.stat().st_size for p in dist.rglob("*") if p.is_file())

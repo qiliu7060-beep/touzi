@@ -14,6 +14,7 @@ on:
       - 'scripts/static/app.js'
       - 'tests/test_buy_decision.py'
       - 'tests/test_sell_snapshot.py'
+      - 'tests/test_valuation_thresholds.py'
       - 'tests/test_sell_decision.js'
       - 'tests/test_plan_rule_display.py'
       - 'tests/test_score_quote_freshness.py'
@@ -66,6 +67,7 @@ jobs:
         run: |
           python tests/test_buy_decision.py
           python tests/test_sell_snapshot.py
+          python tests/test_valuation_thresholds.py
           python tests/test_plan_rule_display.py
           python tests/test_score_quote_freshness.py
           node tests/test_sell_decision.js

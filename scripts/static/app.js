@@ -7,7 +7,7 @@
  *   1. 行情：浏览器**直连腾讯** https://qt.gtimg.cn（实测返回
  *      `Access-Control-Allow-Origin: *`，所以任何域名的页面都能直接 fetch）。
  *   2. 持仓台账：存在**浏览器本地** localStorage，不上传任何地方。
- *      公共财务、估值与宏观卖出条件由定时发布任务计算；个人止损/止盈按报价和
+ *      公共财务与宏观条件由定时发布计算；PE/PB 历史分位按有效报价重算；个人止损/止盈按报价和
  *      本地买入价现算。两者任一触发就给出减仓或清仓，未覆盖的股票不报平安。
  *   3. 钱（现价 / 市值 / 浮动盈亏 / 扣费后净盈利）用与 `touzi/portfolio.py`
  *      **逐行对齐**的公式现算 —— 费率、最低佣金、印花税、过户费、卖出比例、
@@ -70,8 +70,9 @@
       for (var k in F) { if (Object.prototype.hasOwnProperty.call(F, k)) { row[k] = f[F[k]]; } }
       if (!row.code) { continue; }
       for (var j = 0; j < NUM.length; j++) {
-        var v = parseFloat(row[NUM[j]]);
-        row[NUM[j]] = isNaN(v) ? null : v;
+        var raw = String(row[NUM[j]] || '').trim();
+        var v = raw ? Number(raw) : NaN;
+        row[NUM[j]] = isFinite(v) ? v : null;
       }
       row.name = String(row.name || '').trim();
       row.code = String(row.code).trim();
@@ -173,6 +174,33 @@
     return true;
   }
 
+  // 估值必须来自同一只股票的可核验报价；交易中最多容忍十分钟延迟。
+  // 非交易时段仅接受最近工作日收盘报价，节假日无法核验时保守标为未知。
+  function valuationQuoteValid(quote, code, now) {
+    if (!quote || quote.code !== code || !(num(quote.price) > 0)) { return false; }
+    var text = String(quote.quote_ts || '');
+    if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(text)) { return false; }
+    var at = Date.parse(text.replace(' ', 'T') + '+08:00');
+    if (!isFinite(at) || at > now + 60000
+      || new Date(at + 8 * 3600000).toISOString().slice(0, 19).replace('T', ' ') !== text) { return false; }
+    var local = new Date(now + 8 * 3600000), day = local.getUTCDay();
+    var today = local.toISOString().slice(0, 10), time = local.toISOString().slice(11, 19);
+    var qt = text.slice(11), date = text.slice(0, 10);
+    if (qt < '09:25:00' || qt > '15:05:00'
+      || (qt > '11:35:00' && qt < '13:00:00')) { return false; }
+    if (day >= 1 && day <= 5 && time >= '09:30:00' && time < '15:10:00') {
+      if (date !== today) { return false; }
+      if (time >= '11:30:00' && time < '13:00:00') { return qt >= '11:25:00'; }
+      return now - at <= 10 * 60000;
+    }
+    if (day >= 1 && day <= 5 && time >= '15:10:00') {
+      return date === today && qt >= '15:00:00';
+    }
+    do { local.setUTCDate(local.getUTCDate() - 1); }
+    while (local.getUTCDay() === 0 || local.getUTCDay() === 6);
+    return date === local.toISOString().slice(0, 10) && qt >= '15:00:00';
+  }
+
   function sellDecision(h, e, quote) {
     var snap = e.sell_snapshot;
     var fresh = publicScoreFresh(Date.now());
@@ -187,6 +215,33 @@
     var missing = !snap ? ['本轮没有该股公共评分数据']
       : !fresh ? ['公开评分未通过最近一轮开盘/收盘行情核验']
         : Array.isArray(snap.missing) ? snap.missing.slice() : ['公开评分未提供数据覆盖清单'];
+    var code = String(h['代码'] || ''), history = (SITE.thr || {})[code];
+    var now = Date.now(), validQuote = valuationQuoteValid(quote, code, now);
+    ['pe', 'pb'].forEach(function (metric) {
+      var key = 'sell_' + metric + '_percentile';
+      var label = snap && snap.percentile_labels && snap.percentile_labels[key];
+      label = label || metric.toUpperCase() + ' 回到自身历史分位 ≥ '
+        + (Number(PLAN[key]) * 100).toFixed(0) + '%';
+      var item = history && history[metric];
+      var age = history && Date.parse(history.as_of + 'T00:00:00+08:00');
+      var value = num(quote && quote[metric === 'pe' ? 'pe_ttm' : 'pb']);
+      var known = validQuote && history && history.source === '个股5年历史'
+        && isFinite(age) && now - age >= 0 && now - age <= 7 * 86400000
+        && item && item.known === true && num(item.samples) >= 5
+        && num(item.boundary) >= 0 && num(item.percentile) === num(PLAN[key])
+        && value > 0;
+      if (known) {
+        // 只替换这条分位规则；其他公共快照条件继续生效。
+        exit = exit.filter(function (x) { return x !== label; });
+        missing = missing.filter(function (x) { return x !== label; });
+        if (value > item.boundary) { exit.push(label + '（实时报价）'); }
+      } else {
+        missing.push(metric.toUpperCase() + ' 历史分位实时判断无法完成：'
+          + (!validQuote ? '报价缺失、异常或过期'
+            : !(value > 0) ? '估值缺失或非正值' : '有效个股五年历史阈值缺失或过期')
+          + '；公共快照仍按发布时间判断');
+      }
+    });
     var price = num(quote && quote.price);
     var buy = Number(h['买入价']);
     var hasPrice = isFinite(price) && price > 0;
@@ -1128,7 +1183,7 @@
   // 给 Node 单元测试用
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = { parseQuoteText: parseQuoteText, oneRow: oneRow, sellDecision: sellDecision,
-      summarize: summarize,
+      summarize: summarize, valuationQuoteValid: valuationQuoteValid,
       planSellShares: planSellShares, sellRatioFor: sellRatioFor, buyFees: buyFees,
       sellFees: sellFees, txSym: txSym, alertFor: alertFor, parseHistory: parseHistory,
       comparisonData: comparisonData };
