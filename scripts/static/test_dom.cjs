@@ -35,7 +35,8 @@ function mkEl(tag, attrs) {
     querySelectorAll() { return []; },
     closest() { return null; },
     appendChild(c) { this.children.push(c); return c; },
-    remove() { }, click() { },
+    remove() { this.removed = true; }, click() { if (this.onclick) { return this.onclick(); } },
+    addEventListener() { }, showModal() { this.open = true; },
     focus() { },
   };
   return el;
@@ -49,6 +50,7 @@ const documentShim = {
   readyState: 'complete',
   hidden: false,
   activeElement: { tagName: 'BODY' },
+  querySelector() { return null; },
   body: mkEl('body'),
   getElementById(id) { return byId[id] || null; },
   querySelectorAll(sel) {
@@ -196,7 +198,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   byId['f_price'].value = '1450.00';
   byId['f_shares'].value = '100';
   byId['f_date'].value = '2025-01-10';
-  W.__holdSave();
+  await W.__holdSave();
   ok('台账表出现 600519', has(byId['__ledger'].innerHTML, '<code>600519</code>'));
   ok('台账表出现 1450 与 100', has(byId['__ledger'].innerHTML, '1450') && has(byId['__ledger'].innerHTML, '100'));
   ok('写进了 localStorage', has(store['touzi.ledger.v1'] || '', '600519'));
@@ -243,7 +245,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   byId['f_price'].value = '1450.00';
   byId['f_shares'].value = '100';
   byId['f_date'].value = '2025-01-10';
-  W.__holdSave();
+  await W.__holdSave();
   const after = (byId['__ledger'].innerHTML.match(/data-idx=/g) || []).length;
   ok('没有新增行', before === after, before + ' → ' + after);
   ok('提示说是覆盖', has(byId['f_msg'].textContent, '覆盖'));
@@ -251,7 +253,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   console.log('\n[7] 换一个买入价＝新增一笔（分批买入）');
   byId['f_price'].value = '1300.00';
   byId['f_shares'].value = '50';
-  W.__holdSave();
+  await W.__holdSave();
   const after2 = (byId['__ledger'].innerHTML.match(/data-idx=/g) || []).length;
   ok('变成 2 行', after2 === 2, '实际 ' + after2);
 
@@ -259,7 +261,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   byId['f_import'].value = '代码,名称,买入日期,买入价,股数,备注\r\n'
     + '000651,格力电器,2023-06-01,32.00,1000,导入的\r\n'
     + '9,坏行,2024-01-01,1,1,应当跳过\r\n';
-  W.__holdImport();
+  await W.__holdImport();
   await sleep(120);
   ok('导入了 000651', has(byId['__ledger'].innerHTML, '<code>000651</code>'));
   ok('提示里说跳过了坏行', has(byId['__toast'].textContent, '跳过'), byId['__toast'].textContent);
@@ -274,14 +276,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   row.querySelector = (s) => (s.indexOf('checkbox') >= 0 ? cb : (s.indexOf('.ip') >= 0 ? ip : is));
   pickRows.push(row);
   byId['__pdate'].value = '2026-01-05';
-  W.__pickAdd();
+  await W.__pickAdd();
   ok('601398 进了台账', has(byId['__ledger'].innerHTML, '<code>601398</code>'));
   ok('打勾加入的那笔用了我填的买入价与股数',
     has(store['touzi.ledger.v1'] || '', '6.00') && has(store['touzi.ledger.v1'] || '', '1000'));
 
   console.log('\n[10] 删除一行');
   const n1 = (byId['__ledger'].innerHTML.match(/data-idx=/g) || []).length;
-  W.__holdDel(0, '600519');
+  const deleteHandler = byId['__ledger'].innerHTML.match(/onclick="(__holdDel[^"]+)"/)[1];
+  new Function('window', 'with(window){' + deleteHandler + '}')(W);
+  const dialog = documentShim.body.children.at(-1);
+  dialog.children.at(-1).click();
+  await sleep(0);
   const n2 = (byId['__ledger'].innerHTML.match(/data-idx=/g) || []).length;
   ok('行数减 1', n2 === n1 - 1, n1 + ' → ' + n2);
   ok('localStorage 里也少了那笔',
@@ -289,7 +295,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     store['touzi.ledger.v1']);
 
   console.log('\n[11] 清空');
-  W.__holdWipe();
+  await W.__holdWipe();
   ok('台账回到空态', has(byId['__ledger'].innerHTML, '还没有任何持仓'));
   ok('localStorage 也清了', (store['touzi.ledger.v1'] || '[]') === '[]', store['touzi.ledger.v1']);
 

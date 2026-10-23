@@ -134,6 +134,33 @@ class FinancialAnalysisTests(unittest.TestCase):
         self.assertEqual(analyze_financials(None, as_of="2026-04-30")["window"]["end_year"], 2024)
         self.assertEqual(analyze_financials(None, as_of="2026-05-01")["window"]["end_year"], 2025)
 
+    def test_annual_rollover_waits_for_shared_cutoff(self):
+        for date, end in (("2026-12-31", 2025), ("2027-01-01", 2025),
+                          ("2027-04-30T23:59:59+08:00", 2025),
+                          ("2027-05-01T00:00:00+08:00", 2026)):
+            with self.subTest(date=date):
+                result = analyze_financials(None, as_of=date)
+                self.assertEqual(result["window"]["years"], list(range(end - 4, end + 1)))
+
+    def test_new_annual_report_and_revision_enter_rolled_window(self):
+        import pandas as pd
+        now = "2027-05-01T10:00:00+08:00"
+        tables = statement_tables(fetched="2027-05-01T09:00:00+08:00")
+        missing = analyze_financials(tables, "食品饮料", as_of=now)
+        self.assertEqual(missing["window"]["years"], list(range(2022, 2027)))
+        self.assertEqual(missing["metrics"]["capex_to_profit"]["status"], "missing")
+        for source in ("lrb", "llb", "fzb"):
+            row = {**tables[source].iloc[-1].to_dict(), "report_date": "2026-12-31",
+                   "source_updated_at": "2027-04-20T12:00:00+08:00"}
+            tables[source] = pd.concat([tables[source], pd.DataFrame([row])], ignore_index=True)
+        complete = analyze_financials(tables, "食品饮料", as_of=now)
+        self.assertEqual(complete["metrics"]["capex_to_profit"]["net_profit_sum"], 500.)
+        revised = {**tables["lrb"].iloc[-1].to_dict(), "net_profit": 200.,
+                   "source_updated_at": "2027-04-30T12:00:00+08:00"}
+        tables["lrb"] = pd.concat([tables["lrb"], pd.DataFrame([revised])], ignore_index=True)
+        self.assertEqual(analyze_financials(tables, "食品饮料", as_of=now)
+                         ["metrics"]["capex_to_profit"]["net_profit_sum"], 600.)
+
     def test_same_scope_and_amount_fields(self):
         raw = {"20241231": {"rCurrency": "CNY", "rType": "合并期末", "data": [
             {"item_field": "RIGHAGGR", "item_value": "242011315120.60"},

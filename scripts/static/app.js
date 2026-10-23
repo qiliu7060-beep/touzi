@@ -396,10 +396,39 @@
       if (raw) { LEDGER = JSON.parse(raw) || []; return; }
     } catch (e) { }
     LEDGER = (SITE.seed_holdings || []).slice();
-    if (LEDGER.length) { saveLedger(); }
+    if (LEDGER.length) { saveLedger().catch(function () { window.__toast('初始持仓未能保存到本地，请导出 CSV 备份。'); }); }
   }
-  function saveLedger() {
-    try { localStorage.setItem(LEDGER_KEY, JSON.stringify(LEDGER)); } catch (e) { }
+  var HOLD_BUSY = false, HOLD_DIALOG = null;
+  function saveLedger(rows) {
+    rows = rows || LEDGER;
+    try { localStorage.setItem(LEDGER_KEY, JSON.stringify(rows)); return Promise.resolve(); }
+    catch (error) { return Promise.reject(error); }
+  }
+  function requireAccount() { return true; }
+  // 候选台账只有持久化成功才替换当前可见数据，所有入口共享提交锁。
+  function commitLedger(rows, success, message) {
+    if (HOLD_BUSY) { window.__toast('正在保存，请稍后'); return Promise.resolve(false); }
+    HOLD_BUSY = true;
+    if (message) { message.textContent = '正在保存…'; }
+    if (HOLD_DIALOG) { HOLD_DIALOG.querySelectorAll('button, input').forEach(function (e) { e.disabled = true; }); }
+    return saveLedger(rows).then(function () {
+      LEDGER = rows; HOLD_BUSY = false;
+      // 持久化已成功，后续渲染故障不能伪装成写入失败或诱导重复提交。
+      try { window.__renderAll(); success(); }
+      catch {
+        closeHoldingDialog();
+        window.__toast('持仓已保存，但页面更新失败，请刷新查看。');
+      }
+      return true;
+    }, function (error) {
+      HOLD_BUSY = false;
+      var text = '保存失败：' + String(error.message || error) + '。原持仓未变，请重试。';
+      if (message) { message.textContent = text; }
+      window.__toast(text); return false;
+    }).then(function (ok) {
+      if (HOLD_DIALOG) { HOLD_DIALOG.querySelectorAll('button, input').forEach(function (e) { e.disabled = false; }); }
+      return ok;
+    });
   }
   function cleanCode(v) {
     var s = String(v == null ? '' : v).trim().toUpperCase();
@@ -407,15 +436,15 @@
     return s;
   }
   // 与 serve.py 的 upsert 一致的覆盖键：代码 + 买入日期 + 买入价
-  function upsert(row) {
-    for (var i = 0; i < LEDGER.length; i++) {
-      if (String(LEDGER[i]['代码']) === String(row['代码'])
-        && String(LEDGER[i]['买入日期'] || '') === String(row['买入日期'] || '')
-        && String(LEDGER[i]['买入价'] || '') === String(row['买入价'] || '')) {
-        LEDGER[i] = row; saveLedger(); return 'upsert';
+  function upsert(row, rows) {
+    for (var i = 0; i < rows.length; i++) {
+      if (String(rows[i]['代码']) === String(row['代码'])
+        && String(rows[i]['买入日期'] || '') === String(row['买入日期'] || '')
+        && String(rows[i]['买入价'] || '') === String(row['买入价'] || '')) {
+        rows[i] = row; return 'upsert';
       }
     }
-    LEDGER.push(row); saveLedger(); return 'add';
+    rows.push(row); return 'add';
   }
 
   /* ------------------------------------------------ 汇总成服务器版载荷形状 */
@@ -588,7 +617,7 @@
         + (ok ? '' : ' <span class="pill bad">代码非法，会被跳过</span>') + '</td>');
       for (var c2 = 1; c2 < LEDGER_COLS.length; c2++) { h.push('<td>' + esc(r[LEDGER_COLS[c2]] || '') + '</td>'); }
       h.push('<td><button class="b b2" type="button" onclick="__holdEdit(' + i + ')">编辑</button> '
-        + '<button class="b b2" type="button" onclick="__holdDel(' + i + ',' + JSON.stringify(code) + ')">删除</button>'
+        + '<button class="b b2" type="button" onclick="__holdDel(' + i + ')">删除</button>'
         + '</td></tr>');
     }
     host.innerHTML = h.join('');
@@ -942,42 +971,77 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
-  window.__holdEdit = function (i) {
-    var r = LEDGER[i];
-    if (!r) { return; }
-    el('f_idx').value = String(i);
-    ['代码', '名称', '买入日期', '买入价', '股数', '备注'].forEach(function (k, n) {
-      var id = ['f_code', 'f_name', 'f_date', 'f_price', 'f_shares', 'f_note'][n];
-      if (el(id)) { el(id).value = r[k] == null ? '' : r[k]; }
-    });
-    el('f_msg').textContent = '已把第 ' + i + ' 行填进表单：改完点「保存」。'
-      + '键是「代码+买入日期+买入价」，三者都没改就覆盖原行；改了价格或日期则是新增一笔（分批买入）。';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  window.__holdDel = function (i, code) {
-    if (!confirm('确认删除 ' + code + ' 这一行？')) { return; }
-    LEDGER.splice(i, 1); saveLedger();
-    window.__renderAll();
-    window.__toast('已删除 ' + code + '，盈亏已按新台账重算');
-  };
-
-  window.__holdSave = function () {
-    var code = cleanCode(el('f_code').value);
-    if (!/^\d{6}$/.test(code)) { el('f_msg').textContent = '代码必须是 6 位数字。'; return; }
-    var row = {
-      '代码': code,
-      '名称': (el('f_name').value || '').trim() || (ENTRIES[code] && ENTRIES[code].name) || '',
-      '买入日期': el('f_date').value || '',
-      '买入价': (el('f_price').value || '').trim(),
-      '股数': (el('f_shares').value || '').trim(),
-      '备注': (el('f_note').value || '').trim()
+  function closeHoldingDialog() {
+    if (HOLD_BUSY) { return; }
+    if (HOLD_DIALOG) {
+      var previous = HOLD_DIALOG._previousFocus;
+      HOLD_DIALOG.remove(); HOLD_DIALOG = null;
+      if (previous && previous.isConnected && previous.focus) { previous.focus(); }
+      else if (el('f_code')) { el('f_code').focus(); }
+    }
+  }
+  function holdingDialog(i, deleting) {
+    if (!requireAccount() || HOLD_BUSY || !LEDGER[i]) { return; }
+    closeHoldingDialog();
+    var snapshot = JSON.stringify(LEDGER), row = LEDGER[i];
+    var dialog = document.createElement('dialog'); HOLD_DIALOG = dialog;
+    dialog._previousFocus = document.activeElement;
+    dialog.setAttribute('aria-labelledby', '__holdtitle');
+    dialog.style.cssText = 'max-width:520px;width:calc(100% - 40px);border:1px solid #ccd5df;border-radius:12px;padding:24px;color:#172b40';
+    dialog.innerHTML = '<h2 id="__holdtitle">' + (deleting ? '确认删除持仓' : '编辑持仓') + '</h2><p>'
+      + esc(row['代码']) + ' ' + esc(row['名称']) + ' · ' + esc(row['买入日期']) + ' · 买入价 ' + esc(row['买入价'])
+      + ' · 股数 ' + esc(row['股数']) + '</p>';
+    var inputs = {};
+    if (!deleting) { LEDGER_COLS.forEach(function (key) {
+      var label = document.createElement('label'), input = document.createElement('input');
+      label.textContent = key + ' '; input.value = row[key] || '';
+      input.setAttribute('aria-label', key); input.style.cssText = 'display:block;width:100%;margin:6px 0 12px;box-sizing:border-box';
+      if (key === '买入日期') { input.type = 'date'; }
+      label.appendChild(input); dialog.appendChild(label); inputs[key] = input;
+    }); }
+    var msg = document.createElement('p'); msg.setAttribute('role', 'status'); dialog.appendChild(msg);
+    var cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = '取消'; cancel.onclick = closeHoldingDialog;
+    var submit = document.createElement('button'); submit.type = 'button'; submit.textContent = deleting ? '确认删除' : '保存修改';
+    submit.onclick = function () {
+      if (HOLD_BUSY) { return; }
+      if (JSON.stringify(LEDGER) !== snapshot) { msg.textContent = '持仓已发生变化，请取消并重新打开。'; return; }
+      var rows = LEDGER.slice();
+      if (deleting) { rows.splice(i, 1); }
+      else {
+        var draft = {}; LEDGER_COLS.forEach(function (k) { draft[k] = inputs[k].value.trim(); });
+        draft['代码'] = cleanCode(draft['代码']);
+        var error = holdingError(draft); if (error) { msg.textContent = error; return; }
+        rows[i] = draft;
+      }
+      commitLedger(rows, function () { closeHoldingDialog(); window.__toast(deleting ? '已删除持仓' : '已保存修改'); }, msg);
     };
-    var how = upsert(row);
-    el('f_msg').textContent = (how === 'upsert' ? '已覆盖同一笔（代码+日期+价都相同）。' : '已新增一笔。')
-      + '现在共 ' + LEDGER.length + ' 行，存在这台浏览器里。';
-    window.__renderAll();
-    window.__toast('已保存。个人止损随报价刷新；公开评分按网站发布快照更新。');
+    dialog.appendChild(cancel); dialog.appendChild(submit); document.body.appendChild(dialog);
+    dialog.addEventListener('cancel', function (event) { event.preventDefault(); closeHoldingDialog(); });
+    dialog.showModal(); (deleting ? cancel : inputs['代码']).focus();
+  }
+  function holdingError(row) {
+    if (!/^\d{6}$/.test(row['代码'])) { return '代码必须是 6 位数字。'; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(row['买入日期'])) { return '请填写买入日期。'; }
+    if (!isFinite(Number(row['买入价'])) || Number(row['买入价']) <= 0) { return '买入价必须大于零。'; }
+    if (!Number.isSafeInteger(Number(row['股数'])) || Number(row['股数']) <= 0) { return '股数必须是正整数。'; }
+    if (row['名称'].length > 100 || row['备注'].length > 1000) { return '名称或备注过长。'; }
+    return '';
+  }
+  window.__holdEdit = function (i) { holdingDialog(i, false); };
+  window.__holdDel = function (i) { holdingDialog(i, true); };
+  window.__holdSave = function () {
+    if (!requireAccount() || HOLD_BUSY) { return; }
+    var code = cleanCode(el('f_code').value), row = {
+      '代码': code, '名称': el('f_name').value.trim() || (ENTRIES[code] && ENTRIES[code].name) || '',
+      '买入日期': el('f_date').value || '', '买入价': el('f_price').value.trim(),
+      '股数': el('f_shares').value.trim(), '备注': el('f_note').value.trim()
+    };
+    var error = holdingError(row); if (error) { el('f_msg').textContent = error; return; }
+    var rows = LEDGER.slice(), how = upsert(row, rows);
+    return commitLedger(rows, function () {
+      el('f_msg').textContent = how === 'upsert' ? '已覆盖同一笔（代码+日期+价都相同）。' : '已新增一笔。';
+      window.__toast('已保存持仓');
+    }, el('f_msg'));
   };
 
   /* ------------------------------------------- 导入 / 导出 / 清空（本地） */
@@ -1016,6 +1080,8 @@
   }
 
   window.__holdImport = function () {
+    if (HOLD_BUSY) { return; }
+    var candidate = LEDGER.slice();
     var box = el('f_import');
     if (!box) { return; }
     var rows = parseCsv(box.value || '');
@@ -1031,20 +1097,22 @@
       var o = {};
       LEDGER_COLS.forEach(function (c) { o[c] = idx[c] >= 0 ? String(r[idx[c]] == null ? '' : r[idx[c]]).trim() : ''; });
       o['代码'] = code;
-      upsert(o); added += 1;
+      upsert(o, candidate); added += 1;
     }
-    box.value = '';
-    window.__renderAll();
-    window.__toast('导入完成：' + added + ' 行' + (bad ? ('，跳过 ' + bad + ' 行（代码不是 6 位数字）') : ''));
+    return commitLedger(candidate, function () {
+      box.value = ''; window.__toast('导入完成：' + added + ' 行，跳过 ' + bad + ' 行');
+    });
   };
 
   window.__holdWipe = function () {
+    if (HOLD_BUSY) { return; }
     if (!confirm('确认清空这台浏览器里存的全部持仓？（导出一份就不会丢）')) { return; }
-    LEDGER = []; saveLedger(); window.__renderAll();
-    window.__toast('已清空本地台账');
+    return commitLedger([], function () { window.__toast('已清空本地台账'); });
   };
 
   window.__pickAdd = function () {
+    if (HOLD_BUSY) { return; }
+    var candidate = LEDGER.slice();
     var trs = document.querySelectorAll('tr[data-pick]');
     var date = el('__pdate') ? el('__pdate').value : today();
     var note = el('__pnote') ? el('__pnote').value : '';
@@ -1061,13 +1129,10 @@
         '备注': note
       };
       if (!/^\d{6}$/.test(o['代码'])) { continue; }
-      upsert(o); n += 1;
+      upsert(o, candidate); n += 1;
     }
     if (!n) { window.__toast('先勾选至少一只股票'); return; }
-    // 先把台账表刷出来再跳转：万一浏览器拦了这次跳转，页面也不会停在原地不动
-    if (window.__renderAll) { window.__renderAll(); }
-    window.__toast('已加入 ' + n + ' 笔，跳转到「我的持仓」');
-    setTimeout(function () { location.href = 'my.html'; }, 800);
+    return commitLedger(candidate, function () { window.__toast('已加入 ' + n + ' 笔'); location.href = 'my.html'; });
   };
 
   /* ------------------------------------------------------------- 主循环 */
@@ -1257,24 +1322,84 @@
       + ((a.notes || []).length ? '<br>' + esc(a.notes.join('；')) : '') + '</p>';
     return html;
   }
+  function financialSearch(confirm) {
+    var input = document.getElementById('__financialsearch');
+    var select = document.getElementById('__financialcode');
+    var results = document.getElementById('__financialresults');
+    var message = document.getElementById('__financialmessage');
+    if (!input || input.__composing) { return; }
+    var query = input.value.trim().toLowerCase();
+    var matches = query ? Object.keys(ENTRIES).sort().filter(function (code) {
+      return code.indexOf(query) !== -1 || String(ENTRIES[code].name || '').toLowerCase().indexOf(query) !== -1;
+    }) : [];
+    results.innerHTML = '';
+    if (!query) { message.textContent = '可输入中文名称或股票代码搜索，也可直接下拉选择。'; return; }
+    if (!matches.length) { message.textContent = '当前评分覆盖股票中没有匹配结果，请检查名称或代码。'; return; }
+    if (confirm && matches.length === 1) {
+      select.value = matches[0];
+      document.getElementById('__financialbody').innerHTML = financialHTML(ENTRIES[matches[0]]);
+      message.textContent = '已选择 ' + matches[0] + ' ' + (ENTRIES[matches[0]].name || '');
+      return;
+    }
+    message.textContent = '找到 ' + matches.length + ' 只股票，请选择：';
+    matches.forEach(function (code) {
+      var button = document.createElement('button');
+      button.type = 'button'; button.className = 'b b2';
+      button.textContent = code + ' ' + (ENTRIES[code].name || '');
+      button.style.margin = '4px';
+      button.addEventListener('click', function () {
+        select.value = code;
+        document.getElementById('__financialbody').innerHTML = financialHTML(ENTRIES[code]);
+        results.innerHTML = '';
+        message.textContent = '已选择 ' + code + ' ' + (ENTRIES[code].name || '');
+        input.focus();
+      });
+      results.appendChild(button);
+    });
+  }
+
   function renderFinancials() {
     if (!HAS_DOM) { return; }
     var main = document.querySelector('main'); if (!main) { return; }
     var host = document.getElementById('__financials');
     if (!host) {
       host = document.createElement('section'); host.id = '__financials'; host.className = 'card';
-      host.innerHTML = '<h3>企业财务分析</h3><label for="__financialcode">选择股票</label> '
-        + '<select id="__financialcode" style="max-width:100%"></select><div id="__financialbody"></div>';
+      host.innerHTML = '<h3>企业财务分析</h3>'
+        + '<form id="__financialform" style="margin-bottom:12px"><label for="__financialsearch">搜索股票（中文名称或代码）</label> '
+        + '<input id="__financialsearch" type="search" maxlength="100" placeholder="例如：平安银行 或 000001" autocomplete="off" aria-describedby="__financialmessage" style="max-width:100%"> '
+        + '<button class="b b1" type="submit">确定</button></form>'
+        + '<p id="__financialmessage" class="muted" role="status">可输入中文名称或股票代码搜索，也可直接下拉选择。</p>'
+        + '<div id="__financialresults" role="group" aria-label="匹配股票" style="max-height:180px;overflow:auto"></div>'
+        + '<label for="__financialcode">选择股票</label> '
+        + '<select id="__financialcode" style="max-width:100%"></select>'
+        + '<p class="muted">年度更新：每年5月1日，五年窗口向前滚动一年；工作日数据任务检查新财报及更正，来源和任务延迟可能影响显示。财报不是固定不变的数据，行情刷新也不代表新财报已披露。</p>'
+        + '<div id="__financialbody"></div>';
       main.appendChild(host);
+      var input = document.getElementById('__financialsearch');
+      input.addEventListener('compositionstart', function () { input.__composing = true; });
+      input.addEventListener('compositionend', function () { input.__composing = false; financialSearch(false); });
+      input.addEventListener('input', function () { financialSearch(false); });
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && (event.isComposing || input.__composing || event.keyCode === 229)) { event.preventDefault(); }
+      });
+      document.getElementById('__financialform').addEventListener('submit', function (event) {
+        event.preventDefault();
+        if (!input.__composing) { financialSearch(true); }
+      });
       document.getElementById('__financialcode').addEventListener('change', function () {
         document.getElementById('__financialbody').innerHTML = financialHTML(ENTRIES[this.value]);
+        document.getElementById('__financialresults').innerHTML = '';
+        document.getElementById('__financialmessage').textContent = '已选择 ' + this.value + ' ' + (ENTRIES[this.value].name || '');
       });
     }
     var select = document.getElementById('__financialcode'), selected = select.value;
     var codes = Object.keys(ENTRIES).sort();
     var options = codes.map(function (code) { return '<option value="' + esc(code) + '">' + esc(code + ' ' + (ENTRIES[code].name || '')) + '</option>'; }).join('');
-    if (select.innerHTML !== options) { select.innerHTML = options; }
-    if (ENTRIES[selected]) { select.value = selected; }
+    if (select.innerHTML !== options) {
+      select.innerHTML = options;
+      if (ENTRIES[selected]) { select.value = selected; }
+      financialSearch(false);
+    }
     document.getElementById('__financialbody').innerHTML = financialHTML(ENTRIES[select.value]);
   }
 
