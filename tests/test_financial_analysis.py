@@ -17,7 +17,7 @@ NOW = "2026-10-23T10:00:00+08:00"
 
 
 def analysis(**kw):
-    return analyze_financials(statement_tables(**kw), as_of=NOW)
+    return analyze_financials(statement_tables(**kw), "食品饮料", as_of=NOW)
 
 
 def quality(a, industry="食品饮料"):
@@ -56,7 +56,7 @@ class FinancialAnalysisTests(unittest.TestCase):
     def test_missing_year_does_not_slide_window(self):
         tables = statement_tables()
         tables["lrb"].loc[4, "report_date"] = "2020-12-31"
-        a = analyze_financials(tables, as_of=NOW)
+        a = analyze_financials(tables, "食品饮料", as_of=NOW)
         self.assertEqual(a["window"]["years"], list(range(2021, 2026)))
         self.assertEqual(a["metrics"]["capex_to_profit"]["status"], "missing")
         self.assertFalse(checks(a)["sell_capex_to_profit"].known)
@@ -66,19 +66,19 @@ class FinancialAnalysisTests(unittest.TestCase):
         row = {**tables["lrb"].iloc[-1].to_dict(), "report_date": "2025-09-30", "net_profit": 9999.}
         import pandas as pd
         tables["lrb"] = pd.concat([tables["lrb"], pd.DataFrame([row])])
-        self.assertEqual(analyze_financials(tables, as_of=NOW)["metrics"]["capex_to_profit"]["net_profit_sum"], 500.)
+        self.assertEqual(analyze_financials(tables, "食品饮料", as_of=NOW)["metrics"]["capex_to_profit"]["net_profit_sum"], 500.)
 
     def test_latest_revision_wins(self):
         tables = statement_tables()
         import pandas as pd
         revised = {**tables["lrb"].iloc[-1].to_dict(), "net_profit": 200., "source_updated_at": "2026-04-01T12:00:00+08:00"}
         tables["lrb"] = pd.concat([pd.DataFrame([revised]), tables["lrb"]])
-        self.assertEqual(analyze_financials(tables, as_of=NOW)["metrics"]["capex_to_profit"]["net_profit_sum"], 600.)
+        self.assertEqual(analyze_financials(tables, "食品饮料", as_of=NOW)["metrics"]["capex_to_profit"]["net_profit_sum"], 600.)
 
     def test_loss_year_included_and_flagged(self):
         tables = statement_tables()
         tables["lrb"].loc[0, "net_profit"] = -100.
-        a = analyze_financials(tables, as_of=NOW)
+        a = analyze_financials(tables, "食品饮料", as_of=NOW)
         self.assertEqual(a["loss_years"], [2021])
         self.assertEqual(a["metrics"]["capex_to_profit"]["net_profit_sum"], 300.)
 
@@ -107,12 +107,22 @@ class FinancialAnalysisTests(unittest.TestCase):
         self.assertEqual(analysis(fetched="2026-10-24T09:00:00+08:00")["status"], "stale")
 
     def test_industry_exemptions(self):
-        for industry in ("银行", "保险", "证券", "房地产"):
+        for industry in ("银行", "保险", "证券", "金融行业", "房地产"):
             a = analyze_financials(statement_tables(), industry, NOW)
             q = quality(a, industry)
             self.assertIsNone(q.detail["sub_scores"]["debt"])
             self.assertEqual(a["metrics"]["debt_equity"]["status"], "not_applicable")
             self.assertEqual(q.detail["sub_scores"]["capex"] is None, industry != "房地产")
+
+    def test_unknown_industry_retains_values_without_applying_generic_thresholds(self):
+        a = analyze_financials(statement_tables(), "", NOW)
+        self.assertEqual(a["status"], "partial")
+        self.assertEqual(a["metrics"]["debt_equity"]["value"], .8)
+        self.assertEqual(a["metrics"]["capex_to_profit"]["value"], .25)
+        self.assertIsNone(quality(a).detail["sub_scores"]["debt"])
+        self.assertIsNone(quality(a).detail["sub_scores"]["capex"])
+        self.assertFalse(checks(a)["sell_debt_equity"].known)
+        self.assertFalse(checks(a)["sell_capex_to_profit"].known)
 
     def test_empty_sources_show_unknown(self):
         a = analyze_financials(None, as_of=NOW)

@@ -124,7 +124,8 @@ def analyze_financials(tables, industry="", as_of=None, ttl_days=1):
         years.append(row)
     latest = frames["fzb"][max(frames["fzb"])] if frames["fzb"] else {}
     equity, liabilities = number(latest.get("total_equity")), number(latest.get("total_liabilities"))
-    financial = any(k in industry for k in ("银行", "保险", "证券"))
+    # 新浪49板块使用“金融行业”，不能只匹配申万式细分行业名。
+    financial = any(k in industry for k in ("银行", "保险", "证券", "金融"))
     debt_exempt = financial or "房地产" in industry
     debt_status = "missing" if equity is None or liabilities is None else "ok"
     if debt_status == "ok" and (equity <= 0 or liabilities < 0):
@@ -148,6 +149,10 @@ def analyze_financials(tables, industry="", as_of=None, ttl_days=1):
         capex_status = "stale"
     if financial:
         capex_status = "not_applicable"
+    if not industry.strip():
+        # 缺少行业时无法确认通用阈值适用性，保留金额和比率供核对。
+        debt_status = "missing"
+        capex_status = "missing"
     capex_ratio = capex_sum / profit_sum if capex_sum is not None and profit_sum is not None and profit_sum > 0 else None
     annual = frames["lrb"].get(f"{end}-12-31", {})
     annual_profit = number(annual.get("net_profit"))
@@ -159,6 +164,8 @@ def analyze_financials(tables, industry="", as_of=None, ttl_days=1):
         notes.append("行业债务项不适用，不参与计分或预警。")
     if financial:
         notes.append("金融行业资本开支项不适用，不参与计分或预警。")
+    if not industry.strip():
+        notes.append("行业归属缺失，债务和资本开支通用标准适用性待核验，暂不参与计分或预警；金额保留供核对。")
     if status in ("partial", "missing", "stale"):
         notes.append("财报存在缺项或旧缓存，相关新指标不参与计分和确定性预警。")
     return {"status": status, "source": SOURCE, "currency": "CNY", "unit": "yuan", "statement_scope": "consolidated",

@@ -26,7 +26,7 @@ from financial_fixtures import statement_tables
 
 def fixtures():
     cases = []
-    for variant in ("history", "industry", "market", "no-reference", "invalid-history", "bonus", "no-bond", "no-dividend", "finance-penalty", "threshold-equality", "financial", "financial-loss", "financial-equity", "financial-stale"):
+    for variant in ("history", "industry", "market", "no-reference", "invalid-history", "bonus", "no-bond", "no-dividend", "finance-penalty", "threshold-equality", "financial", "financial-loss", "financial-equity", "financial-stale", "financial-broad", "financial-unknown"):
         cfg = load_config()
         cfg["valuation"]["primary_bonus"] = .15 if variant == "bonus" else 0
         s = Screener.__new__(Screener)
@@ -62,6 +62,10 @@ def fixtures():
                 equity=0. if variant == "financial-equity" else 100.,
                 fetched="2026-10-20T09:00:00+08:00" if variant == "financial-stale" else "2026-10-23T09:00:00+08:00")
             meta["industry"] = "食品饮料"
+            if variant == "financial-broad":
+                meta["industry"] = "金融行业"
+            elif variant == "financial-unknown":
+                meta["industry"] = ""
         def score_one(current):
             # 固定真实获取时点，避免联网/墙钟进入跨语言合约。
             with patch('touzi.screener.analyze_financials',

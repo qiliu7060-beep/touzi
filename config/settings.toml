@@ -296,7 +296,7 @@ cashflow_pass = 0.6
 debt_excellent = 40.0
 debt_pass = 70.0
 # 金融行业豁免资产负债率
-debt_exempt_industries = ["银行", "保险", "证券", "房地产"]
+debt_exempt_industries = ["银行", "保险", "证券", "金融", "房地产"]
 # 稳定性：近 N 年净利润增速标准差
 stability_years = 5
 stability_excellent = 0.10
