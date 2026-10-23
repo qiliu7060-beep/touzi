@@ -454,6 +454,10 @@ def export(res: dict, cfg, dist: Path, benchmarks: dict | None = None,
                                       resolve_ttls(cfg)["history"],
                                       _s((res.get("flags") or {}).get("as_of")))
     (dist / "site.js").write_text(site_js(res, cfg, thr=thresholds, benchmarks=benchmarks), encoding="utf-8")
+    from touzi.live_model import export_model
+    (dist / "live-model.json").write_text(
+        json.dumps(export_model(res, cfg), ensure_ascii=False, allow_nan=False,
+                   separators=(",", ":")), encoding="utf-8")
     (dist / ".nojekyll").write_text("", encoding="utf-8")
 
     written: list[Path] = [dist / "app.js", dist / "site.js"]
@@ -670,8 +674,9 @@ def main() -> int:
     proxy = cfg.general.get("proxy") or None
 
     res = run_all.run_once(cfg, args, cache, proxy, out_dir)
-    if ns.min_quote_time:
-        freshness_errors = validate_quote_freshness(res.get("flags") or {}, ns.min_quote_time)
+    if is_live(cfg):
+        minimum = ns.min_quote_time or ("15:00" if datetime.now(ZoneInfo("Asia/Shanghai")).hour >= 15 else "09:30")
+        freshness_errors = validate_quote_freshness(res.get("flags") or {}, minimum)
         if freshness_errors:
             print("不发布过期评分：" + "；".join(freshness_errors))
             return 1
@@ -703,4 +708,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
 

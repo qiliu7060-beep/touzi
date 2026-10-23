@@ -9,19 +9,27 @@ on:
       - 'touzi/plans.py'
       - 'touzi/report.py'
       - 'touzi/screener.py'
+      - 'touzi/live_model.py'
       - 'scripts/run_all.py'
       - 'scripts/publish_site.py'
       - 'scripts/static/app.js'
+      - 'scripts/live-scoring.mts'
+      - 'scripts/live-model-validation.mts'
+      - 'scripts/sync_live_runtime.py'
       - 'tests/test_buy_decision.py'
       - 'tests/test_sell_snapshot.py'
-      - 'tests/test_valuation_thresholds.py'
       - 'tests/test_sell_decision.js'
       - 'tests/test_plan_rule_display.py'
       - 'tests/test_score_quote_freshness.py'
+      - 'tests/test_valuation_thresholds.py'
+      - 'tests/test_live_model.py'
+      - 'tests/test_live_scoring.mjs'
+      - 'tests/check_live_model.mjs'
+      - 'tests/test_live_model_gate.py'
   schedule:
     # 北京时间工作日 09:45、17:23 重算；18:23 复核一次收盘数据。
     # 定时任务可能延迟，发布前必须核验行情源的真实交易时间与覆盖率。
-    # 宏观评分由 --weekly-macro 按北京时间自然周复用。
+    # 宏观按正常缓存 TTL 更新，不强制整周冻结。
     - cron: "45 1 * * 1-5"
     - cron: "23 9 * * 1-5"
     - cron: "23 10 * * 1-5"
@@ -52,6 +60,11 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --disable-pip-version-check -r requirements.txt
 
+      - name: Set up Node for cross-language scoring checks
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
       - name: Restore market-data cache
         uses: actions/cache/restore@v4
         with:
@@ -67,9 +80,11 @@ jobs:
         run: |
           python tests/test_buy_decision.py
           python tests/test_sell_snapshot.py
-          python tests/test_valuation_thresholds.py
           python tests/test_plan_rule_display.py
           python tests/test_score_quote_freshness.py
+          python tests/test_valuation_thresholds.py
+          python tests/test_live_model.py
+          python tests/test_live_model_gate.py
           node tests/test_sell_decision.js
 
       - name: Recalculate data and build site
@@ -84,7 +99,10 @@ jobs:
               *) extra=(--min-quote-time "09:30") ;;
             esac
           fi
-          python scripts/publish_site.py --limit 300 --skip-backtest --weekly-macro "${extra[@]}"
+          python scripts/publish_site.py --limit 300 --skip-backtest "${extra[@]}"
+
+      - name: Validate published model with the Worker schema
+        run: node tests/check_live_model.mjs dist/live-model.json
 
       - name: Save final market-data cache
         uses: actions/cache/save@v4

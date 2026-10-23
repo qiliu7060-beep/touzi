@@ -1,4 +1,4 @@
-﻿"""个股筛选与打分：把「估值 + 质量 + 股息 + 政策」四项合成一只股票的总分。
+"""个股筛选与打分：把「估值 + 质量 + 股息 + 政策」四项合成一只股票的总分。
 
 ## 一、这个模块在整个系统里的位置
 
@@ -159,6 +159,7 @@ class StockScore:
     total: float = float("nan")
     grade: str = "N/A"
     data_flags: dict[str, Any] = field(default_factory=dict)
+    live_input: dict[str, Any] | None = None
 
     def as_dict(self) -> dict[str, Any]:
         row: dict[str, Any] = {
@@ -413,8 +414,7 @@ class Screener:
         # 截面分位只在「今天」这种非 point-in-time 场景下可用
         use_cs = not point_in_time
         parts: dict[str, RuleResult] = {}
-        parts["valuation"] = score_valuation(
-            ValuationInput(
+        valuation_input = ValuationInput(
                 code=code, name=name, industry=industry,
                 pe_ttm=float(pe) if np.isfinite(pe) else None,
                 pb=float(pb) if np.isfinite(pb) else None,
@@ -425,11 +425,11 @@ class Screener:
                 dy_percentile_cs=self._cs_percentile("dy", dy, higher_better=True) if use_cs else float("nan"),
                 pe_percentile_industry=self._ind_percentile(industry, "pe", pe) if use_cs else float("nan"),
                 pb_percentile_industry=self._ind_percentile(industry, "pb", pb) if use_cs else float("nan"),
-            ),
-            cfg,
-        )
+            )
+        parts["valuation"] = score_valuation(valuation_input, cfg)
         parts["quality"] = score_quality(QualityInput(code=code, name=name, industry=industry, **qsum), cfg)
-        parts["dividend"] = score_dividend({**din, "bond_yield": self._bond_yield()}, cfg)
+        dividend_input = {**din, "bond_yield": self._bond_yield()}
+        parts["dividend"] = score_dividend(dividend_input, cfg)
         parts["policy"] = score_policy(pin, cfg)
 
         # ---------------------------------------------------- 加权合成
@@ -452,6 +452,13 @@ class Screener:
         flags["缺失项"] = missing
         flags["权重"] = {k: round(v / tot_w, 4) for k, v in used.items()} if tot_w else {}
 
+        live_input = None
+        if self.live and not point_in_time:
+            from .live_model import capture_input
+            live_input = capture_input(self, code, industry, pe_hist, pb_hist,
+                                       valuation_input, dividend_input, parts, as_of_ts,
+                                       financials=fin, dividends=div)
+
         return StockScore(
             code=code, name=name, industry=industry,
             price=float(price) if np.isfinite(price) else float("nan"),
@@ -460,6 +467,7 @@ class Screener:
             dividend_yield=float(dy) if np.isfinite(dy) else float("nan"),
             float_mktcap_yi=pd.to_numeric(d.get("float_mktcap_yi"), errors="coerce"),
             parts=parts, total=total, grade=_grade(total), data_flags=flags,
+            live_input=live_input,
         )
 
     # ------------------------------------------------------------ 懒加载的辅助表
