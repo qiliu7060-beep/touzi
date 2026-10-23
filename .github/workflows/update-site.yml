@@ -10,6 +10,9 @@ on:
       - 'touzi/report.py'
       - 'touzi/screener.py'
       - 'touzi/live_model.py'
+      - 'touzi/data/**'
+      - 'touzi/signals/quality.py'
+      - 'config/settings.toml'
       - 'scripts/run_all.py'
       - 'scripts/publish_site.py'
       - 'scripts/static/app.js'
@@ -26,6 +29,8 @@ on:
       - 'tests/test_live_scoring.mjs'
       - 'tests/check_live_model.mjs'
       - 'tests/test_live_model_gate.py'
+      - 'tests/test_financial*.py'
+      - 'tests/financial_fixtures.py'
   schedule:
     # 北京时间工作日 09:45、17:23 重算；18:23 复核一次收盘数据。
     # 定时任务可能延迟，发布前必须核验行情源的真实交易时间与覆盖率。
@@ -85,6 +90,7 @@ jobs:
           python tests/test_valuation_thresholds.py
           python tests/test_live_model.py
           python tests/test_live_model_gate.py
+          python -m unittest discover -s tests -p 'test_financial*.py'
           node tests/test_sell_decision.js
 
       - name: Recalculate data and build site

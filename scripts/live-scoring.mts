@@ -6,6 +6,7 @@ export type LiveInput = {
   valuation_input: Record<string, unknown>; dividend_input: Record<string, unknown>;
   fixed_parts: Record<string, Numeric>; history_live: Record<string, boolean>;
   pool_refs: Record<string, string>; sell_checks: Check[]; provenance: Record<string, unknown>;
+  financial_analysis?: Record<string, unknown>;
 };
 export type Model = {
   schema_version: number; model_version: string; built_at: string; expires_at: string;
@@ -15,6 +16,13 @@ export type Model = {
   plan: Record<string, number>; fees: Record<string, number>;
 };
 export type Quote = { code: string; price: number; pe: Numeric; pb: Numeric; quote_ts: string };
+export const FINANCIAL_RULES = ['sell_debt_equity', 'sell_equity_nonpositive', 'sell_capex_to_profit',
+  'sell_annual_loss', 'sell_cumulative_loss'] as const;
+export const FINANCIAL_METRICS: Record<string, string> = {
+  sell_debt_equity: 'debt_equity', sell_equity_nonpositive: 'debt_equity',
+  sell_capex_to_profit: 'capex_to_profit', sell_annual_loss: 'annual_net_profit',
+  sell_cumulative_loss: 'cumulative_net_profit',
+};
 const finite = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
 const num = (x: unknown): Numeric => finite(x) ? x : null;
 const clamp = (x: Numeric): Numeric => x === null ? null : Math.min(100, Math.max(0, x));
@@ -121,12 +129,19 @@ export function computeEntry(model: Model, input: LiveInput, quote: Quote) {
     return { ...check, value, hit, known, note };
   });
   const select = (level: string) => checks.filter(c => c.known && c.hit && c.level === level).map(c => c.label);
+  const financialMetrics = input.financial_analysis?.metrics as Record<string, { status: string }> | undefined;
   const sell_snapshot = { exit: select('清仓'), reduce: select('减仓'), warn: select('预警'),
     missing: checks.filter(c => !c.known && c.level !== '预警').map(c => c.label),
-    missing_warn: checks.filter(c => !c.known && c.level === '预警').map(c => c.label) };
+    missing_warn: checks.filter(c => !c.known && c.level === '预警').map(c => c.label),
+    financial_warn: checks.filter(c => FINANCIAL_RULES.some(key => key === c.key) && c.known && c.hit).map(c => c.label),
+    financial_missing: checks.filter(c => FINANCIAL_RULES.some(key => key === c.key) && !c.known
+      && financialMetrics?.[FINANCIAL_METRICS[c.key]]?.status !== 'not_applicable').map(c => c.label) };
   return { ...parts, total, grade, pe: quote.pe, pb: quote.pb, dy, price: quote.price,
     name: input.name, industry: input.industry, quote_ts: quote.quote_ts,
-    valuation_detail: detail, sell_snapshot, sell_checks: checks, input_as_of: input.input_as_of, provenance: input.provenance };
+    valuation_detail: detail, sell_snapshot, sell_checks: checks, input_as_of: input.input_as_of, provenance: input.provenance,
+    // 旧模型继续计算行情分，但不冒充已经提供新财务分析。
+    financial_capability: model.model_version === 'touzi-live-v2',
+    financial_analysis: model.model_version === 'touzi-live-v2' ? input.financial_analysis : null };
 }
 
 export function quoteFresh(quote: Quote, now: number): 'trading' | 'break' | 'closed' | null {

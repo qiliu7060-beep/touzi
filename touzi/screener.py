@@ -60,6 +60,7 @@ from .signals.dividend import build_dividend_input, score_dividend
 from .signals.macro import RuleResult
 from .signals.policy import load_industry_policy, load_policy_events, score_policy
 from .signals.quality import QualityInput, score_quality, summarize_financials
+from .data.financial import fetch_financial_statements, analyze_financials
 from .signals.valuation import ValuationInput, percentile_of, score_valuation
 from .util import clamp
 
@@ -313,6 +314,7 @@ class Screener:
             "div": lambda: fetch_dividend_detail(code, self.cache, self.proxy, ttl_days=self.ttls["fund"]),
             "fin": lambda: fetch_financial_indicators(code, self.cache, start_year="2016",
                                                       ttl_days=self.ttls["fund"]),
+            "statements": lambda: fetch_financial_statements(code, self.cache, ttl_days=1),
         }
         # 回测需要历史价格（算股息率与区间收益），实时筛选不需要，故按需抓取
         if getattr(self, "_need_price", False):
@@ -400,6 +402,10 @@ class Screener:
         # ---------------------------------------------------------- 质量
         fin = _clip_history(raw.get("fin"), as_of_ts)
         qsum = summarize_financials(fin, stability_years=int(cfg.quality.stability_years)) if fin is not None and len(fin) else {}
+        # 更正后的当前报表不可回填历史回测。
+        qsum["financial_analysis"] = analyze_financials(
+            None if point_in_time else raw.get("statements"), industry,
+            pd.Timestamp.now(tz="Asia/Shanghai") if self.live and not point_in_time else as_of_ts)
         if qsum:
             flags["质量报告期"] = f"{qsum.get('periods_annual', 0)} 个年报 / 共 {qsum.get('periods', 0)} 期"
 

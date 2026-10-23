@@ -113,6 +113,9 @@ def plan_settings(cfg) -> dict[str, Any]:
             "请对照仓库里的默认配置补齐。"
         )
     raw.setdefault("buy_max_rank_pct", 0.0)
+    for key, threshold in {"sell_debt_equity": .8, "sell_equity_nonpositive": 0., "sell_capex_to_profit": .25,
+                           "sell_annual_loss": 0., "sell_cumulative_loss": 0.}.items():
+        raw.setdefault(key, threshold)
     raw.setdefault("buy_near_miss", 1)
     raw.setdefault("holdings_file", "config/holdings.csv")
     raw.setdefault("tracking_file", "output/tracking.csv")
@@ -551,6 +554,26 @@ def evaluate_sell(score, cfg, macro_score: float = float("nan"),
         "sell_roe_decline": sum(finite(v) for v in roe_series) >= n + 1,
         "sell_growth_negative": sum(finite(v) for v in growth_series) >= n,
     }
+    analysis = _detail(score, "quality", "financial_analysis") or {}
+    metrics = analysis.get("metrics", {})
+    debt = metrics.get("debt_equity", {})
+    fresh_analysis = analysis.get("status") not in ("stale", "missing")
+    for key, label, metric_name, field, comparison in (
+        ("sell_debt_equity", "债务股权比率 ≥ 0.8，提示复核", "debt_equity", "value", "ge"),
+        ("sell_equity_nonpositive", "合并股东权益非正，提示复核", "debt_equity", "total_equity", "le"),
+        ("sell_capex_to_profit", "五年资本开支/净利润 ≥ 25%，提示复核", "capex_to_profit", "value", "ge"),
+        ("sell_annual_loss", "最新完整年度净利润非正，提示复核", "annual_net_profit", "value", "le"),
+        ("sell_cumulative_loss", "五年累计净利润非正，提示复核", "cumulative_net_profit", "value", "le"),
+    ):
+        metric = metrics.get(metric_name, {})
+        value = metric.get(field)
+        eligible = metric.get("status") == "ok" or (key == "sell_equity_nonpositive" and debt.get("status") == "invalid")
+        is_known = fresh_analysis and eligible and finite(value)
+        threshold = float(p[key])
+        hit = is_known and (float(value) >= threshold if comparison == "ge" else float(value) <= threshold)
+        add(key, label, value, threshold, hit, WARN,
+            "" if is_known else "财务数据：" + str(metric.get("status", "missing")))
+        known[key] = bool(is_known)
     for check in checks:
         check.known = known.get(check.key, True)
         if not check.known and not check.note:

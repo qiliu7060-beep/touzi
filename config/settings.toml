@@ -277,10 +277,15 @@ spread_weight = 0.20
 
 [quality]
 # 各指标权重（内部归一化）
-weight_roe = 0.30
-weight_cashflow = 0.25    # 经营现金流 / 净利润
-weight_debt = 0.20        # 资产负债率（越低越好，金融业豁免）
-weight_stability = 0.25   # 净利润增速波动率（越低越好）
+weight_roe = 0.25
+weight_cashflow = 0.20    # 经营现金流 / 净利润
+weight_debt = 0.20        # 总负债/合并股东权益（越低越好，保留行业豁免）
+weight_stability = 0.20   # 净利润增速波动率（越低越好）
+weight_capex = 0.15
+debt_equity_excellent = 0.8
+debt_equity_zero = 2.0
+capex_excellent = 0.25
+capex_zero = 1.0
 # ROE 门槛（%）
 roe_excellent = 20.0
 roe_pass = 8.0
@@ -340,6 +345,11 @@ min_listed_years = 3
 # 所有阈值都可以改，改完直接重跑，报告里的每条建议都会跟着变。
 # =============================================================================
 [plan]
+sell_debt_equity = 0.8
+sell_equity_nonpositive = 0.0
+sell_capex_to_profit = 0.25
+sell_annual_loss = 0.0
+sell_cumulative_loss = 0.0
 # ---- 买入门槛（全部满足才建议建仓）----
 # 总分下限（72 = A 级）
 buy_min_total = 72.0

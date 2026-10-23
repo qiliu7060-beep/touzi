@@ -1,4 +1,4 @@
-"""质量打分：ROE、经营现金流/净利润、资产负债率、盈利稳定性。
+"""质量打分：ROE、现金流、债务股权、盈利稳定性及五年资本开支。
 
 ## 为什么长期投资必须看质量
 
@@ -10,10 +10,11 @@
 
 | 子项 | 权重 | 口径 | 优 | 及格 |
 |---|---|---|---|---|
-| ROE | 0.30 | 近 3 年均值(%) | ≥20 | 8 |
-| 经营现金流/净利润 | 0.25 | 近 3 年均值(倍) | ≥1.0 | 0.6 |
-| 资产负债率 | 0.20 | 最新(%) | ≤40 | 70 |
-| 盈利稳定性 | 0.25 | 近 5 年净利润增速标准差 | ≤0.10 | 0.40 |
+| ROE | 0.25 | 近 3 年均值(%) | ≥20 | 8 |
+| 经营现金流/净利润 | 0.20 | 近 3 年均值(倍) | ≥1.0 | 0.6 |
+| 债务股权 | 0.20 | 最新总负债/合并权益 | <0.8 | 2.0时0分 |
+| 盈利稳定性 | 0.20 | 近 5 年净利润增速标准差 | ≤0.10 | 0.40 |
+| 资本开支 | 0.15 | 连续5年累计资本开支/累计净利润 | <0.25 | 1.0时0分 |
 
 现金流/净利润 > 1 说明利润是真金白银收到的，不是应收账款堆出来的。
 
@@ -52,6 +53,9 @@ class QualityInput(dict):
         "gross_margin",
         "report_date",
         "periods",        # 有效报告期数
+        "periods_annual",
+        "profit_growth_series",
+        "financial_analysis",
     )
 
     def __init__(self, **kw: Any):
@@ -110,7 +114,7 @@ def summarize_financials(fin: pd.DataFrame, stability_years: int = 5) -> dict[st
 
 
 def score_quality(data: QualityInput | dict, cfg) -> RuleResult:
-    """质量总分 = ROE 30% + 现金流 25% + 负债 20% + 稳定性 25%。"""
+    """按配置合成五项质量分；缺失与不适用项在可用权重内归一化。"""
     qcfg = cfg.quality
     d = dict(data)
     industry = str(d.get("industry") or "")
@@ -147,24 +151,33 @@ def score_quality(data: QualityInput | dict, cfg) -> RuleResult:
 
     # ------------------------------------------------------------ 负债率
     debt = d.get("debt_ratio")
+    analysis = d.get("financial_analysis")
+    if analysis is None:
+        from ..data.financial import analyze_financials
+        analysis = analyze_financials(None, industry)
+    metrics = analysis["metrics"]
+    debt_metric = metrics["debt_equity"]
     exempt = [str(x) for x in (qcfg.get("debt_exempt_industries") or [])]
     is_exempt = any(k in industry for k in exempt) if industry else False
     if is_exempt:
         debt_score = float("nan")
         detail["debt_exempt"] = True
         notes.append(f"「{industry}」属高杠杆经营行业，负债率不参与打分（豁免）")
-    elif debt is not None and np.isfinite(debt):
-        debt_score = linear_score(debt, bad=float(qcfg.debt_pass), good=float(qcfg.debt_excellent),
-                                  higher_is_better=False)
-        if debt <= float(qcfg.debt_excellent):
-            notes.append(f"资产负债率 {debt:.1f}%，财务稳健")
-        elif debt > float(qcfg.debt_pass):
-            notes.append(f"资产负债率 {debt:.1f}% 偏高，偿债压力大")
-        else:
-            notes.append(f"资产负债率 {debt:.1f}%，尚可")
+    elif debt_metric["status"] == "invalid" and debt_metric["total_equity"] is not None and debt_metric["total_equity"] <= 0:
+        debt_score = 0.0
+        notes.append("合并股东权益非正，债务项0分，提示复核")
+    elif debt_metric["status"] == "ok":
+        debt_score = linear_score(debt_metric["value"], bad=float(qcfg.debt_equity_zero), good=float(qcfg.debt_equity_excellent), higher_is_better=False)
+        notes.append(f"总负债/合并股东权益 {debt_metric['value']:.4f}，按0.8–2.0曲线评分")
     else:
         debt_score = float("nan")
-        notes.append("负债率数据缺失")
+        notes.append(f"债务股权比率 {debt_metric['status']}，不参与评分")
+
+    capex_metric = metrics["capex_to_profit"]
+    capex_score = (linear_score(capex_metric["value"], bad=float(qcfg.capex_zero),
+                               good=float(qcfg.capex_excellent), higher_is_better=False)
+                   if capex_metric["status"] == "ok" else float("nan"))
+    notes.append("资本开支项：" + capex_metric["status"])
 
     # ------------------------------------------------------------ 稳定性
     gstd = d.get("profit_growth_std")
@@ -213,6 +226,7 @@ def score_quality(data: QualityInput | dict, cfg) -> RuleResult:
         "ocf": (float(qcfg.weight_cashflow), ocf_score),
         "debt": (float(qcfg.weight_debt), debt_score),
         "stab": (float(qcfg.weight_stability), stab_score),
+        "capex": (float(qcfg.weight_capex), capex_score),
     }
     usable = {k: (w, s) for k, (w, s) in weights.items() if np.isfinite(s)}
     if usable:
@@ -243,10 +257,21 @@ def score_quality(data: QualityInput | dict, cfg) -> RuleResult:
             "sub_scores": {
                 k: (None if not np.isfinite(s) else round(float(s), 1))
                 for k, s in (("roe", roe_score), ("cashflow", ocf_score),
-                             ("debt", debt_score), ("stability", stab_score))
+                             ("debt", debt_score), ("stability", stab_score), ("capex", capex_score))
             },
         }
     )
+    public_weights = {"roe": float(qcfg.weight_roe), "cashflow": float(qcfg.weight_cashflow),
+                      "debt": float(qcfg.weight_debt), "stability": float(qcfg.weight_stability), "capex": float(qcfg.weight_capex)}
+    sub_scores = {k: float(s) if np.isfinite(s) else None for k, s in
+                  (("roe", roe_score), ("cashflow", ocf_score), ("debt", debt_score),
+                   ("stability", stab_score), ("capex", capex_score))}
+    covered = sum(public_weights[k] for k, v in sub_scores.items() if v is not None)
+    analysis["quality"] = {"coverage": covered / sum(public_weights.values()),
+                           "missing": [k for k, v in sub_scores.items() if v is None],
+                           "weights": public_weights, "sub_scores": sub_scores,
+                           "contributions": {k: public_weights[k] * v / covered if v is not None and covered else None for k, v in sub_scores.items()}}
+    detail["financial_analysis"] = analysis
     return RuleResult(
         name="质量",
         score=total,

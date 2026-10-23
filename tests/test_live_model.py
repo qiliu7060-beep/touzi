@@ -15,15 +15,18 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tests"))
 from touzi.config import load_config
 from touzi.live_model import clean, export_model
 from touzi.plans import evaluate_sell
 from touzi.screener import Screener
+from touzi.data.financial import analyze_financials
+from financial_fixtures import statement_tables
 
 
 def fixtures():
     cases = []
-    for variant in ("history", "industry", "market", "no-reference", "invalid-history", "bonus", "no-bond", "no-dividend", "finance-penalty", "threshold-equality"):
+    for variant in ("history", "industry", "market", "no-reference", "invalid-history", "bonus", "no-bond", "no-dividend", "finance-penalty", "threshold-equality", "financial", "financial-loss", "financial-equity", "financial-stale"):
         cfg = load_config()
         cfg["valuation"]["primary_bonus"] = .15 if variant == "bonus" else 0
         s = Screener.__new__(Screener)
@@ -53,7 +56,18 @@ def fixtures():
             dividends = dividends.iloc[:0]
         raw = {"code": "000001", "pe_hist": hist, "pb_hist": hist / 10, "fin": None, "div": dividends}
         meta = {"code": "000001", "name": "合约样例", "industry": "银行", "price": 10., "pe_ttm": 10., "pb": 1.}
-        baseline = s.score_one(meta, raw)
+        if variant.startswith("financial"):
+            raw["statements"] = statement_tables(
+                profit=-100. if variant == "financial-loss" else 100.,
+                equity=0. if variant == "financial-equity" else 100.,
+                fetched="2026-10-20T09:00:00+08:00" if variant == "financial-stale" else "2026-10-23T09:00:00+08:00")
+            meta["industry"] = "食品饮料"
+        def score_one(current):
+            # 固定真实获取时点，避免联网/墙钟进入跨语言合约。
+            with patch('touzi.screener.analyze_financials',
+                       side_effect=lambda tables, industry, cutoff: analyze_financials(tables, industry, "2026-10-23T10:00:00+08:00")):
+                return s.score_one(current, raw)
+        baseline = score_one(meta)
         if variant == "threshold-equality":
             cfg["plan"]["sell_total"] = baseline.total
             cfg["plan"]["sell_reduce_total"] = baseline.total
@@ -66,7 +80,7 @@ def fixtures():
         for price, pe, pb in [(10., 10., 1.), (5., -2., .5), (20., 50., 3.), (12.5, 18., 2.5), (11., None, None)]:
             current = {**meta, "price": price, "pe_ttm": float("nan") if pe is None else pe,
                        "pb": float("nan") if pb is None else pb}
-            score = s.score_one(current, raw)
+            score = score_one(current)
             checks = [c.as_dict() for c in evaluate_sell(score, cfg, macro_score=45.)
                       if c.key not in {"sell_stop_loss", "sell_take_profit"}]
             expected = clean({"total": score.total, "grade": score.grade,

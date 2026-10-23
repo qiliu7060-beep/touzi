@@ -12,7 +12,7 @@ import pandas as pd
 from .plans import evaluate_sell
 from .portfolio import load_fees
 
-MODEL_VERSION = "touzi-live-v1"
+MODEL_VERSION = "touzi-live-v2"
 
 
 def validate_export_model(model, expected_codes, now):
@@ -76,6 +76,7 @@ def _validate_export_model(model, expected_codes, now):
              "sell_pe_abs": "清仓", "sell_dividend_yield": "清仓", "sell_total": "清仓",
              "sell_reduce_total": "减仓", "sell_macro_score": "减仓", "sell_macro_reduce_score": "减仓",
              "sell_cashflow": "预警", "sell_roe_decline": "预警", "sell_growth_negative": "预警"}
+    rules.update({key: "预警" for key in ("sell_debt_equity", "sell_equity_nonpositive", "sell_capex_to_profit", "sell_annual_loss", "sell_cumulative_loss")})
     for code, entry in entries.items():
         require(len(code) == 6 and code.isascii() and code.isdigit() and entry["code"] == code)
         require(all(isinstance(entry[k], str) and len(entry[k]) <= 300 for k in ("name", "industry")))
@@ -96,6 +97,15 @@ def _validate_export_model(model, expected_codes, now):
         require(set(entry["pool_refs"]) == {k + "_" + p for k in ("pe", "pb") for p in ("history", "industry", "market")})
         require(all(ref in pools for ref in entry["pool_refs"].values()))
         checks = entry["sell_checks"]
+        analysis = entry["financial_analysis"]
+        require(analysis["status"] in {"ok", "partial", "missing", "stale", "invalid", "not_applicable"})
+        require(analysis["currency"] == "CNY" and analysis["unit"] == "yuan" and analysis["statement_scope"] == "consolidated")
+        years = analysis["window"]["years"]
+        require(len(years) == 5 and years == list(range(analysis["window"]["start_year"], analysis["window"]["end_year"] + 1)))
+        require(len(analysis["years"]) == 5 and [r["fiscal_year"] for r in analysis["years"]] == years)
+        for metric in analysis["metrics"].values():
+            require(optional(metric["value"]) and metric["status"] in {"ok", "missing", "stale", "invalid", "not_applicable"})
+        require(finite(analysis["quality"]["coverage"]) and 0 <= analysis["quality"]["coverage"] <= 1)
         require(len(checks) == len(rules) and {c["key"] for c in checks} == set(rules))
         for check in checks:
             key = check["key"]
@@ -148,6 +158,7 @@ def capture_input(screener, code, industry, pe_hist, pb_hist, vin, din, parts, a
         "history_live": {k: h is not None and len(h.dropna()) > 20
                          for k, h in (("pe", pe_hist), ("pb", pb_hist))},
         "fixed_parts": {k: parts[k].score for k in ("quality", "policy")},
+        "financial_analysis": parts["quality"].detail["financial_analysis"],
         "fixed_sell_inputs": {k: parts["quality"].detail.get(k) for k in
                               ("ocf_to_profit", "roe_series", "profit_growth_series")},
         "input_as_of": str(as_of),

@@ -6,6 +6,12 @@ const RULE_LEVELS: Record<string, string> = {
   sell_reduce_total: '减仓', sell_macro_score: '减仓', sell_macro_reduce_score: '减仓',
   sell_cashflow: '预警', sell_roe_decline: '预警', sell_growth_negative: '预警',
 };
+const FINANCIAL_RULE_LEVELS: Record<string, string> = {
+  sell_debt_equity: '预警', sell_equity_nonpositive: '预警', sell_capex_to_profit: '预警',
+  sell_annual_loss: '预警', sell_cumulative_loss: '预警',
+};
+const FINANCIAL_STATUSES = ['ok', 'partial', 'missing', 'stale', 'invalid', 'not_applicable'];
+const QUALITY_KEYS = ['roe', 'cashflow', 'debt', 'stability', 'capex'];
 const POOL_KEYS = ['pe_history', 'pb_history', 'pe_industry', 'pb_industry', 'pe_market', 'pb_market'];
 const HOURS_36 = 36 * 3600000;
 function requireValue(condition: unknown): asserts condition {
@@ -50,12 +56,86 @@ function weights(value: unknown, keys: string[]): void {
   requireValue(keys.reduce((sum, key) => sum + Number(record[key]), 0) > 0);
 }
 
+function financialAnalysis(value: unknown, now: number, plan: Record<string, unknown>): void {
+  const analysis = object(value);
+  const status = (value: unknown) => requireValue(FINANCIAL_STATUSES.includes(String(value)));
+  const optionalStamp = (value: unknown) => {
+    if (value !== null) requireValue(isoStamp(value) <= now + 60000);
+  };
+  status(analysis.status);
+  requireValue(analysis.source === 'sina-finance-report' && analysis.currency === 'CNY'
+    && analysis.unit === 'yuan' && analysis.statement_scope === 'consolidated');
+  optionalStamp(analysis.fetched_at);
+  optionalStamp(analysis.source_updated_at);
+  const window = object(analysis.window);
+  requireValue(Number.isSafeInteger(window.start_year) && Number.isSafeInteger(window.end_year)
+    && Number(window.start_year) >= 1990 && Number(window.end_year) <= new Date(now + 28800000).getUTCFullYear()
+    && Number(window.end_year) - Number(window.start_year) === 4);
+  requireValue(Array.isArray(window.years) && window.years.length === 5
+    && window.years.every((year, index) => year === Number(window.start_year) + index));
+  const years = window.years;
+  requireValue(Array.isArray(analysis.years) && analysis.years.length <= 5);
+  let previous = 0;
+  for (const raw of analysis.years) {
+    const row = object(raw);
+    requireValue(Number.isSafeInteger(row.fiscal_year) && Number(row.fiscal_year) > previous
+      && years.includes(row.fiscal_year));
+    previous = Number(row.fiscal_year);
+    requireValue(dateOnly(row.report_date) === `${row.fiscal_year}-12-31`);
+    for (const key of ['revenue', 'operating_profit', 'net_profit', 'deducted_parent_net_profit',
+      'operating_cash_flow', 'capex', 'total_liabilities', 'total_equity', 'net_margin', 'capex_to_profit']) {
+      requireValue(nullable(row[key]));
+    }
+    optionalStamp(row.source_updated_at);
+  }
+  const metrics = object(analysis.metrics);
+  for (const key of ['debt_equity', 'capex_to_profit', 'annual_net_profit', 'cumulative_net_profit']) {
+    const metric = object(metrics[key]);
+    status(metric.status);
+    requireValue(nullable(metric.value));
+    if (metric.status === 'ok') requireValue(finite(metric.value));
+    if (key === 'debt_equity' || key === 'capex_to_profit') {
+      requireValue(metric.excellent === null || typeof metric.excellent === 'boolean');
+      // 非适用、过期或缺失均不能冒充已满足优良标准。
+      if (metric.status !== 'ok') requireValue(metric.excellent === null);
+      else requireValue(metric.excellent === (Number(metric.value) < Number(plan[
+        key === 'debt_equity' ? 'sell_debt_equity' : 'sell_capex_to_profit'])));
+    }
+    if (key === 'debt_equity') {
+      requireValue(nullable(metric.total_equity));
+      if (metric.report_date !== null) dateOnly(metric.report_date);
+    }
+    if (key === 'capex_to_profit') {
+      requireValue(nullable(metric.net_profit_sum) && nullable(metric.capex_sum));
+    }
+  }
+  requireValue(Array.isArray(analysis.loss_years) && analysis.loss_years.length <= 5
+    && new Set(analysis.loss_years).size === analysis.loss_years.length
+    && analysis.loss_years.every(year => years.includes(year)));
+  requireValue(Array.isArray(analysis.notes) && analysis.notes.length <= 30
+    && analysis.notes.every(note => text(note, 1000)));
+  const quality = object(analysis.quality);
+  requireValue(finite(quality.coverage) && quality.coverage >= 0 && quality.coverage <= 1);
+  requireValue(Array.isArray(quality.missing) && quality.missing.length <= 5
+    && quality.missing.every(key => QUALITY_KEYS.includes(String(key))));
+  for (const group of ['weights', 'sub_scores', 'contributions']) {
+    const record = object(quality[group]);
+    requireValue(Object.keys(record).length === QUALITY_KEYS.length);
+    for (const key of QUALITY_KEYS) {
+      requireValue(group === 'weights' ? finite(record[key]) && Number(record[key]) >= 0 :
+        nullable(record[key]) && (record[key] === null || Number(record[key]) >= 0 && Number(record[key]) <= 100));
+    }
+  }
+}
+
 /** 网络 JSON 必须经过整体验证后才允许进入纯评分镜像。缺失值显式保留 null。 */
 export function validateModel(value: unknown, now: number): Model {
   requireValue(Number.isFinite(now));
   const model = object(value);
-  requireValue(model.schema_version === 1 && model.model_version === 'touzi-live-v1'
+  requireValue(model.schema_version === 1 && ['touzi-live-v1', 'touzi-live-v2'].includes(String(model.model_version))
     && model.provenance === 'python-score-one-live-inputs');
+  const finance = model.model_version === 'touzi-live-v2';
+  const rules = finance ? { ...RULE_LEVELS, ...FINANCIAL_RULE_LEVELS } : RULE_LEVELS;
   const built = isoStamp(model.built_at), expires = isoStamp(model.expires_at);
   requireValue(built <= now + 60000 && now - built <= HOURS_36
     && expires > now && expires > built && expires - built <= HOURS_36);
@@ -92,6 +172,9 @@ export function validateModel(value: unknown, now: number): Model {
   requireValue(Number(plan.sell_stop_loss) >= -1 && Number(plan.sell_stop_loss) <= 0
     && Number(plan.sell_take_profit) >= 0 && Number.isSafeInteger(plan.sell_negative_growth_years)
     && Number(plan.sell_negative_growth_years) > 0);
+  if (finance) {
+    for (const key of Object.keys(FINANCIAL_RULE_LEVELS)) requireValue(finite(plan[key]) && Number(plan[key]) >= 0);
+  }
   for (const key of ['commission_rate', 'stamp_duty_rate', 'transfer_fee_rate']) {
     requireValue(finite(fees[key]) && fees[key] >= 0 && fees[key] <= 1);
   }
@@ -118,6 +201,7 @@ export function validateModel(value: unknown, now: number): Model {
     const inputAt = Date.parse(inputDate + 'T00:00:00+08:00');
     requireValue(inputDate >= asOf && inputAt <= now + 60000 && now - inputAt <= HOURS_36);
     object(input.provenance);
+    if (finance) financialAnalysis(input.financial_analysis, now, plan);
     const vin = object(input.valuation_input), din = object(input.dividend_input);
     requireValue(vin.code === code && din.code === code && vin.industry === input.industry);
     for (const key of ['pe_ttm', 'pb', 'dividend_yield', 'pe_percentile_ts', 'pb_percentile_ts',
@@ -134,18 +218,33 @@ export function validateModel(value: unknown, now: number): Model {
       && (fixed[key] === null || Number(fixed[key]) >= 0 && Number(fixed[key]) <= 100));
     for (const key of ['pe', 'pb']) requireValue(typeof history[key] === 'boolean');
     for (const key of POOL_KEYS) requireValue(typeof refs[key] === 'string' && Object.hasOwn(pools, refs[key]));
-    requireValue(Array.isArray(input.sell_checks) && input.sell_checks.length === Object.keys(RULE_LEVELS).length);
+    requireValue(Array.isArray(input.sell_checks) && input.sell_checks.length === Object.keys(rules).length);
     const seen = new Set<string>();
     for (const raw of input.sell_checks) {
       const check = object(raw);
-      requireValue(typeof check.key === 'string' && Object.hasOwn(RULE_LEVELS, check.key) && !seen.has(check.key));
+      requireValue(typeof check.key === 'string' && Object.hasOwn(rules, check.key) && !seen.has(check.key));
       seen.add(check.key);
-      requireValue(check.level === RULE_LEVELS[check.key] && text(check.label, 500)
+      requireValue(check.level === rules[check.key] && text(check.label, 500)
         && typeof check.hit === 'boolean' && typeof check.known === 'boolean' && (check.known || !check.hit));
       if (!['sell_roe_decline', 'sell_growth_negative'].includes(check.key)) {
         const planKey = check.key === 'sell_cashflow' ? 'sell_cashflow_floor' : check.key;
         requireValue(finite(check.threshold) && check.threshold === plan[planKey]);
       } else requireValue(text(check.threshold));
+      if (Object.hasOwn(FINANCIAL_RULE_LEVELS, check.key)) {
+        requireValue(nullable(check.value) && text(check.note, 1000));
+        if (check.known) {
+          const analysis = object(input.financial_analysis), metrics = object(analysis.metrics);
+          requireValue(finite(check.value) && analysis.fetched_at !== null
+            && now - isoStamp(analysis.fetched_at) <= HOURS_36
+            && !['stale', 'missing'].includes(String(analysis.status)));
+          const metricKey = { sell_debt_equity: 'debt_equity', sell_equity_nonpositive: 'debt_equity',
+            sell_capex_to_profit: 'capex_to_profit', sell_annual_loss: 'annual_net_profit',
+            sell_cumulative_loss: 'cumulative_net_profit' }[check.key];
+          const metric = object(metrics[metricKey!]);
+          requireValue(check.key === 'sell_equity_nonpositive' ?
+            ['ok', 'invalid'].includes(String(metric.status)) && finite(metric.total_equity) : metric.status === 'ok');
+        }
+      }
     }
   }
   // 上方逐字段检查与 Model 契约一致，计算模块不会接触未验证的网络对象。

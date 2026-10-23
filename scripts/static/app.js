@@ -1105,6 +1105,7 @@
       var p = withSummary(buildPayload(err));
       var sig = structSig(p);
       apply(p);
+      renderStaticFinancialAlerts();
       if (sig !== LAST_SIG) {          // 结构变了才重画（例如「待报价」变成有价）
         LAST_SIG = sig;
         renderLedger(); renderLive(); renderKpi();
@@ -1161,7 +1162,124 @@
     document.head.appendChild(script);
   }
 
+  /* ------------------------------ 公共企业财务详情：只展示后端判定 */
+  // 静态站仅对本浏览器台账提醒；公开财报快照过期时保留旧提醒并标记待核验。
+  var FINANCIAL_ALERTS = {};
+  function renderStaticFinancialAlerts() {
+    if (!HAS_DOM || document.hidden) { return; }
+    var main = document.querySelector('main'); if (!main) { return; }
+    var host = document.getElementById('__staticfinancialalerts');
+    if (!host) { host = document.createElement('section'); host.id = '__staticfinancialalerts'; host.className = 'card'; main.appendChild(host); }
+    var next = {}, changed = [], seen = {};
+    LEDGER.forEach(function (h) {
+      var code = h['代码']; if (seen[code]) { return; } seen[code] = true;
+      var e = ENTRIES[code], snap = e && e.sell_snapshot, old = FINANCIAL_ALERTS[code];
+      var valid = publicScoreFresh(Date.now()) && e && e.financial_capability && snap && Array.isArray(snap.financial_missing);
+      var checks = valid ? (e.sell_checks || []).filter(function (c) {
+        return /^(sell_debt_equity|sell_equity_nonpositive|sell_capex_to_profit|sell_annual_loss|sell_cumulative_loss)$/.test(c.key) && c.known && c.hit;
+      }) : [];
+      var complete = valid && !snap.financial_missing.length;
+      var keys = checks.map(function (c) { return c.key; }).sort(), reasons = checks.map(function (c) { return c.label; });
+      if (old && !complete) { keys = Array.from(new Set(keys.concat(old.keys))).sort(); reasons = Array.from(new Set(reasons.concat(old.reasons))); }
+      if (reasons.length) {
+        next[code] = { keys: keys, reasons: reasons, pending: !complete, name: h['名称'] || '' };
+        if (checks.length && (!old || old.keys.join('|') !== keys.join('|'))) { changed.push(code + '：财务预警、提示复核'); }
+      }
+    });
+    FINANCIAL_ALERTS = next;
+    host.innerHTML = Object.keys(next).length ? '<h3>财务预警、提示复核</h3>' + Object.keys(next).map(function (code) {
+      var a = next[code]; return '<p><strong>' + esc(code + ' ' + a.name) + (a.pending ? '（上次触发，当前待核验）' : '')
+        + '</strong>：' + esc(a.reasons.join('；')) + '</p>';
+    }).join('') + '<p class="small muted">财报为发布快照；仅网页可见时检查，关闭后不提醒。财务预警不直接给出减仓或清仓建议。</p>' : '';
+    host.hidden = !Object.keys(next).length;
+    if (changed.length && window.__toast) { window.__toast(changed.join('；')); }
+  }
+
+  function financialNumber(value, factor, suffix) {
+    return typeof value === 'number' && isFinite(value) ? (value * factor).toFixed(2) + (suffix || '') : '暂无数据';
+  }
+  function financialHTML(entry) {
+    var a = entry && entry.financial_analysis;
+    if (!a) { return '<p>本版本尚无企业财务数据，无法判断。请等待财务数据更新。</p>'; }
+    var states = { ok: '已核验', partial: '部分数据', missing: '数据不足', stale: '旧缓存/已过期',
+      invalid: '财务异常或口径无效', not_applicable: '行业不适用' };
+    function state(value) { return states[value] || '待核验'; }
+    var metrics = a.metrics || {}, debt = metrics.debt_equity || {}, capex = metrics.capex_to_profit || {};
+    function verdict(metric, good, bad) {
+      if (metric.status !== 'ok') { return state(metric.status); }
+      return metric.excellent === true ? good : metric.excellent === false ? bad : '无法判断';
+    }
+    var win = a.window || {}, rows = a.years || [], years = win.years || [];
+    var byYear = {}; rows.forEach(function (row) { byYear[row.fiscal_year] = row; });
+    var html = '<p><strong>' + esc(state(a.status)) + '</strong> · 五年窗口：' + esc(win.start_year || '未知')
+      + '—' + esc(win.end_year || '未知') + '（完整财年）</p>'
+      + '<p>债务股权比率：<strong>' + financialNumber(debt.value, 1, ' 倍') + '</strong> · '
+      + esc(verdict(debt, '优良', '未达优良标准')) + ' · 报告期 ' + esc(debt.report_date || '未知')
+      + '<br>五年累计资本开支÷累计净利润：<strong>' + financialNumber(capex.value, 100, '%')
+      + '</strong> · ' + esc(verdict(capex, '达标', '未达标')) + '</p>'
+      + '<p class="small muted">总负债÷合并股东权益（含少数股东权益）严格低于0.8为优良；五年累计资本开支÷累计合并净利润严格低于25%为达标。'
+      + '结论使用未舍入原值；显示值可能接近阈值。低资本开支只提供竞争力线索，不能单独证明持续竞争优势。</p>';
+    html += '<div style="overflow-x:auto" tabindex="0" role="region" aria-label="五年企业财务表"><table><caption>金额：人民币亿元；缺失不补零，季度累计数据不相加</caption>'
+      + '<thead><tr><th scope="col">财年/报告期</th><th scope="col">营业收入</th><th scope="col">营业利润</th><th scope="col">合并净利润</th>'
+      + '<th scope="col">扣非归母净利润</th><th scope="col">净利率</th><th scope="col">经营现金流净额</th><th scope="col">资本开支</th>'
+      + '<th scope="col">资本开支÷净利润</th></tr></thead><tbody>';
+    years.forEach(function (year) {
+      var r = byYear[year] || {};
+      html += '<tr><th scope="row">' + esc(year) + '<br><span class="small muted">' + esc(r.report_date || '未取得年报') + '</span></th>';
+      ['revenue', 'operating_profit', 'net_profit', 'deducted_parent_net_profit'].forEach(function (key) {
+        html += '<td>' + financialNumber(r[key], 1e-8) + (key === 'net_profit' && r[key] < 0 ? '（亏损）' : '') + '</td>';
+      });
+      html += '<td>' + financialNumber(r.net_margin, 100, '%') + '</td><td>' + financialNumber(r.operating_cash_flow, 1e-8)
+        + '</td><td>' + financialNumber(r.capex, 1e-8) + '</td><td>' + financialNumber(r.capex_to_profit, 100, '%') + '</td></tr>';
+    });
+    html += '</tbody></table></div><p class="small">五年累计净利润：' + financialNumber(capex.net_profit_sum, 1e-8, '亿元')
+      + ' · 五年累计资本开支：' + financialNumber(capex.capex_sum, 1e-8, '亿元') + '。资本开支口径：购建固定资产、无形资产和其他长期资产支付的现金；净利润非正时比例无法判断。</p>';
+    if ((a.loss_years || []).length) { html += '<p>亏损年份：' + esc(a.loss_years.join('、')) + '</p>'; }
+    var q = a.quality || {}, labels = { roe: 'ROE', cashflow: '经营现金流÷净利润', debt: '债务股权比率', stability: '盈利稳定性', capex: '五年资本开支比例' };
+    html += '<details><summary>质量评分明细与覆盖率：' + financialNumber(q.coverage, 100, '%') + '</summary>'
+      + '<p class="small">缺失或行业不适用项在可用项内重新归一化，覆盖率反映原权重中有数据参与的比例。</p>'
+      + '<p class="small">总分折算列按配置的质量权重展示；总分其他模块缺失并归一化时，实际贡献会变化。</p>'
+      + '<div style="overflow-x:auto"><table><thead><tr><th>子项</th><th>配置权重</th><th>子项分</th><th>质量分贡献</th><th>总分折算</th></tr></thead><tbody>';
+    Object.keys(labels).forEach(function (key) {
+      var c = (q.contributions || {})[key], weight = (SITE.stock_weights || {}).quality;
+      html += '<tr><th scope="row">' + labels[key] + '</th><td>' + financialNumber((q.weights || {})[key], 100, '%')
+        + '</td><td>' + financialNumber((q.sub_scores || {})[key], 1) + '</td><td>' + financialNumber(c, 1)
+        + '</td><td>' + (typeof c === 'number' && typeof weight === 'number' ? financialNumber(c * weight, 1) : '暂无数据') + '</td></tr>';
+    });
+    html += '</tbody></table></div><p>缺项：' + esc((q.missing || []).map(function (key) { return labels[key] || key; }).join('、') || '无') + '</p></details>';
+    var warnings = entry.sell_snapshot && entry.sell_snapshot.financial_warn || [];
+    html += '<p>财务预警：' + esc(warnings.length ? warnings.join('；') : a.status === 'ok' ? '本轮新增财务条件未触发' : '数据不足或不适用，请核对指标状态')
+      + '。财务预警提示复核；总分变化仍参与原有减仓、清仓规则。</p>';
+    html += '<p class="small muted">来源：' + esc(a.source || '未知') + ' · 币种：' + esc(a.currency || '未知')
+      + ' · 原始单位：' + esc(a.unit || '未知') + ' · 报表口径：' + esc(a.statement_scope === 'consolidated' ? '合并报表' : a.statement_scope || '未知')
+      + '<br>实际获取：' + esc(a.fetched_at || '未知') + ' · 来源更新时间：' + esc(a.source_updated_at || '未知（不以获取时间代替披露日）')
+      + '<br>财报随每日数据任务检查更新，行情刷新不会产生新财报。'
+      + ((a.notes || []).length ? '<br>' + esc(a.notes.join('；')) : '') + '</p>';
+    return html;
+  }
+  function renderFinancials() {
+    if (!HAS_DOM) { return; }
+    var main = document.querySelector('main'); if (!main) { return; }
+    var host = document.getElementById('__financials');
+    if (!host) {
+      host = document.createElement('section'); host.id = '__financials'; host.className = 'card';
+      host.innerHTML = '<h3>企业财务分析</h3><label for="__financialcode">选择股票</label> '
+        + '<select id="__financialcode" style="max-width:100%"></select><div id="__financialbody"></div>';
+      main.appendChild(host);
+      document.getElementById('__financialcode').addEventListener('change', function () {
+        document.getElementById('__financialbody').innerHTML = financialHTML(ENTRIES[this.value]);
+      });
+    }
+    var select = document.getElementById('__financialcode'), selected = select.value;
+    var codes = Object.keys(ENTRIES).sort();
+    var options = codes.map(function (code) { return '<option value="' + esc(code) + '">' + esc(code + ' ' + (ENTRIES[code].name || '')) + '</option>'; }).join('');
+    if (select.innerHTML !== options) { select.innerHTML = options; }
+    if (ENTRIES[selected]) { select.value = selected; }
+    document.getElementById('__financialbody').innerHTML = financialHTML(ENTRIES[select.value]);
+  }
+
   function boot() {
+    renderFinancials();
     loadLedger();
     refreshBuildState();
     if (document.getElementById('__ledger') || document.getElementById('__kpi')) { window.__renderAll(); }
@@ -1182,10 +1300,11 @@
 
   // 给 Node 单元测试用
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { parseQuoteText: parseQuoteText, oneRow: oneRow, sellDecision: sellDecision,
+    module.exports = { financialHTML: financialHTML, renderFinancials: renderFinancials, parseQuoteText: parseQuoteText, oneRow: oneRow, sellDecision: sellDecision,
       summarize: summarize, valuationQuoteValid: valuationQuoteValid,
       planSellShares: planSellShares, sellRatioFor: sellRatioFor, buyFees: buyFees,
       sellFees: sellFees, txSym: txSym, alertFor: alertFor, parseHistory: parseHistory,
       comparisonData: comparisonData };
   }
 })();
+

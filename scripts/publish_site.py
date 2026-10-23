@@ -266,7 +266,21 @@ def site_js(res: dict, cfg, thr: dict | None = None,
                                       "action": "候选", "triggers": "", "failed": "", "warn": ""})
         checks = evaluate_sell(score, cfg, macro_score=macro_score, holding=None)
         public_checks = [c for c in checks if c.key not in {"sell_stop_loss", "sell_take_profit"}]
+        quality = (getattr(score, "parts", {}) or {}).get("quality")
+        detail = getattr(quality, "detail", {}) or {}
+        e["financial_analysis"] = detail.get("financial_analysis")
+        e["financial_capability"] = e["financial_analysis"] is not None
+        financial_keys = {"sell_debt_equity", "sell_equity_nonpositive", "sell_capex_to_profit",
+                          "sell_annual_loss", "sell_cumulative_loss"}
+        metrics = (e["financial_analysis"] or {}).get("metrics", {})
+        metric_by_check = {"sell_debt_equity": "debt_equity", "sell_equity_nonpositive": "debt_equity",
+                           "sell_capex_to_profit": "capex_to_profit", "sell_annual_loss": "annual_net_profit",
+                           "sell_cumulative_loss": "cumulative_net_profit"}
+        e["sell_checks"] = [vars(c) for c in public_checks]
         e["sell_snapshot"] = {
+            "financial_warn": [c.label for c in public_checks if c.key in financial_keys and c.hit],
+            "financial_missing": [c.label for c in public_checks if c.key in financial_keys and not c.known
+                                  and metrics.get(metric_by_check[c.key], {}).get("status") != "not_applicable"],
             "percentile_labels": {c.key: c.label for c in public_checks
                                   if c.key in {"sell_pe_percentile", "sell_pb_percentile"}},
             "exit": [c.label for c in public_checks if c.hit and c.level == "清仓"],
@@ -320,6 +334,7 @@ def site_js(res: dict, cfg, thr: dict | None = None,
                  "stamp_duty_rate": fees.stamp_duty_rate,
                  "transfer_fee_rate": fees.transfer_fee_rate},
         "plan": js_plan,
+        "stock_weights": dict(cfg.get("stock_weights", {}) or {}),
         "sell_rules": [{"level": c.level, "label": c.label}
                        for c in evaluate_sell(None, cfg)],
         # thr[code] = {pe_sell: 该股 PE 自身历史分位到 80% 时的 PE 值, ...}
