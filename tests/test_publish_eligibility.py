@@ -19,7 +19,25 @@ class PublishEligibilityTests(unittest.TestCase):
             publish_eligibility(datetime(2027,1,1,tzinfo=ZoneInfo('Asia/Shanghai')))
 
     def test_utc_uses_shanghai_date(self):
-        self.assertTrue(publish_eligibility(datetime.fromisoformat('2026-10-25T17:00:00+00:00')))
+        self.assertFalse(publish_eligibility(datetime.fromisoformat('2026-10-25T17:00:00+00:00')))
+        self.assertTrue(publish_eligibility(datetime.fromisoformat('2026-10-26T01:30:00+00:00')))
+
+    def test_monday_preopen_skips_old_friday_but_open_resumes(self):
+        for time, expected in [('00:55:00',False),('09:29:59',False),('09:30:00',True)]:
+            with self.subTest(time=time):
+                self.assertEqual(publish_eligibility(datetime.fromisoformat('2026-10-26T'+time+'+08:00')),expected)
+
+    def test_normal_next_day_preopen_still_allows_valid_close(self):
+        self.assertTrue(publish_eligibility(datetime.fromisoformat('2026-10-27T01:00:00+08:00')))
+        self.assertTrue(publish_eligibility(datetime.fromisoformat('2026-10-27T09:29:59+08:00')))
+
+    def test_long_holiday_preopen_uses_exchange_calendar(self):
+        self.assertFalse(publish_eligibility(datetime.fromisoformat('2026-10-08T09:29:59+08:00')))
+        self.assertTrue(publish_eligibility(datetime.fromisoformat('2026-10-08T09:30:00+08:00')))
+
+    def test_preopen_unknown_previous_year_fails_closed(self):
+        with self.assertRaises(ValueError):
+            publish_eligibility(datetime.fromisoformat('2026-01-05T01:00:00+08:00'))
 
 
 if __name__ == '__main__':
