@@ -11,6 +11,8 @@ import pandas as pd
 
 from .plans import evaluate_sell
 from .portfolio import load_fees
+from .market_calendar import CALENDAR, market_clock, model_expiry
+from .financial_coverage import financial_coverage
 
 MODEL_VERSION = "touzi-live-v2"
 
@@ -43,7 +45,13 @@ def _validate_export_model(model, expected_codes, now):
     require(len(json.dumps(model, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode("utf-8")) <= 12 * 1024 * 1024)
     built, expires, quote = map(stamp, (model["built_at"], model["expires_at"], model["quote_at"]))
     duration = timedelta(hours=36)
-    require(now - duration <= built <= now + timedelta(minutes=1) and now < expires <= built + duration and expires > built)
+    if "trading_calendar" in model:
+        require(model["trading_calendar"] == CALENDAR and market_clock(now) is not None)
+        require(expires == model_expiry(built, quote) and market_clock(built)["quote_day"] == quote.date())
+    else:
+        require(expires <= built + duration)
+    # 生产门禁不复活旧输入；休市复用仅发生在消费端。
+    require(now - duration <= built <= now + timedelta(minutes=1) and now < expires and expires > built)
     require(now - duration <= quote <= min(now + timedelta(minutes=1), built + timedelta(minutes=5)))
     require(str(model["as_of"]) == quote.strftime("%Y-%m-%d"))
     require(finite(model["quote_coverage"]) and .9 <= model["quote_coverage"] <= 1)
@@ -199,9 +207,16 @@ def export_model(res, cfg, now=None):
         entries[score.code] = record
     flags = res.get("flags") or {}
     fees = load_fees(cfg)
+    quote_text = str(flags.get("quote_at") or "")
+    try:
+        quote_stamp = datetime.fromisoformat(quote_text).replace(tzinfo=ZoneInfo("Asia/Shanghai")) if "+" not in quote_text and not quote_text.endswith("Z") else datetime.fromisoformat(quote_text)
+        expiry = model_expiry(now, quote_stamp)
+    except ValueError:
+        expiry = None
     model = clean({
         "schema_version": 1, "model_version": MODEL_VERSION,
-        "built_at": now.isoformat(), "expires_at": (now + timedelta(hours=36)).isoformat(),
+        "built_at": now.isoformat(), "expires_at": (expiry or now + timedelta(hours=36)).isoformat(),
+        "trading_calendar": CALENDAR,
         "as_of": str(flags.get("as_of") or ""), "quote_at": str(flags.get("quote_at") or ""),
         "quote_coverage": flags.get("quote_coverage"),
         "provenance": "python-score-one-live-inputs",
@@ -214,7 +229,7 @@ def export_model(res, cfg, now=None):
                      "dividend": {k: cfg.dividend[k] for k in
                      ("excellent_yield", "full_credit_years", "spread_over_bond", "level_weight", "years_weight", "spread_weight")},
                      "stock_weights": dict(cfg.stock_weights)},
-        "pools": pools, "entries": entries,
+        "pools": pools, "entries": entries, "financial_coverage": financial_coverage(entries),
     })
     model["settings"]["valuation"]["industry_primary"] = {
         k: v for k, v in cfg.valuation.get("industry_primary", {}).items()

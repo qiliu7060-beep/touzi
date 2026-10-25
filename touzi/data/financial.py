@@ -159,15 +159,19 @@ def analyze_financials(tables, industry="", as_of=None, ttl_days=1):
     annual_status = "missing" if annual_profit is None else "ok" if fresh(annual) else "stale"
     statuses = [debt_status, capex_status, annual_status, cumulative_status]
     status = "missing" if not any(frames.values()) else "stale" if "stale" in statuses else "ok" if all(s in ("ok", "not_applicable", "invalid") for s in statuses) else "partial"
-    notes = ["低资本开支只是财务竞争力线索，不证明持续竞争优势。", "扣非归母净利润缺少可靠同源字段，暂不展示金额。"]
+    notes = ["低资本开支只是财务竞争力线索，不证明持续竞争优势。", "当前财报适配器未覆盖可靠的扣非归母净利润字段，显示缺失；不以归母或合并净利润替代。"]
     if debt_exempt:
         notes.append("行业债务项不适用，不参与计分或预警。")
     if financial:
         notes.append("金融行业资本开支项不适用，不参与计分或预警。")
     if not industry.strip():
         notes.append("行业归属缺失，债务和资本开支通用标准适用性待核验，暂不参与计分或预警；金额保留供核对。")
-    if status in ("partial", "missing", "stale"):
-        notes.append("财报存在缺项或旧缓存，相关新指标不参与计分和确定性预警。")
+    if not complete_profit or not complete_capex:
+        notes.append("五年净利润或资本开支缺少完整金额，累计比例无法核验；不跳过缺年。")
+    if debt_status == "missing" and industry.strip():
+        notes.append("最新合并负债或权益金额缺失，债务指标无法核验。")
+    if status == "stale":
+        notes.append("实际获取时间或报告期未通过新鲜度核验，相关新指标不参与计分和确定性预警。")
     return {"status": status, "source": SOURCE, "currency": "CNY", "unit": "yuan", "statement_scope": "consolidated",
             "fetched_at": min(fetched) if fetched else None, "source_updated_at": max(updated) if updated else None,
             "window": {"start_year": window[0], "end_year": end, "years": window}, "years": years,

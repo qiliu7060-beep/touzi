@@ -1,0 +1,6 @@
+{
+  "browser-test-runtime.mjs": "5df89728e6cf6b892b0085e5dbf0d3b9539c9b050efc2ad3aa2bc0931a3f1979",
+  "browser-test-sync.mjs": "44170575da1012f7e87d100f4f98d8ee6983c50074f7c0dacacb7bcb3bef9df2",
+  "test-holdings-actions.mjs": "44345f43c972cc11c9a1cc81edd334550a307fe4e26687643079d14828ad80fa",
+  "test-financial-ui.mjs": "77ccd5592f7357a71faa5730fc5aeb020de8dbb4091432a3e12bd605b1117602"
+}

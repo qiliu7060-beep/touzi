@@ -1,3 +1,4 @@
+import { calendarQuoteFresh } from './market-calendar.mjs';
 // Python touzi/signals/{valuation,dividend}.py 的唯一服务端镜像。
 export type Numeric = number | null;
 export type Check = { key: string; label: string; hit: boolean; known: boolean; level: string; threshold: unknown; value: unknown; note: string };
@@ -11,6 +12,7 @@ export type LiveInput = {
 export type Model = {
   schema_version: number; model_version: string; built_at: string; expires_at: string;
   as_of: string; quote_at: string; quote_coverage: number; provenance: string;
+  trading_calendar?: unknown;
   settings: { valuation: Record<string, unknown>; dividend: Record<string, unknown>; stock_weights: Record<string, number> };
   entries: Record<string, LiveInput>; pools: Record<string, number[]>;
   plan: Record<string, number>; fees: Record<string, number>;
@@ -144,7 +146,8 @@ export function computeEntry(model: Model, input: LiveInput, quote: Quote) {
     financial_analysis: model.model_version === 'touzi-live-v2' ? input.financial_analysis : null };
 }
 
-export function quoteFresh(quote: Quote, now: number): 'trading' | 'break' | 'closed' | null {
+export function quoteFresh(quote: Quote, now: number, calendar?: unknown): 'trading' | 'break' | 'closed' | null {
+  if (calendar !== undefined) return calendarQuoteFresh(quote, now, calendar) as 'trading' | 'break' | 'closed' | null;
   const stamp = Date.parse(quote.quote_ts), age = now - stamp;
   if (!Number.isFinite(stamp) || age < -60000 || quote.price <= 0) return null;
   const local = new Date(now + 28800000), q = new Date(stamp + 28800000);

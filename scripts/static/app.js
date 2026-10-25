@@ -19,6 +19,100 @@
  * =========================================================================== */
 (function () {
   'use strict';
+  // MARKET_CALENDAR_START (generated)
+// 日历常量由 scripts/sync_live_runtime.py 从经核验公告数据生成。
+const MARKET_CALENDAR = {"version":"cn-a-2026-v1","start":"2026-01-01","end":"2026-12-31","exchanges":["SSE","SZSE","BSE"],"sources":["https://www.sse.com.cn/disclosure/announcement/general/c/c_20251222_10802507.shtml","https://www.szse.cn/disclosure/notice/general/t20251222_618087.html","https://www.bse.cn/important_news/200027428.html"],"closures":[["2026-01-01","2026-01-04"],["2026-02-15","2026-02-23"],["2026-04-04","2026-04-06"],["2026-05-01","2026-05-05"],["2026-06-19","2026-06-21"],["2026-09-25","2026-09-27"],["2026-10-01","2026-10-07"]]};
+const DAY_MS = 86400000;
+const OFFSET_MS = 28800000;
+/** @param {unknown} value */
+function validCalendar(value) {
+  return JSON.stringify(value) === JSON.stringify(MARKET_CALENDAR);
+}
+/** @param {string} day */
+function tradingDay(day) {
+  if (day < MARKET_CALENDAR.start || day > MARKET_CALENDAR.end) return null;
+  const weekday = new Date(day + 'T12:00:00+08:00').getUTCDay();
+  return weekday !== 0 && weekday !== 6 && !MARKET_CALENDAR.closures.some(([a, b]) => day >= a && day <= b);
+}
+/** @param {string} day @param {number} direction */
+function adjacentTradingDay(day, direction) {
+  let stamp = Date.parse(day + 'T00:00:00Z');
+  // 公告日历外及超过20个自然日均拒绝，不推测新年度或临时停市。
+  for (let i = 0; i < 20; i++) {
+    stamp += direction * DAY_MS;
+    const candidate = new Date(stamp).toISOString().slice(0, 10);
+    const open = tradingDay(candidate);
+    if (open === null) return null;
+    if (open) return candidate;
+  }
+  return null;
+}
+/** @param {number} now @param {unknown} calendar */
+function marketClock(now, calendar) {
+  if (!Number.isFinite(now) || !validCalendar(calendar)) return null;
+  const local = new Date(now + OFFSET_MS), day = local.toISOString().slice(0, 10);
+  const open = tradingDay(day);
+  if (open === null) return null;
+  const minute = local.getUTCHours() * 60 + local.getUTCMinutes();
+  const phase = !open || minute < 570 || minute >= 900 ? 'closed'
+    : minute >= 690 && minute < 780 ? 'break' : 'trading';
+  const quoteDay = open && minute >= 570 ? day : adjacentTradingDay(day, -1);
+  return quoteDay ? { day, phase, quoteDay, open } : null;
+}
+/** @param {{price:number,quote_ts:string}} quote @param {number} now @param {unknown} calendar */
+function calendarQuoteFresh(quote, now, calendar) {
+  const clock = marketClock(now, calendar), stamp = Date.parse(quote.quote_ts);
+  if (!clock || !Number.isFinite(stamp) || !(quote.price > 0) || stamp > now + 60000) return null;
+  const local = new Date(stamp + OFFSET_MS), day = local.toISOString().slice(0, 10);
+  const minute = local.getUTCHours() * 60 + local.getUTCMinutes();
+  if (day !== clock.quoteDay || !tradingDay(day)) return null;
+  if (clock.phase === 'trading') return now - stamp <= 120000 ? 'trading' : null;
+  if (clock.phase === 'break') return minute >= 688 && minute <= 690 ? 'break' : null;
+  return minute >= 900 && minute < 1080 ? 'closed' : null;
+}
+/** @param {number} built @param {string} quoteAt @param {unknown} calendar */
+function calendarModelExpiry(built, quoteAt, calendar) {
+  if (!validCalendar(calendar) || !marketClock(built, calendar)) return null;
+  // 只有生成时已核验的完整收盘基线才能跨休市；盘中模型仍保留36小时上限。
+  if (calendarQuoteFresh({price:1,quote_ts:quoteAt}, built, calendar) !== 'closed') return built + 36 * 3600000;
+  const day = new Date(Date.parse(quoteAt) + OFFSET_MS).toISOString().slice(0, 10);
+  const next = adjacentTradingDay(day, 1);
+  return next ? Date.parse(next + 'T09:30:00+08:00') : null;
+}
+/** @param {number} built @param {string} quoteAt @param {number} now @param {unknown} calendar */
+function closedBaseline(built, quoteAt, now, calendar) {
+  const expiry = calendarModelExpiry(built, quoteAt, calendar);
+  return expiry !== null && built <= now + 60000 && now < expiry
+    && now - built <= 20 * DAY_MS
+    && calendarQuoteFresh({price:1,quote_ts:quoteAt}, built, calendar) === 'closed'
+    && calendarQuoteFresh({price:1,quote_ts:quoteAt}, now, calendar) === 'closed';
+}
+
+// 可用指标、行业适用性和展示字段完整性分别统计，不将行情覆盖冒充财报覆盖。
+/** @param {Record<string, any>} entries */
+function financialCoverage(entries) {
+  const result = {total:0, reports:{}, metrics:{}, quality:{full:0,partial:0,missing:0},
+    fields:{expected:0,deducted_parent_missing:0}, reasons:{industry_unknown:0,amounts_missing:0}};
+  for (const entry of Object.values(entries || {})) {
+    result.total++;
+    const a = entry.financial_analysis || {}, status = a.status || 'missing';
+    result.reports[status] = (result.reports[status] || 0) + 1;
+    for (const key of ['debt_equity','capex_to_profit','annual_net_profit','cumulative_net_profit']) {
+      const state = (a.metrics && a.metrics[key] || {}).status || 'missing';
+      const bucket = result.metrics[key] || (result.metrics[key] = {});
+      bucket[state] = (bucket[state] || 0) + 1;
+    }
+    const covered = a.quality && a.quality.coverage;
+    result.quality[covered === 1 ? 'full' : Number.isFinite(covered) && covered > 0 ? 'partial' : 'missing']++;
+    result.fields.expected += 5;
+    const years = a.years || [];
+    result.fields.deducted_parent_missing += 5 - years.slice(0,5).filter(row => Number.isFinite(row.deducted_parent_net_profit)).length;
+    if (!String(entry.industry || '').trim()) result.reasons.industry_unknown++;
+    if (years.length !== 5 || years.some(row => ['revenue','operating_profit','net_profit','operating_cash_flow','capex'].some(key => !Number.isFinite(row[key])))) result.reasons.amounts_missing++;
+  }
+  return result;
+}
+  // MARKET_CALENDAR_END
 
   // Node 里跑单元测试时没有 window / document，所以全部做存在性判断。
   var W = (typeof window !== 'undefined') ? window : {};
@@ -155,7 +249,23 @@
   function num(v) { return (typeof v === 'number' && isFinite(v)) ? v : NaN; }
   function r2(v) { return isFinite(v) ? Math.round(v * 100) / 100 : null; }
 
+  function sourceTime(value) {
+    var text = String(value || '');
+    return Date.parse(text.includes('T') ? text : text.replace(' ', 'T') + '+08:00');
+  }
+
   function publicScoreFresh(now) {
+    if (SITE.trading_calendar !== undefined && !(typeof LIVE !== 'undefined' && LIVE.attempted)) {
+      var built = sourceTime(SITE.built_at), quoteStamp = sourceTime(SITE.quote_at);
+      var context = marketClock(now, SITE.trading_calendar);
+      if (!context || !isFinite(built) || !isFinite(quoteStamp) || built > now + 60000
+        || !(Number(SITE.quote_coverage) >= 0.9) || String(SITE.as_of) !== String(SITE.quote_at).slice(0, 10)) { return false; }
+      var sourceISO = new Date(quoteStamp).toISOString();
+      var expiry = calendarModelExpiry(built, sourceISO, SITE.trading_calendar);
+      var ref = closedBaseline(built, sourceISO, now, SITE.trading_calendar) ? built : now;
+      return expiry !== null && now < expiry && ref - built <= 36 * 3600000
+        && ref - quoteStamp <= 36 * 3600000 && calendarQuoteFresh({price:1,quote_ts:sourceISO}, now, SITE.trading_calendar) !== null;
+    }
     var age = Date.parse(String(SITE.as_of || '') + 'T00:00:00+08:00');
     var quoteAt = Date.parse(String(SITE.quote_at || '').replace(' ', 'T') + '+08:00');
     var coverage = Number(SITE.quote_coverage);
@@ -177,6 +287,11 @@
   // 估值必须来自同一只股票的可核验报价；交易中最多容忍十分钟延迟。
   // 非交易时段仅接受最近工作日收盘报价，节假日无法核验时保守标为未知。
   function valuationQuoteValid(quote, code, now) {
+    if (SITE.trading_calendar !== undefined) {
+      var quoteAt = quote && sourceTime(quote.quote_ts);
+      return !!quote && quote.code === code && isFinite(quoteAt) && calendarQuoteFresh({price:quote.price,
+        quote_ts:new Date(quoteAt).toISOString()}, now, SITE.trading_calendar) !== null;
+    }
     if (!quote || quote.code !== code || !(num(quote.price) > 0)) { return false; }
     var text = String(quote.quote_ts || '');
     if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(text)) { return false; }
@@ -1263,6 +1378,35 @@
   function financialNumber(value, factor, suffix) {
     return typeof value === 'number' && isFinite(value) ? (value * factor).toFixed(2) + (suffix || '') : '暂无数据';
   }
+  function financialCoverageHTML() {
+    var coverage = financialCoverage(ENTRIES), labels = {debt_equity:'债务股权比率',capex_to_profit:'五年资本开支比例',annual_net_profit:'年度净利润',cumulative_net_profit:'五年累计净利润'};
+    var html = '<details data-financial-detail="coverage"><summary>本页财报覆盖：' + coverage.total + '只股票（当前评分集合，并非全市场）</summary>';
+    html += '<p>报告/指标总体状态：已核验 ' + (coverage.reports.ok || 0) + '只，部分数据 ' + (coverage.reports.partial || 0)
+      + '只，数据不足 ' + (coverage.reports.missing || 0) + '只，旧数据 ' + (coverage.reports.stale || 0)
+      + '只，异常或无效 ' + (coverage.reports.invalid || 0) + '只，行业不适用 ' + (coverage.reports.not_applicable || 0)
+      + '只；质量子项全部可用 ' + coverage.quality.full + '只、部分可用 ' + coverage.quality.partial + '只、全部缺失 '
+      + coverage.quality.missing + '只。已核验不代表所有展示字段完整。</p>';
+    html += '<div class="table-wrap"><table><thead><tr><th>指标</th><th>可用</th><th>缺失/待核验</th><th>行业不适用</th><th>异常/不可计算</th><th>旧数据</th></tr></thead><tbody>';
+    Object.keys(labels).forEach(function (key) { var item = coverage.metrics[key] || {};
+      html += '<tr><th>' + labels[key] + '</th><td>' + (item.ok || 0) + '</td><td>' + ((item.missing || 0)+(item.partial || 0))
+        + '</td><td>' + (item.not_applicable || 0) + '</td><td>' + (item.invalid || 0) + '</td><td>' + (item.stale || 0) + '</td></tr>'; });
+    html += '</tbody></table></div><p>行业归属缺失 ' + coverage.reasons.industry_unknown + '只（可能已有财报金额，但通用阈值适用性无法确认）；年度基础金额不完整 '
+      + coverage.reasons.amounts_missing + '只。扣非归母净利润缺失 ' + coverage.fields.deducted_parent_missing + '/' + coverage.fields.expected
+      + '个年度单元格，当前适配器未覆盖可靠字段。缺失不补零，行业不适用不算取数失败。</p></details>';
+    return html;
+  }
+  function updateFinancialBody(entry) {
+    var host = document.getElementById('__financialbody'), expanded = {};
+    // 定时刷新保留用户展开的统计/明细，不能每15秒把正在阅读的内容折叠。
+    if (host.querySelectorAll) { Array.prototype.forEach.call(host.querySelectorAll('details[data-financial-detail]'), function (detail) {
+      expanded[detail.getAttribute('data-financial-detail')] = detail.open;
+    }); }
+    host.innerHTML = financialCoverageHTML() + financialHTML(entry);
+    if (host.querySelectorAll) { Array.prototype.forEach.call(host.querySelectorAll('details[data-financial-detail]'), function (detail) {
+      var key = detail.getAttribute('data-financial-detail');
+      if (Object.prototype.hasOwnProperty.call(expanded, key)) { detail.open = expanded[key]; }
+    }); }
+  }
   function financialHTML(entry) {
     var a = entry && entry.financial_analysis;
     if (!a) { return '<p>本版本尚无企业财务数据，无法判断。请等待财务数据更新。</p>'; }
@@ -1275,9 +1419,11 @@
       return metric.excellent === true ? good : metric.excellent === false ? bad : '无法判断';
     }
     var win = a.window || {}, rows = a.years || [], years = win.years || [];
+    var quality = a.quality || {};
     var byYear = {}; rows.forEach(function (row) { byYear[row.fiscal_year] = row; });
     var html = '<p><strong>' + esc(state(a.status)) + '</strong> · 五年窗口：' + esc(win.start_year || '未知')
       + '—' + esc(win.end_year || '未知') + '（完整财年）</p>'
+      + '<p>本股质量评分覆盖：' + financialNumber(quality.coverage, 100, '%') + '（可用子项权重；不代表财报字段完整率）</p>'
       + '<p>债务股权比率：<strong>' + financialNumber(debt.value, 1, ' 倍') + '</strong> · '
       + esc(verdict(debt, '优良', '未达优良标准')) + ' · 报告期 ' + esc(debt.report_date || '未知')
       + '<br>五年累计资本开支÷累计净利润：<strong>' + financialNumber(capex.value, 100, '%')
@@ -1301,7 +1447,7 @@
       + ' · 五年累计资本开支：' + financialNumber(capex.capex_sum, 1e-8, '亿元') + '。资本开支口径：购建固定资产、无形资产和其他长期资产支付的现金；净利润非正时比例无法判断。</p>';
     if ((a.loss_years || []).length) { html += '<p>亏损年份：' + esc(a.loss_years.join('、')) + '</p>'; }
     var q = a.quality || {}, labels = { roe: 'ROE', cashflow: '经营现金流÷净利润', debt: '债务股权比率', stability: '盈利稳定性', capex: '五年资本开支比例' };
-    html += '<details><summary>质量评分明细与覆盖率：' + financialNumber(q.coverage, 100, '%') + '</summary>'
+    html += '<details data-financial-detail="quality"><summary>质量评分明细与覆盖率：' + financialNumber(q.coverage, 100, '%') + '</summary>'
       + '<p class="small">缺失或行业不适用项在可用项内重新归一化，覆盖率反映原权重中有数据参与的比例。</p>'
       + '<p class="small">总分折算列按配置的质量权重展示；总分其他模块缺失并归一化时，实际贡献会变化。</p>'
       + '<div style="overflow-x:auto"><table><thead><tr><th>子项</th><th>配置权重</th><th>子项分</th><th>质量分贡献</th><th>总分折算</th></tr></thead><tbody>';
@@ -1318,7 +1464,7 @@
     html += '<p class="small muted">来源：' + esc(a.source || '未知') + ' · 币种：' + esc(a.currency || '未知')
       + ' · 原始单位：' + esc(a.unit || '未知') + ' · 报表口径：' + esc(a.statement_scope === 'consolidated' ? '合并报表' : a.statement_scope || '未知')
       + '<br>实际获取：' + esc(a.fetched_at || '未知') + ' · 来源更新时间：' + esc(a.source_updated_at || '未知（不以获取时间代替披露日）')
-      + '<br>财报随每日数据任务检查更新，行情刷新不会产生新财报。'
+      + '<br>财报随交易日数据任务检查更新，休市保留最近合格快照，行情刷新不会产生新财报。'
       + ((a.notes || []).length ? '<br>' + esc(a.notes.join('；')) : '') + '</p>';
     return html;
   }
@@ -1337,7 +1483,7 @@
     if (!matches.length) { message.textContent = '当前评分覆盖股票中没有匹配结果，请检查名称或代码。'; return; }
     if (confirm && matches.length === 1) {
       select.value = matches[0];
-      document.getElementById('__financialbody').innerHTML = financialHTML(ENTRIES[matches[0]]);
+      updateFinancialBody(ENTRIES[matches[0]]);
       message.textContent = '已选择 ' + matches[0] + ' ' + (ENTRIES[matches[0]].name || '');
       return;
     }
@@ -1349,7 +1495,7 @@
       button.style.margin = '4px';
       button.addEventListener('click', function () {
         select.value = code;
-        document.getElementById('__financialbody').innerHTML = financialHTML(ENTRIES[code]);
+        updateFinancialBody(ENTRIES[code]);
         results.innerHTML = '';
         message.textContent = '已选择 ' + code + ' ' + (ENTRIES[code].name || '');
         input.focus();
@@ -1372,7 +1518,7 @@
         + '<div id="__financialresults" role="group" aria-label="匹配股票" style="max-height:180px;overflow:auto"></div>'
         + '<label for="__financialcode">选择股票</label> '
         + '<select id="__financialcode" style="max-width:100%"></select>'
-        + '<p class="muted">年度更新：每年5月1日，五年窗口向前滚动一年；工作日数据任务检查新财报及更正，来源和任务延迟可能影响显示。财报不是固定不变的数据，行情刷新也不代表新财报已披露。</p>'
+        + '<p class="muted">年度更新：每年5月1日，五年窗口向前滚动一年；交易日数据任务检查新财报及更正，休市保留最近合格快照，来源和任务延迟可能影响显示。财报不是固定不变的数据，行情刷新也不代表新财报已披露。</p>'
         + '<div id="__financialbody"></div>';
       main.appendChild(host);
       var input = document.getElementById('__financialsearch');
@@ -1387,7 +1533,7 @@
         if (!input.__composing) { financialSearch(true); }
       });
       document.getElementById('__financialcode').addEventListener('change', function () {
-        document.getElementById('__financialbody').innerHTML = financialHTML(ENTRIES[this.value]);
+        updateFinancialBody(ENTRIES[this.value]);
         document.getElementById('__financialresults').innerHTML = '';
         document.getElementById('__financialmessage').textContent = '已选择 ' + this.value + ' ' + (ENTRIES[this.value].name || '');
       });
@@ -1400,7 +1546,7 @@
       if (ENTRIES[selected]) { select.value = selected; }
       financialSearch(false);
     }
-    document.getElementById('__financialbody').innerHTML = financialHTML(ENTRIES[select.value]);
+    updateFinancialBody(ENTRIES[select.value]);
   }
 
   function boot() {

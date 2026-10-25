@@ -1,4 +1,5 @@
 import type { Model } from './live-scoring.mjs';
+import { validCalendar, marketClock, calendarModelExpiry, closedBaseline } from './market-calendar.mjs';
 
 const RULE_LEVELS: Record<string, string> = {
   sell_pe_percentile: '清仓', sell_pb_percentile: '清仓', sell_graham: '清仓',
@@ -137,11 +138,24 @@ export function validateModel(value: unknown, now: number): Model {
   const finance = model.model_version === 'touzi-live-v2';
   const rules = finance ? { ...RULE_LEVELS, ...FINANCIAL_RULE_LEVELS } : RULE_LEVELS;
   const built = isoStamp(model.built_at), expires = isoStamp(model.expires_at);
-  requireValue(built <= now + 60000 && now - built <= HOURS_36
-    && expires > now && expires > built && expires - built <= HOURS_36);
   const asOf = dateOnly(model.as_of), quote = sourceStamp(model.quote_at);
+  const quoteISO = new Date(quote).toISOString();
+  const calendar = model.trading_calendar;
+  const hasCalendar = calendar !== undefined;
+  let validationNow = now;
+  if (hasCalendar) {
+    requireValue(validCalendar(calendar) && marketClock(now, calendar) !== null);
+    const expectedExpiry = calendarModelExpiry(built, quoteISO, calendar);
+    requireValue(expectedExpiry !== null && expires === expectedExpiry);
+    const atBuild = marketClock(built, calendar);
+    requireValue(atBuild !== null && atBuild.quoteDay === asOf);
+    // 已验证收盘基线跨休市保留，输入新鲜度仍以真实生成时刻核验。
+    if (closedBaseline(built, quoteISO, now, calendar)) validationNow = built;
+  }
+  requireValue(built <= now + 60000 && validationNow - built <= HOURS_36
+    && expires > now && expires > built && (hasCalendar || expires - built <= HOURS_36));
   requireValue(typeof model.quote_at === 'string' && model.quote_at.slice(0, 10) === asOf
-    && quote <= now + 60000 && quote <= built + 5 * 60000 && now - quote <= HOURS_36);
+    && quote <= now + 60000 && quote <= built + 5 * 60000 && validationNow - quote <= HOURS_36);
   requireValue(finite(model.quote_coverage) && model.quote_coverage >= .9 && model.quote_coverage <= 1);
 
   const settings = object(model.settings), valuation = object(settings.valuation), dividend = object(settings.dividend);
@@ -199,9 +213,9 @@ export function validateModel(value: unknown, now: number): Model {
     const inputDate = dateOnly(input.input_as_of.slice(0, 10));
     // 跨日盘前允许用前一日收盘，基础输入截止日仍可为本轮构建日期。
     const inputAt = Date.parse(inputDate + 'T00:00:00+08:00');
-    requireValue(inputDate >= asOf && inputAt <= now + 60000 && now - inputAt <= HOURS_36);
+    requireValue(inputDate >= asOf && inputAt <= validationNow + 60000 && validationNow - inputAt <= HOURS_36);
     object(input.provenance);
-    if (finance) financialAnalysis(input.financial_analysis, now, plan);
+    if (finance) financialAnalysis(input.financial_analysis, validationNow, plan);
     const vin = object(input.valuation_input), din = object(input.dividend_input);
     requireValue(vin.code === code && din.code === code && vin.industry === input.industry);
     for (const key of ['pe_ttm', 'pb', 'dividend_yield', 'pe_percentile_ts', 'pb_percentile_ts',
@@ -235,7 +249,7 @@ export function validateModel(value: unknown, now: number): Model {
         if (check.known) {
           const analysis = object(input.financial_analysis), metrics = object(analysis.metrics);
           requireValue(finite(check.value) && analysis.fetched_at !== null
-            && now - isoStamp(analysis.fetched_at) <= HOURS_36
+            && validationNow - isoStamp(analysis.fetched_at) <= HOURS_36
             && !['stale', 'missing'].includes(String(analysis.status)));
           const metricKey = { sell_debt_equity: 'debt_equity', sell_equity_nonpositive: 'debt_equity',
             sell_capex_to_profit: 'capex_to_profit', sell_annual_loss: 'annual_net_profit',

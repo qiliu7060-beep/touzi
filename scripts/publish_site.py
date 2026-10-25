@@ -323,7 +323,11 @@ def site_js(res: dict, cfg, thr: dict | None = None,
             js_plan[k] = v
     js_plan["reduce_ratio"] = reduce_ratio
 
+    from touzi.market_calendar import CALENDAR
+    from touzi.financial_coverage import financial_coverage
     payload = {
+        "trading_calendar": CALENDAR,
+        "financial_coverage": financial_coverage(entries),
         "built_at": datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M"),
         "as_of": _s(flags.get("as_of")),
         "quote_at": _s(flags.get("quote_at")),
@@ -629,16 +633,12 @@ def validate_quote_freshness(flags: dict, min_quote_time: str,
     except ValueError:
         return ["行情源未返回真实报价时间"]
     errors: list[str] = []
-    is_same_day = quote_at.date() == current.date()
-    is_previous_close = (
-        (current.hour, current.minute) < (9, 30)
-        and quote_at.date() == current.date() - timedelta(days=1)
-        and quote_at.strftime("%H:%M") >= "15:00"
-    )
-    if not (is_same_day or is_previous_close):
-        errors.append(
-            f"报价时间 {quote_at:%Y-%m-%d %H:%M} 不在当前有效交易窗口"
-        )
+    from touzi.market_calendar import market_clock
+    clock = market_clock(current)
+    if clock is None or quote_at.date() != clock["quote_day"]:
+        errors.append(f"报价时间 {quote_at:%Y-%m-%d %H:%M} 不在已核验交易日历的有效窗口")
+    elif clock["phase"] == "closed" and quote_at.strftime("%H:%M") < "15:00":
+        errors.append("休市或盘前仅接受最近交易日完整收盘报价")
     if quote_at.strftime("%H:%M") < min_quote_time:
         errors.append(f"报价时间 {quote_at:%H:%M} 早于要求的 {min_quote_time}")
     if quote_at > current + timedelta(minutes=5):

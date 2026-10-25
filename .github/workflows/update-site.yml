@@ -10,15 +10,27 @@ on:
       - 'touzi/report.py'
       - 'touzi/screener.py'
       - 'touzi/live_model.py'
+      - 'touzi/market_calendar.py'
+      - 'touzi/financial_coverage.py'
       - 'touzi/data/**'
       - 'touzi/signals/quality.py'
       - 'config/settings.toml'
+      - 'config/trading-calendar.json'
       - 'scripts/run_all.py'
       - 'scripts/publish_site.py'
+      - 'scripts/publish_eligibility.py'
+      - 'tests/test_publish_eligibility.py'
       - 'scripts/static/app.js'
       - 'scripts/live-scoring.mts'
       - 'scripts/live-model-validation.mts'
       - 'scripts/sync_live_runtime.py'
+      - 'scripts/sync_browser_tests.py'
+      - 'scripts/check-browser-release.mjs'
+      - 'scripts/market-calendar.mjs'
+      - 'scripts/financial-coverage.mjs'
+      - 'tests/browser/**'
+      - 'tests/test_market_calendar*'
+      - 'scripts/static/test_dom.cjs'
       - 'tests/test_buy_decision.py'
       - 'tests/test_sell_snapshot.py'
       - 'tests/test_sell_decision.js'
@@ -30,6 +42,7 @@ on:
       - 'tests/check_live_model.mjs'
       - 'tests/test_live_model_gate.py'
       - 'tests/test_financial*.py'
+      - 'tests/test_financial_coverage.mjs'
       - 'tests/financial_fixtures.py'
   schedule:
     # 北京时间工作日 09:45、17:23 重算；18:23 复核一次收盘数据。
@@ -52,6 +65,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    outputs:
+      publish: ${{ steps.eligibility.outputs.publish }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v5
@@ -93,7 +108,20 @@ jobs:
           python -m unittest discover -s tests -p 'test_financial*.py'
           node tests/test_sell_decision.js
 
+      - name: Check browser actions, financial search and market-calendar boundaries
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          python tests/test_market_calendar.py
+          python tests/test_publish_eligibility.py
+          node scripts/check-browser-release.mjs
+
+      - name: Check verified trading-day publish eligibility
+        id: eligibility
+        run: python scripts/publish_eligibility.py --github-output "$GITHUB_OUTPUT"
+
       - name: Recalculate data and build site
+        if: steps.eligibility.outputs.publish == 'true'
         env:
           PYTHONUTF8: "1"
           TOUZI_PROXY: ""
@@ -107,25 +135,34 @@ jobs:
           fi
           python scripts/publish_site.py --limit 300 --skip-backtest "${extra[@]}"
 
+      - name: Check generated-page holding DOM flow
+        if: steps.eligibility.outputs.publish == 'true'
+        run: node scripts/static/test_dom.cjs dist/site.js
+
       - name: Validate published model with the Worker schema
+        if: steps.eligibility.outputs.publish == 'true'
         run: node tests/check_live_model.mjs dist/live-model.json
 
       - name: Save final market-data cache
+        if: steps.eligibility.outputs.publish == 'true'
         uses: actions/cache/save@v4
         with:
           path: data_cache
           key: touzi-data-v1-${{ github.run_id }}
 
       - name: Configure GitHub Pages
+        if: steps.eligibility.outputs.publish == 'true'
         uses: actions/configure-pages@v5
 
       - name: Upload site artifact
+        if: steps.eligibility.outputs.publish == 'true'
         uses: actions/upload-pages-artifact@v5
         with:
           path: dist
           include-hidden-files: true
 
   deploy:
+    if: needs.build.outputs.publish == 'true'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
