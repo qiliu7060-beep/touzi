@@ -115,7 +115,8 @@ button.b:hover{background:#1d4ed8}
 button.b2{background:#374151;font-weight:400}
 button.b2:hover{background:#4b5563}
 button.b:disabled{opacity:.5;cursor:not-allowed}
-tr.picked{background:#0f2a1d}
+tr.picked{background:#e5f6ec;color:#1f2937}
+tr.picked .muted{color:#526275}
 .hint{color:#9ca3af;font-size:12.5px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:70px;z-index:99998;
  background:#111827;color:#e5e7eb;border:1px solid #374151;border-radius:10px;
@@ -435,7 +436,8 @@ def view_pick(res: dict[str, Any]) -> str:
     body = [hero(
         "选股 · 勾选建仓",
         "下面每一行都是打分与买卖规则算出来的结果，<b>不是推荐你买</b>——"
-        "「建仓」= 9 条买入门槛全通过；「接近建仓」= 只差一条。"
+        "「建仓」= 原买入门槛通过；「接近建仓」= 只差一条。"
+        "债务股权比率&lt;0.8、五年资本开支比例&lt;25%的实际值和状态见表中两列；它们参与既有质量评分和财务预警，并非新增买入硬门槛。窄屏可左右滑动查看。"
         "打勾、填股数（默认 100 股），点底部按钮就直接进你的持仓台账。",
         [("/my", "看我的持仓"), ("/report", "看完整报告"), ("/rules", "看规则与阈值")],
     )]
@@ -445,12 +447,15 @@ def view_pick(res: dict[str, Any]) -> str:
             return card(title, '<p class="muted small">本次没有这一类标的。</p>', note)
         head = ("<tr><th>选</th><th>代码</th><th>名称</th><th>动作</th><th class='num'>总分</th>"
                 "<th class='num'>现价</th><th class='num'>PE</th><th class='num'>PB</th>"
-                "<th class='num'>股息率%</th><th>还差什么</th><th>买入价</th><th>股数</th></tr>")
+                "<th class='num'>股息率%</th>"
+                "<th data-pick-financial-header='debt_equity'>债务股权比率（优良&lt;0.8）</th>"
+                "<th data-pick-financial-header='capex_to_profit'>五年资本开支÷净利润（达标&lt;25%）</th>"
+                "<th data-pick-buy-checks>原买入门槛（发布时）</th><th>买入价</th><th>股数</th></tr>")
         trs = []
         for r in items:
             pe_txt = _num(r["pe"], 2)
             pb_txt = _num(r["pb"], 2)
-            extra = r["miss"] or ""
+            extra = _esc((r["miss"] or "").replace("全部通过", "原买入门槛通过"))
             if r["warn"]:
                 extra = (extra + "　" if extra else "") + f'<span class="muted">{_esc(r["warn"])}</span>'
             price = r["price"]
@@ -466,7 +471,9 @@ def view_pick(res: dict[str, Any]) -> str:
                 f'<td class="num">{pe_txt}</td>'
                 f'<td class="num">{pb_txt}</td>'
                 f'<td class="num">{_num(r["dy"], 2)}</td>'
-                f'<td class="small">{extra or "—"}</td>'
+                '<td class="small" data-pick-financial="debt_equity">财务数据待加载/核验</td>'
+                '<td class="small" data-pick-financial="capex_to_profit">财务数据待加载/核验</td>'
+                f'<td class="small" data-pick-buy-checks>{extra or "—"}</td>'
                 f'<td><input class="ip" type="text" value="{_esc(price_v if price_v != "—" else "")}"></td>'
                 f'<td><input class="is" type="text" value="100"></td>'
                 "</tr>"
@@ -475,10 +482,10 @@ def view_pick(res: dict[str, Any]) -> str:
                     f'<div class="scroll"><table>{head}{"".join(trs)}</table></div>',
                     note)
 
-    body.append(tbl("✅ 建仓：买入门槛全通过", ready, "great",
+    body.append(tbl("✅ 建仓：原买入门槛通过", ready, "great",
                     f"{len(ready)} 只。这些是规则说「可以买」的，最终买不买、买多少由你决定。"))
     body.append(tbl("🟡 接近建仓：只差一条门槛", near, "mid",
-                    f"{len(near)} 只。差的那一条写在「还差什么」列——多数是估值还贵一点。"))
+                    f"{len(near)} 只。差的那一条写在「原买入门槛（发布时）」列——多数是估值还贵一点。"))
     body.append(tbl("⚪ 观望：目前不满足买入条件", watch, "weak",
                     f"{len(watch)} 只。列在这里是为了让你能一起勾选建仓（比如你已经持有、想补仓）。"))
 

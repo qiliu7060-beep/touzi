@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-FILES = ("browser-test-runtime.mjs", "browser-test-sync.mjs", "test-holdings-actions.mjs", "test-financial-ui.mjs")
+FILES = ("browser-test-runtime.mjs", "browser-test-sync.mjs", "test-holdings-actions.mjs", "test-financial-ui.mjs", "test-pick-financial.mjs")
 
 
 def main():

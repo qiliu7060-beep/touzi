@@ -18,6 +18,9 @@ on:
       - 'config/trading-calendar.json'
       - 'scripts/run_all.py'
       - 'scripts/publish_site.py'
+      - 'scripts/webui.py'
+      - 'scripts/pick-financial.mjs'
+      - 'tests/test_pick_financial.py'
       - 'scripts/publish_eligibility.py'
       - 'tests/test_publish_eligibility.py'
       - 'scripts/static/app.js'
@@ -101,6 +104,7 @@ jobs:
           python tests/test_buy_decision.py
           python tests/test_sell_snapshot.py
           python tests/test_plan_rule_display.py
+          python tests/test_pick_financial.py
           python tests/test_score_quote_freshness.py
           python tests/test_valuation_thresholds.py
           python tests/test_live_model.py
