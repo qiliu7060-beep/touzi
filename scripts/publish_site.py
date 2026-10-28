@@ -311,6 +311,16 @@ def site_js(res: dict, cfg, thr: dict | None = None,
                 "warn": _s(r.get("预警")),
             })
 
+    # 公共选股决策覆盖全部已评分股票；个人跟踪top40和持仓动作不得覆盖公共buy结论。
+    from touzi.close_snapshot import public_entry
+    all_results = list(res.get("stock_results") or [])
+    ranked = sorted(all_results, key=lambda item: (not pd.notna(item.total),
+                    -float(item.total) if pd.notna(item.total) else 0, item.code))
+    ranks = {item.code: (i + 1) / len(ranked) for i, item in enumerate(ranked)}
+    for score in all_results:
+        quote_at = _s((res.get("flags") or {}).get("quote_at"))
+        entries[score.code].update(public_entry(score, cfg, macro_score, quote_at, ranks[score.code]))
+
     flags = res.get("flags", {}) or {}
     # 前端要用的阈值原样带过去，免得 JS 里再抄一遍数字（抄了就会走样）
     js_plan = {}

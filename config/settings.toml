@@ -351,6 +351,9 @@ sell_capex_to_profit = 0.25
 sell_annual_loss = 0.0
 sell_cumulative_loss = 0.0
 # ---- 买入门槛（全部满足才建议建仓）----
+# 严格低于；行业明确不适用时沿用财务行业豁免，缺失或过期不得通过。
+buy_max_debt_equity = 0.8
+buy_max_capex_to_profit = 0.25
 # 总分下限（72 = A 级）
 buy_min_total = 72.0
 # 质量分下限（60）：便宜但烂的公司不买

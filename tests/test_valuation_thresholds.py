@@ -105,12 +105,16 @@ for (const c of JSON.parse(fs.readFileSync(0, 'utf8'))) {
 
     def test_export_wires_thresholds_without_network(self):
         cache = Mock(); cache.get.return_value = self.history(range(1, 32))
-        res = {'stock_results': [SimpleNamespace(code='000001', parts={})],
+        # 导出器现在同时生成全池买入条件，样本须具备真实StockScore公开字段。
+        from tests.test_buy_decision import stock
+        score = stock()
+        score.code, score.industry = '000001', '制造业'
+        res = {'stock_results': [score],
                'flags': {'as_of': '2026-10-21'}}
         with tempfile.TemporaryDirectory() as folder, patch('publish_site.NAV', []), \
                 patch('publish_site.webui.page', return_value=''):
             export(res, self.cfg, Path(folder), cache=cache)
-            payload = json.loads((Path(folder) / 'site.js').read_text().split('window.__SITE__ = ')[1][:-2])
+            payload = json.loads((Path(folder) / 'site.js').read_text(encoding='utf-8').split('window.__SITE__ = ')[1][:-2])
         self.assertTrue(payload['thr']['000001']['pe']['known'])
         self.assertIn('sell_pe_percentile', payload['entries']['000001']['sell_snapshot']['percentile_labels'])
         self.assertEqual(cache.get.call_count, 2)
@@ -118,3 +122,4 @@ for (const c of JSON.parse(fs.readFileSync(0, 'utf8'))) {
 
 if __name__ == '__main__':
     unittest.main()
+

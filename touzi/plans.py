@@ -113,6 +113,8 @@ def plan_settings(cfg) -> dict[str, Any]:
             "请对照仓库里的默认配置补齐。"
         )
     raw.setdefault("buy_max_rank_pct", 0.0)
+    raw.setdefault("buy_max_debt_equity", .8)
+    raw.setdefault("buy_max_capex_to_profit", .25)
     for key, threshold in {"sell_debt_equity": .8, "sell_equity_nonpositive": 0., "sell_capex_to_profit": .25,
                            "sell_annual_loss": 0., "sell_cumulative_loss": 0.}.items():
         raw.setdefault(key, threshold)
@@ -384,7 +386,29 @@ def evaluate_buy(score, cfg, macro_score: float = float("nan"),
         np.isfinite(macro_score) and macro_score >= thr,
         "宏观评分数据缺失" if not np.isfinite(macro_score) else "", np.isfinite(macro_score))
 
-    # 9. 排名（可选）
+    # 财务条件也是买入AND门槛；行业明确豁免不等于比例数值达标。
+    analysis = _detail(score, "quality", "financial_analysis") or {}
+    metrics = analysis.get("metrics", {}) if isinstance(analysis, dict) else {}
+    for key, metric_name, config_key, label in (
+        ("debt_equity", "debt_equity", "buy_max_debt_equity", "债务股权比率严格低于"),
+        ("capex_to_profit", "capex_to_profit", "buy_max_capex_to_profit", "五年资本开支÷净利润严格低于"),
+    ):
+        metric = metrics.get(metric_name) or {}
+        threshold = float(p[config_key])
+        value = metric.get("value")
+        state = metric.get("status")
+        industry = str(_attr(score, "industry") or "")
+        financial_industry = any(token in industry for token in ("金融", "银行", "保险", "证券"))
+        exempt = state == "not_applicable" and (financial_industry or key == "debt_equity" and "房地产" in industry)
+        finite = isinstance(value, (int, float, np.integer, np.floating)) and not isinstance(value, bool) and np.isfinite(value)
+        known = exempt or (state == "ok" and finite)
+        text = f"{label}{threshold:.0%}" if key == "capex_to_profit" else f"{label}{threshold:g}"
+        add(key, text, value if finite else None, threshold,
+            exempt or (known and float(value) < threshold),
+            "行业不适用，按既定行业豁免；不表示比例达标" if exempt else
+            "" if known else f"财务条件待核验（{state or 'missing'}）", known)
+
+    # 排名（可选）
     thr = float(p.get("buy_max_rank_pct") or 0.0)
     if thr > 0:
         add("rank", f"本次候选池内总分排名前 {thr:.0%}", rank_pct, thr,

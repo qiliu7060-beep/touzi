@@ -20,7 +20,10 @@ def stock(*, pe_source="个股5年历史", pb_source="个股5年历史",
         "pb_percentile_source": pb_source,
         "graham_product": 30.0,
     })
-    quality = SimpleNamespace(score=75.0, detail={})
+    quality = SimpleNamespace(score=75.0, detail={"financial_analysis": {"metrics": {
+        "debt_equity": {"value": .6, "status": "ok"},
+        "capex_to_profit": {"value": .2, "status": "ok"},
+    }}})
     return SimpleNamespace(
         code="600519", name="测试股", price=20.0, pe_ttm=15.0, pb=2.0,
         dividend_yield=dividend_yield, total=total,
@@ -35,7 +38,7 @@ def by_key(score):
 class BuyDecisionTests(unittest.TestCase):
     def test_self_history_percentiles_can_pass(self):
         checks = by_key(stock())
-        self.assertEqual(len(checks), 8)
+        self.assertEqual(len(checks), 10)
         self.assertTrue(all(check.hit for check in checks.values()))
         self.assertEqual(decide(stock(), load_config(), macro_score=50.0).action, "建仓")
 

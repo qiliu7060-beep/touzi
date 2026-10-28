@@ -29,8 +29,8 @@ export function pickFinancialMetric(entry, key, mode) {
   const period = debt ? '负债报告期 ' + (metric.report_date || '未知')
     : '五年窗口 ' + (window.start_year && window.end_year ? window.start_year + '—' + window.end_year : '未知');
   const source = period + ' · 获取 ' + (analysis && analysis.fetched_at || '未知');
-  const qualifier = mode === 'verified' ? '本轮数据来源已核验' : mode === 'snapshot' ? '发布快照' : '待核验（上次数据）';
-  if (mode !== 'verified' && mode !== 'snapshot') {
+  const qualifier = mode === 'close' ? '收盘快照（见评分日期）' : mode === 'history' ? '历史收盘快照（更新延迟）' : mode === 'verified' ? '本轮数据来源已核验' : mode === 'snapshot' ? '发布快照' : '待核验（上次数据）';
+  if (!['verified', 'snapshot', 'close', 'history'].includes(mode)) {
     reason = '当前数据未通过核验；上次状态：' + status + '。' + reason;
     status = '待核验';
   }
@@ -71,7 +71,7 @@ export function updatePickFinancialColumns(doc, entries, modeFor) {
     if (!buyChecks || !buyHeader) continue;
     buyChecks.setAttribute('data-pick-buy-checks', '');
     buyHeader.setAttribute('data-pick-buy-checks', '');
-    buyHeader.textContent = '原买入门槛（发布时）';
+    buyHeader.textContent = row.hasAttribute('data-close-pick') ? '收盘买入条件' : '原买入门槛（发布时）';
     qualifyPickBuyText(buyChecks);
     const entry = entries[row.getAttribute('data-pick')];
     for (const [key, label] of columns) {
@@ -98,7 +98,9 @@ export function updatePickFinancialColumns(doc, entries, modeFor) {
     const card = table.closest('.card');
     if (card && !card.querySelector('[data-pick-financial-note]')) {
       const note = doc.createElement('p'); note.className = 'small muted'; note.setAttribute('data-pick-financial-note', '');
-      note.textContent = '两项财务指标参与既有质量评分和财务预警，未新增为买入硬门槛；原买入门槛通过不代表这两项均达标。窄屏可左右滑动查看两项指标。';
+      note.textContent = row.hasAttribute('data-close-pick')
+        ? '适用行业的两项财务指标同时作为收盘买入条件；行业豁免单列说明，不代表数值达标。财务预警仍只提示复核。窄屏可左右滑动。'
+        : '此为旧发布页面；完整收盘选股以全 A 股收盘选股区域及其评分日期为准。';
       const scroll = table.closest('.scroll');
       if (scroll && scroll.parentNode === card) card.insertBefore(note, scroll);
       else card.appendChild(note);

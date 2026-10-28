@@ -110,6 +110,8 @@ let fetchCount = 0;
 
 function fakeFetch(url) {
   fetchCount += 1;
+  // 此条台账回归故意不提供收盘资产，验证缺少评分时仍可录入/查看个人盈亏。
+  if (String(url).includes('close-scores.json')) { return Promise.resolve({ ok: false, status: 404 }); }
   if (String(url).indexOf('/fqkline/get?') >= 0) {
     const decoded = decodeURIComponent(String(url));
     const m = decoded.match(/param=([a-z]+)(\d{6}),/);
@@ -183,9 +185,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await sleep(60);   // 等 boot() 里的第一次 tick 完成
 
   console.log('[1] 空台账开局');
-  ok('boot 后 __buildstate 以textContent显示实际发布时间',
-    has(byId['__buildstate'].textContent, '评分生成于 ' + global.window.__SITE__.built_at)
-      && has(byId['__buildstate'].textContent, '行情报价 ' + (global.window.__SITE__.quote_at || '—')),
+  ok('缺少收盘资产时显示尚未发布，不把旧site.js评分冒充最新收盘分',
+    has(byId['__buildstate'].textContent, '收盘评分尚未发布')
+      && has(byId['__buildstate'].textContent, '来源暂不可用'),
     byId['__buildstate'].textContent);
   ok('台账表显示「还没有任何持仓」', has(byId['__ledger'].innerHTML, '还没有任何持仓'));
   ok('实时表显示「台账为空」', has(byId['__live'].innerHTML, '台账为空'));

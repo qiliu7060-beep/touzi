@@ -255,9 +255,9 @@ def cached_fetch(
 
     stale = cache.get(key, allow_stale=True)
     if stale is not None and len(stale) > 0 and allow_stale_on_error:
-        LOG.warning("接口 %s 抓取失败(%s)，降级使用旧缓存", key, last_exc)
+        LOG.warning("接口 %s 抓取失败(%s)，降级使用旧缓存", key, type(last_exc).__name__)
         return stale
-    raise RuntimeError(f"取数失败且无可用缓存：{key}，原因：{last_exc}")
+    raise RuntimeError(f"取数失败且无可用缓存：{key}，原因：{last_exc}") from last_exc
 
 
 # --------------------------------------------------------------------------- #

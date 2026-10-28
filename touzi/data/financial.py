@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 import json
 import math
+import time
 import urllib.request
 from zoneinfo import ZoneInfo
 
@@ -12,6 +13,7 @@ import pandas as pd
 
 from ..util import LOG, cached_fetch
 from .stock import plain_code, to_tx_symbol
+from ..diagnostics import emit_diagnostic, error_category
 
 SOURCE = "sina-finance-report"
 BASE = "https://quotes.sina.cn/cn/api/openapi.php/CompanyFinanceService.getFinanceReport2022"
@@ -55,22 +57,50 @@ def normalize_reports(code, source, reports, fetched_at):
     return pd.DataFrame(rows)
 
 
-def fetch_financial_statements(code, cache, ttl_days=1):
+def fetch_financial_statements(code, cache, ttl_days=1, diagnostic=None):
     """分别缓存三表；失败旧缓存保留真实获取时间，由纯分析明确降级。"""
     def fetch(source):
+        started = time.monotonic()
+        attempts, last_failure = 0, None
+        emit_diagnostic(diagnostic, source, "start")
         def read():
+            nonlocal attempts, last_failure
+            attempts += 1
             url = f"{BASE}?paperCode={to_tx_symbol(code)}&source={source}&type=0&page=1&num=1000"
-            with urllib.request.urlopen(url, timeout=8) as response:
-                raw = response.read(4 * 1024 * 1024 + 1)
-                if len(raw) > 4 * 1024 * 1024:
-                    raise ValueError("公开财报响应超出上限")
-            data = json.loads(raw)["result"]["data"]["report_list"]
-            return normalize_reports(code, source, data, datetime.now(ZoneInfo("Asia/Shanghai")).isoformat())
+            phase = "network"
+            attempt_started = time.monotonic()
+            try:
+                with urllib.request.urlopen(url, timeout=8) as response:
+                    raw = response.read(4 * 1024 * 1024 + 1)
+                    if len(raw) > 4 * 1024 * 1024:
+                        phase = "response_limit"
+                        raise ValueError("公开财报响应超出上限")
+                phase = "json"
+                payload = json.loads(raw)
+                phase = "structure"
+                data = payload["result"]["data"]["report_list"]
+                phase = "normalization"
+                frame = normalize_reports(code, source, data, datetime.now(ZoneInfo("Asia/Shanghai")).isoformat())
+                last_failure = None
+                return frame
+            except Exception as exc:
+                last_failure = error_category(exc) if phase == "network" else {"category": phase}
+                emit_diagnostic(diagnostic, source, "retry" if attempts == 1 else "failed",
+                                attempt_started, **last_failure)
+                raise
         try:
-            return source, cached_fetch(cache, f"statements_v1_{plain_code(code)}_{source}", read,
-                                        ttl_days=ttl_days, retries=1, sleep=.2)
+            frame = cached_fetch(cache, f"statements_v1_{plain_code(code)}_{source}", read,
+                                 ttl_days=ttl_days, retries=1, sleep=.2)
+            state = "fresh_cache" if not attempts else "stale_cache" if last_failure else "ok"
+            emit_diagnostic(diagnostic, source, state, started,
+                            **(last_failure if state == "stale_cache" else {}))
+            return source, frame
         except Exception as exc:
-            LOG.warning("%s %s 财报获取失败: %s", code, source, type(exc).__name__)
+            failure = last_failure or {"category": "cache"}
+            emit_diagnostic(diagnostic, source, "failed", started, **failure)
+            LOG.warning("%s %s 财报获取失败: category=%s http_status=%s elapsed_ms=%.1f；无可用结果",
+                        plain_code(code), source, failure["category"], failure.get("http_status", "-"),
+                        (time.monotonic() - started) * 1000)
             return source, pd.DataFrame()
     with ThreadPoolExecutor(max_workers=3) as pool:
         return dict(pool.map(fetch, AMOUNTS))

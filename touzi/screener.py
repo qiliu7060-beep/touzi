@@ -37,6 +37,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -63,6 +64,7 @@ from .signals.quality import QualityInput, score_quality, summarize_financials
 from .data.financial import fetch_financial_statements, analyze_financials
 from .signals.valuation import ValuationInput, percentile_of, score_valuation
 from .util import clamp
+from .diagnostics import emit_diagnostic, error_category
 
 __all__ = ["StockScore", "Screener"]
 
@@ -308,13 +310,14 @@ class Screener:
         code = plain_code(code)
         ttl = self.ttls["history"]
         out: dict[str, Any] = {"code": code}
+        diagnostic = getattr(self, "diagnostic", None)
         getters: dict[str, Callable[[], Any]] = {
             "pe_hist": lambda: fetch_valuation_history(code, self.cache, "市盈率(TTM)", "近五年", ttl_days=ttl),
             "pb_hist": lambda: fetch_valuation_history(code, self.cache, "市净率", "近五年", ttl_days=ttl),
             "div": lambda: fetch_dividend_detail(code, self.cache, self.proxy, ttl_days=self.ttls["fund"]),
             "fin": lambda: fetch_financial_indicators(code, self.cache, start_year="2016",
                                                       ttl_days=self.ttls["fund"]),
-            "statements": lambda: fetch_financial_statements(code, self.cache, ttl_days=1),
+            "statements": lambda: fetch_financial_statements(code, self.cache, ttl_days=1, diagnostic=diagnostic),
         }
         # 回测需要历史价格（算股息率与区间收益），实时筛选不需要，故按需抓取
         if getattr(self, "_need_price", False):
@@ -324,10 +327,19 @@ class Screener:
                 code, self.cache, start=start, adjust=adjust, ttl_days=self.ttls["quote"]
             )
         for key, fn in getters.items():
+            started = time.monotonic()
+            emit_diagnostic(diagnostic, key, "start")
             try:
                 out[key] = fn()
+                if diagnostic is not None:
+                    value = out[key]
+                    populated = any(frame is not None and len(frame) for frame in value.values()) if isinstance(value, dict) else value is not None and len(value) > 0
+                    emit_diagnostic(diagnostic, key, "ok" if populated else "empty", started)
             except Exception as exc:
-                LOG.debug("%s %s 抓取失败：%s", code, key, exc)
+                failure = error_category(exc)
+                emit_diagnostic(diagnostic, key, "failed", started, **failure)
+                LOG.debug("%s %s 抓取失败：category=%s elapsed_ms=%.1f", code, key,
+                          failure["category"], (time.monotonic() - started) * 1000)
                 out[key] = None
         return out
 
@@ -459,7 +471,7 @@ class Screener:
         flags["权重"] = {k: round(v / tot_w, 4) for k, v in used.items()} if tot_w else {}
 
         live_input = None
-        if self.live and not point_in_time:
+        if self.live and not point_in_time and getattr(self, "capture_live_inputs", True):
             from .live_model import capture_input
             live_input = capture_input(self, code, industry, pe_hist, pb_hist,
                                        valuation_input, dividend_input, parts, as_of_ts,

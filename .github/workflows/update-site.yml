@@ -1,4 +1,4 @@
-name: Update and deploy investment site
+name: Source regression checks
 
 on:
   workflow_dispatch:
@@ -29,6 +29,13 @@ on:
       - 'scripts/sync_live_runtime.py'
       - 'scripts/sync_browser_tests.py'
       - 'scripts/check-browser-release.mjs'
+      - 'scripts/check_close_snapshot.mjs'
+      - 'scripts/close-score-validation.mts'
+      - 'scripts/close-browser.mjs'
+      - 'scripts/close_batch.py'
+      - 'scripts/publish_close.py'
+      - 'touzi/close_snapshot.py'
+      - 'tests/test_close*.py'
       - 'scripts/market-calendar.mjs'
       - 'scripts/financial-coverage.mjs'
       - 'tests/browser/**'
@@ -47,17 +54,8 @@ on:
       - 'tests/test_financial*.py'
       - 'tests/test_financial_coverage.mjs'
       - 'tests/financial_fixtures.py'
-  schedule:
-    # 北京时间工作日 09:45、17:23 重算；18:23 复核一次收盘数据。
-    # 定时任务可能延迟，发布前必须核验行情源的真实交易时间与覆盖率。
-    # 宏观按正常缓存 TTL 更新，不强制整周冻结。
-    - cron: "45 1 * * 1-5"
-    - cron: "23 9 * * 1-5"
-    - cron: "23 10 * * 1-5"
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: github-pages
@@ -68,8 +66,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    outputs:
-      publish: ${{ steps.eligibility.outputs.publish }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v5
@@ -105,6 +101,7 @@ jobs:
           python tests/test_sell_snapshot.py
           python tests/test_plan_rule_display.py
           python tests/test_pick_financial.py
+          python -m unittest tests.test_close_snapshot tests.test_close_batch
           python tests/test_score_quote_freshness.py
           python tests/test_valuation_thresholds.py
           python tests/test_live_model.py
@@ -120,59 +117,3 @@ jobs:
           python tests/test_publish_eligibility.py
           node scripts/check-browser-release.mjs
 
-      - name: Check verified trading-day publish eligibility
-        id: eligibility
-        run: python scripts/publish_eligibility.py --github-output "$GITHUB_OUTPUT"
-
-      - name: Recalculate data and build site
-        if: steps.eligibility.outputs.publish == 'true'
-        env:
-          PYTHONUTF8: "1"
-          TOUZI_PROXY: ""
-        run: |
-          extra=()
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            case "${{ github.event.schedule }}" in
-              "23 9 * * 1-5"|"23 10 * * 1-5") extra=(--min-quote-time "15:00") ;;
-              *) extra=(--min-quote-time "09:30") ;;
-            esac
-          fi
-          python scripts/publish_site.py --limit 300 --skip-backtest "${extra[@]}"
-
-      - name: Check generated-page holding DOM flow
-        if: steps.eligibility.outputs.publish == 'true'
-        run: node scripts/static/test_dom.cjs dist/site.js
-
-      - name: Validate published model with the Worker schema
-        if: steps.eligibility.outputs.publish == 'true'
-        run: node tests/check_live_model.mjs dist/live-model.json
-
-      - name: Save final market-data cache
-        if: steps.eligibility.outputs.publish == 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: data_cache
-          key: touzi-data-v1-${{ github.run_id }}
-
-      - name: Configure GitHub Pages
-        if: steps.eligibility.outputs.publish == 'true'
-        uses: actions/configure-pages@v5
-
-      - name: Upload site artifact
-        if: steps.eligibility.outputs.publish == 'true'
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: dist
-          include-hidden-files: true
-
-  deploy:
-    if: needs.build.outputs.publish == 'true'
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
