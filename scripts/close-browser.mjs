@@ -1,3 +1,12 @@
+// 展示排序只复制索引，不改写不可变快照或分片身份。
+export function sortCloseIndex(index) {
+  const actions = ['建仓', '接近建仓', '观望', '回避', '候选', '待核验'];
+  const rank = action => { const value = actions.indexOf(action); return value < 0 ? actions.length : value; };
+  return index.slice().sort((left, right) => rank(left.action) - rank(right.action)
+    || (Number.isFinite(right.total) ? right.total : -Infinity) - (Number.isFinite(left.total) ? left.total : -Infinity)
+    || (left.code < right.code ? -1 : left.code > right.code ? 1 : 0));
+}
+
 // 收盘快照与实时价格分别管理；失败时只保留有原始日期的已核验历史结果。
 export function closeScoreIsCurrent(snapshot, now, calendarCheck) {
   const calendar = snapshot && snapshot.trading_calendar;
@@ -120,7 +129,7 @@ export function createCloseBrowser(options) {
     const same = state.snapshot && payload.score_date === state.snapshot.score_date && payload.built_at === state.snapshot.built_at;
     state.attempted = true;
     state.entries = Object.assign(same ? state.entries : {}, payload.entries);
-    state.snapshot = payload; state.index = payload.index;
+    state.snapshot = payload; state.index = sortCloseIndex(payload.index);
     state.status = payload.status === 'delayed' || !closeScoreIsCurrent(payload, now(), options.calendarCheck) ? 'delayed' : 'ok';
     state.error = Array.isArray(payload.errors) ? payload.errors.join('；') : '';
     if (setVisible) state.visible = viewCodes();
@@ -176,7 +185,7 @@ export function createCloseBrowser(options) {
     if (manifestCodes.size !== manifest.index.length || manifest.index.some(item => !declared.has(item.shard)
         || !declared.get(item.shard).codes.includes(item.code))) throw new Error('收盘目录与索引不一致');
     const index = new Map(manifest.index.map(item => [item.code, item]));
-    const wanted = codes || manifest.index.filter(item => (!state.query || (item.code + ' ' + item.name).toLowerCase().includes(state.query.toLowerCase()))
+    const wanted = codes || sortCloseIndex(manifest.index).filter(item => (!state.query || (item.code + ' ' + item.name).toLowerCase().includes(state.query.toLowerCase()))
       && (!state.action || item.action === state.action)).slice((state.page - 1) * state.pageSize, state.page * state.pageSize).map(item => item.code);
     const paths = [...new Set(wanted.map(code => index.get(code) && index.get(code).shard).filter(Boolean))];
     const entries = {};

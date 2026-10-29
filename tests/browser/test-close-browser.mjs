@@ -3,6 +3,17 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { webcrypto, createHash } from 'node:crypto';
 import { browserTestRuntimes } from './browser-test-runtime.mjs';
+import { sortCloseIndex } from '../lib/close-browser.mjs';
+
+const mixed = [
+  {code:'000004',action:'观望',total:99}, {code:'000003',action:'建仓',total:50},
+  {code:'000002',action:'建仓',total:50}, {code:'000001',action:'建仓',total:null},
+  {code:'000006',action:'回避',total:100}, {code:'000005',action:'接近建仓',total:40},
+  {code:'000008',action:'待核验',total:90}, {code:'000007',action:'候选',total:90},
+];
+const untouched = JSON.stringify(mixed);
+assert.deepEqual(sortCloseIndex(mixed).map(item => item.code), ['000002','000003','000001','000005','000004','000006','000007','000008']);
+assert.equal(JSON.stringify(mixed), untouched, '展示排序不能改写快照身份');
 
 // 测试用轻量DOM，解析真实生成的HTML并保留节点身份，不连接用户账户或真实行情。
 class TextNode {
@@ -96,7 +107,7 @@ function harness(file) {
     if (offline || localMissing && url === 'close-scores.json') return new Response('', { status: 404 });
     if (url.startsWith('/api/scores/close?')) {
       const params = new URL(url, 'https://test.invalid').searchParams;
-      const wanted = params.has('codes') ? params.get('codes').split(',') : index.filter(item => (!params.get('q') || (item.code + ' ' + item.name).includes(params.get('q')))
+      const wanted = params.has('codes') ? params.get('codes').split(',') : sortCloseIndex(index).filter(item => (!params.get('q') || (item.code + ' ' + item.name).includes(params.get('q')))
         && (!params.get('action') || item.action === params.get('action'))).slice((Number(params.get('page') || 1) - 1) * 100, Number(params.get('page') || 1) * 100).map(item => item.code);
       return Response.json({ ...base, entries: Object.fromEntries(wanted.map(code => [code, allEntries[code]])) });
     }
@@ -128,6 +139,8 @@ for (const target of browserTestRuntimes(import.meta.url)) {
   assert.throws(() => controller.accept({ ...base, entries: {}, built_at: date + 'T17:24:00+08:00' }, true),
     /同日合格收盘评分不能/, '同日另一版本不能覆盖已经接受的合格收盘分');
   assert.equal(controller.state.snapshot, accepted);
+  assert.equal(JSON.stringify(accepted.index), JSON.stringify(index), '接纳时不能原地重排来源索引');
+  assert.ok(controller.state.index.slice(0, 334).every(item => item.action === '建仓'), '全索引分组先于分页');
   const firstCloseChanges = [{ code: '000001', action: '清仓', reasons: ['收盘总分跌破门槛', '相对买入价浮亏达到止损线'] }];
   const riskEntries = { '000001': { sell_snapshot: { exit: ['收盘总分跌破门槛'], reduce: [] } } };
   const closeClock = { day: date, phase: 'closed' };
@@ -165,7 +178,7 @@ for (const target of browserTestRuntimes(import.meta.url)) {
   h.api.renderCloseSelection();
   assert.equal(firstRow.querySelectorAll('td')[4].textContent, '90.00');
   await controller.setView('', '', 2);
-  assert.equal(h.doc.getElementById('__close-rows').querySelectorAll('tr[data-pick]')[0].getAttribute('data-pick'), '000101');
+  assert.equal(h.doc.getElementById('__close-rows').querySelectorAll('tr[data-pick]')[0].getAttribute('data-pick'), '000301');
   assert.equal(h.api.closePickDrafts()[0].price, '9.99');
   assert.equal(h.api.closePickDrafts()[0].shares, '300');
   // 实际调用现有加入台账入口，拦截全部写入，只验证虚拟候选载荷包括不在当前页的选择。
