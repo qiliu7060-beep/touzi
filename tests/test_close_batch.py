@@ -26,8 +26,8 @@ class CloseBatchTests(unittest.TestCase):
             source.assert_not_called()
 
     def test_same_day_valid_snapshot_is_idempotent(self):
-        previous = dict(kind='touzi-close-v1', score_date='2026-10-23', quote_at=QUOTE,
-                        built_at=BUILT, universe={'scored': 3})
+        from tests.test_close_schedule import manifest
+        previous = manifest()
         with patch('scripts.close_batch.bound_http') as network:
             result = prepare('unused', now=datetime.fromisoformat(BUILT), previous=previous)
             self.assertFalse(result['run'])

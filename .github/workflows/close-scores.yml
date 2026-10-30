@@ -1,11 +1,13 @@
 name: Daily full-market close scores
+run-name: "Close scores · ${{ github.event_name }} · ${{ github.event_name == 'push' && !contains(github.event.head_commit.message, '[run-close]') && 'checks only' || 'publish' }}"
 
 on:
   workflow_dispatch:
   schedule:
-    # 北京时间17:23首轮，18:23仅在当天尚无成功快照时重试。
+    # 北京时间17:23首轮、18:23重试，次日05:23补偿（UTC同一周一至五）。
     - cron: '23 9 * * 1-5'
     - cron: '23 10 * * 1-5'
+    - cron: '23 21 * * 1-5'
   push:
     branches: [main]
     paths:
@@ -25,6 +27,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: daily-close-scores
@@ -49,7 +52,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: python -m unittest tests.test_close_snapshot tests.test_close_batch tests.test_buy_decision tests.test_sell_snapshot
+      - run: python -m unittest tests.test_close_snapshot tests.test_close_batch tests.test_close_schedule tests.test_buy_decision tests.test_sell_snapshot
 
   prepare:
     needs: check
@@ -60,6 +63,8 @@ jobs:
     outputs:
       run: ${{ steps.freeze.outputs.run }}
       matrix: ${{ steps.freeze.outputs.matrix }}
+      status: ${{ steps.freeze.outputs.status }}
+      score_date: ${{ steps.freeze.outputs.score_date }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -72,9 +77,23 @@ jobs:
           path: data_cache
           key: touzi-close-prepare-${{ github.run_id }}
           restore-keys: touzi-close-prepare-
+      - name: Anchor target to original workflow creation (stable across retries)
+        id: anchor
+        if: github.event_name == 'schedule'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { data } = await github.rest.actions.getWorkflowRun({
+              ...context.repo, run_id: context.runId
+            });
+            core.setOutput('created_at', data.created_at);
       - name: Freeze actual complete close and full eligible market
         id: freeze
-        run: python scripts/close_batch.py prepare --github-output "$GITHUB_OUTPUT"
+        env:
+          CLOSE_CREATED_AT: ${{ steps.anchor.outputs.created_at }}
+          CLOSE_SCHEDULE: ${{ github.event.schedule }}
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/close_batch.py prepare --created-at "$CLOSE_CREATED_AT" --schedule "$CLOSE_SCHEDULE" --github-output "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         if: steps.freeze.outputs.run == 'true'
         with:
@@ -151,4 +170,24 @@ jobs:
       - name: Atomically advance independent close-data branch
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python scripts/publish_close.py
+        run: |
+          python scripts/publish_close.py
+          python scripts/close_batch.py verify --score-date "${{ needs.prepare.outputs.score_date }}"
+
+  outcome:
+    name: Confirm close publication or explicit safe skip
+    needs: [check, prepare, score, publish]
+    # 默认success()会跳过失败/跳过的依赖，最终门禁必须always执行。
+    if: always() && (github.event_name != 'push' || contains(github.event.head_commit.message, '[run-close]'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Fail unless publication was confirmed or safely unnecessary
+        env:
+          CLOSE_NEEDS: ${{ toJSON(needs) }}
+        run: python scripts/close_batch.py outcome

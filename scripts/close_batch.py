@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import math
@@ -23,7 +23,7 @@ sys.path.insert(0, str(ROOT))
 from touzi.close_snapshot import (MAX_CODES, clean, close_target, export_snapshot,
                                   json_bytes, public_entry, validate_close_time, write_snapshot)
 from touzi.config import load_config
-from touzi.market_calendar import TZ, trading_day
+from touzi.market_calendar import TZ, adjacent_day, trading_day
 from touzi.diagnostics import DiagnosticRecorder, emit_diagnostic, read_diagnostics
 
 DATA_ROOT = "https://raw.githubusercontent.com/qiliu7060-beep/touzi/close-data/"
@@ -57,7 +57,20 @@ def config():
 
 
 def prior_manifest():
-    request = urllib.request.Request(DATA_ROOT + "close-scores.json", headers={"User-Agent": "touzi-close-publisher"})
+    headers = {"User-Agent": "touzi-close-publisher", "Cache-Control": "no-cache"}
+    if os.environ.get("GH_TOKEN"):
+        headers["Authorization"] = "Bearer " + os.environ["GH_TOKEN"]
+    ref = urllib.request.Request("https://api.github.com/repos/qiliu7060-beep/touzi/git/ref/heads/close-data",
+                                 headers=headers)
+    try:
+        with urllib.request.urlopen(ref, timeout=15) as response:
+            sha = json.load(response)["object"]["sha"]
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise
+    request = urllib.request.Request(DATA_ROOT.replace("/close-data/", "/" + sha + "/") + "close-scores.json",
+                                     headers={"User-Agent": "touzi-close-publisher"})
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
             data = response.read(2 * 1024 * 1024 + 1)
@@ -70,7 +83,74 @@ def prior_manifest():
         raise
 
 
-def prepare(folder, batch_size=100, now=None, previous=None):
+def scheduled_target(created_at, schedule):
+    """锚定原始run创建时刻（重跑不漂移），取该cron最近的名义执行日。
+
+    GitHub不提供原始scheduled_at；不能从runner启动日期推断目标日。
+    cron按UTC周一至五运行，凌晨补偿也归属该UTC日的北京时间收盘。
+    """
+    hours = {"23 9 * * 1-5": 9, "23 10 * * 1-5": 10, "23 21 * * 1-5": 21}
+    if schedule not in hours:
+        raise ValueError("未知收盘调度表达式")
+    anchor = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+    if anchor.tzinfo is None:
+        raise ValueError("运行创建时间必须注明时区")
+    anchor = anchor.astimezone(timezone.utc)
+    nominal = anchor.replace(hour=hours[schedule], minute=23, second=0, microsecond=0)
+    while nominal > anchor or nominal.weekday() >= 5:
+        nominal -= timedelta(days=1)
+    return nominal.date()
+
+
+def recovery_window(day, now):
+    """只消费下一交易日开盘前仍留存的真实收盘报价；不模拟历史截面。"""
+    next_day = adjacent_day(day, 1)
+    if next_day is None:
+        raise ValueError("无法核验下一交易日，不安全补算")
+    local = now.astimezone(TZ)
+    opening = local.replace(year=next_day.year, month=next_day.month, day=next_day.day,
+                            hour=9, minute=30, second=0, microsecond=0)
+    closing = local.replace(year=day.year, month=day.month, day=day.day,
+                            hour=15, minute=0, second=0, microsecond=0)
+    if not closing <= now.astimezone(TZ) < opening:
+        raise ValueError(f"漏更 {day}：已超出安全收盘恢复窗口，禁止用次日行情补算")
+
+
+def snapshot_covers(previous, day, now):
+    """已成功的同日或更新快照可幂等跳过，但稀疏/损坏清单不能冒充成功。"""
+    if not previous or previous.get("score_date", "") < day.isoformat():
+        return False
+    from touzi.close_snapshot import validate_counts
+    if previous.get("kind") != "touzi-close-v1" or previous.get("schema_version") != 1:
+        raise ValueError("已有收盘清单版本无效")
+    published_day = validate_close_time(previous["score_date"], previous["quote_at"], previous["built_at"], now)
+    if published_day > now.astimezone(TZ).date():
+        raise ValueError("已有收盘清单日期在未来")
+    index = previous["index"]
+    validate_counts(previous["universe"], len(index))
+    codes = [row["code"] for row in index]
+    shard_codes = [c for shard in previous["shards"] for c in shard["codes"]]
+    if (len(set(codes)) != len(codes) or sorted(codes) != sorted(shard_codes)
+            or previous["universe"]["scored"] / previous["universe"]["eligible_total"] < .9):
+        raise ValueError("已有收盘清单覆盖无效")
+    return True
+
+
+def workflow_outcome(needs):
+    """最终门禁必须always运行；只有已发布、合格幂等或非交易日允许成功。"""
+    prep = needs["prepare"]
+    if needs["check"]["result"] != "success" or prep["result"] != "success":
+        raise ValueError("收盘校验或准备失败，未确认发布")
+    status = prep["outputs"].get("status")
+    if status in ("already_published", "non_trading_day"):
+        return status
+    if (status != "ready" or needs["score"]["result"] != "success"
+            or needs["publish"]["result"] != "success"):
+        raise ValueError("收盘评分未完成并核验发布")
+    return "published"
+
+
+def prepare(folder, batch_size=100, now=None, previous=None, target_day=None):
     import pandas as pd
     from touzi.screener import Screener, _merge_live_quotes
     from touzi.data.stock import fetch_realtime_quote
@@ -81,15 +161,21 @@ def prepare(folder, batch_size=100, now=None, previous=None):
     fixed_now = now
     clock = lambda: fixed_now if fixed_now is not None else datetime.now(TZ)
     now = clock().astimezone(TZ)
-    day = now.astimezone(TZ).date()
-    # 定时重试只允许当天真正收盘之后，不盘中重算昨日评分。
-    if trading_day(day) is not True or (now.hour, now.minute) < (15, 0):
-        return {"run": False, "reason": "非核验交易日收盘时段"}
+    day = target_day or now.date()
+    state = trading_day(day)
+    if state is None:
+        raise ValueError(f"目标日期 {day} 不在核验交易日历内")
+    if not state:
+        return {"run": False, "status": "non_trading_day", "score_date": day.isoformat(),
+                "reason": "核验非交易日，无需收盘发布"}
+    # 手工盘中触发不得隐式重算昨日；定时任务必须携带固定目标日。
+    if target_day is None and (now.hour, now.minute) < (15, 0):
+        return {"run": False, "status": "outside_window", "reason": "非核验交易日收盘时段"}
     previous = prior_manifest() if previous is None else previous
-    if previous and previous.get("score_date") == day.isoformat():
-        validate_close_time(previous["score_date"], previous["quote_at"], previous["built_at"], now)
-        if previous.get("kind") == "touzi-close-v1" and previous.get("universe", {}).get("scored", 0) > 0:
-            return {"run": False, "reason": "当天已有合格收盘评分"}
+    if snapshot_covers(previous, day, now):
+        return {"run": False, "status": "already_published", "score_date": day.isoformat(),
+                "reason": "目标日或更新日期已有合格收盘评分"}
+    recovery_window(day, now)
     bound_http()
     cfg = config()
     cache = Cache(cfg.resolve(cfg.general.get("cache_dir", "data_cache")))
@@ -105,11 +191,11 @@ def prepare(folder, batch_size=100, now=None, previous=None):
     codes = sorted(eligible["code"].astype(str))
     quotes = fetch_realtime_quote(codes, screener.proxy)
     quote_checked_at = clock().astimezone(TZ)
-    frozen, quote_at, coverage = _merge_live_quotes(eligible, quotes)
-    if quote_at is None or coverage < .9:
-        raise ValueError("全市场候选完整收盘行情覆盖不足90%")
+    recovery_window(day, quote_checked_at)
     # 每条都要求同一真实收盘日，失败的代码保留在候选集合并计入失败。
     accepted = {}
+    if quotes is not None and len(quotes) and quotes["code"].duplicated().any():
+        raise ValueError("收盘报价代码重复，不接受混合截面")
     if quotes is not None and len(quotes):
         for _, quote in quotes.iterrows():
             try:
@@ -122,6 +208,10 @@ def prepare(folder, batch_size=100, now=None, previous=None):
                 continue
     if len(set(codes) & set(accepted)) / len(codes) < .9:
         raise ValueError("真实收盘日期/时间覆盖不足90%")
+    valid_quotes = quotes[quotes["code"].astype(str).isin(accepted)].copy()
+    frozen, quote_at, coverage = _merge_live_quotes(eligible, valid_quotes)
+    if quote_at is None or coverage < .9:
+        raise ValueError("全市场候选完整收盘行情覆盖不足90%")
     timestamps = sorted(accepted[c] for c in codes if c in accepted)
     # 分片各条保留自己的原始时间；manifest使用本批最晚真实收盘时间。
     final_quote = timestamps[-1]
@@ -130,17 +220,20 @@ def prepare(folder, batch_size=100, now=None, previous=None):
         raise ValueError("宏观背景分不可用，不发布伪完整收盘结果")
     # 所有批次共用截面底表、宏观、股息概览和债券基准，不按小批次重新排名。
     context = {"schema_version": 1, "score_date": day.isoformat(), "quote_at": final_quote,
-               "prepared_at": clock().astimezone(TZ).isoformat(), "universe": universe.to_dict("records"),
+               "universe": universe.to_dict("records"),
                "eligible": frozen.to_dict("records"), "codes": codes,
                "quote_times": {c: accepted[c] for c in codes if c in accepted},
                "macro_score": float(macro.macro_score),
                "div_summary": screener._div_summary_map(), "bond": screener._bond_yield(),
                "market_total": len(universe), "eligible_total": len(codes), "excluded": len(rejected)}
+    prepared_at = clock().astimezone(TZ)
+    recovery_window(day, prepared_at)
+    context["prepared_at"] = prepared_at.isoformat()
     folder = Path(folder)
     atomic_json(folder / "context.json", context)
     matrix = [{"batch": i // batch_size, "codes": codes[i:i + batch_size]} for i in range(0, len(codes), batch_size)]
     atomic_json(folder / "batches.json", matrix)
-    return {"run": True, "matrix": {"include": [{"batch": row["batch"]} for row in matrix]},
+    return {"run": True, "status": "ready", "matrix": {"include": [{"batch": row["batch"]} for row in matrix]},
             "score_date": day.isoformat(), "eligible": len(codes)}
 
 
@@ -257,7 +350,7 @@ def assemble(folder, results, output, now=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("prepare", "worker", "score", "assemble"))
+    parser.add_argument("command", choices=("prepare", "worker", "score", "assemble", "outcome", "verify"))
     parser.add_argument("--folder", default=".close-input")
     parser.add_argument("--output", default=".close-output")
     parser.add_argument("--results", default=".close-results")
@@ -266,14 +359,43 @@ def main():
     parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("--stock-timeout", type=int, default=90)
     parser.add_argument("--github-output")
+    parser.add_argument("--created-at", default="")
+    parser.add_argument("--schedule", default="")
+    parser.add_argument("--score-date")
     args = parser.parse_args()
     if args.command == "prepare":
-        value = prepare(args.folder)
+        target = scheduled_target(args.created_at, args.schedule) if args.schedule else None
+        try:
+            value = prepare(args.folder, target_day=target)
+            if value.get("status") == "outside_window":
+                raise ValueError(value["reason"])
+        except Exception as exc:
+            message = f"收盘漏更/准备失败（目标 {target or '当天'}）：{exc}"
+            if os.environ.get("GITHUB_STEP_SUMMARY"):
+                with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+                    summary.write(message + "\n")
+            print("::error::" + message)
+            raise
         if args.github_output:
             with open(args.github_output, "a", encoding="utf-8") as stream:
+                stream.write("status=" + value["status"] + "\n")
+                stream.write("score_date=" + value.get("score_date", "") + "\n")
                 stream.write("run=" + str(value["run"]).lower() + "\n")
                 stream.write("matrix=" + json.dumps(value.get("matrix", {"include": []})) + "\n")
+        if os.environ.get("GITHUB_STEP_SUMMARY"):
+            with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+                summary.write(json.dumps(value, ensure_ascii=False) + "\n")
         print(json.dumps(value, ensure_ascii=False))
+    elif args.command == "outcome":
+        result = workflow_outcome(json.loads(os.environ["CLOSE_NEEDS"]))
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+            summary.write("收盘流水线结果：" + result + "\n")
+        print(result)
+    elif args.command == "verify":
+        from datetime import date
+        if not snapshot_covers(prior_manifest(), date.fromisoformat(args.score_date), datetime.now(TZ)):
+            raise ValueError("发布后未读到目标日合格评分，收盘漏更")
+        print("已确认数据分支存在目标日或更新的合格快照")
     elif args.command == "worker":
         worker(args.folder, args.code, args.output)
     elif args.command == "score":
