@@ -28,3 +28,25 @@ def financial_coverage(entries):
         if len(years) != 5 or any(not finite(row.get(key)) for row in years for key in ("revenue", "operating_profit", "net_profit", "operating_cash_flow", "capex")):
             result["reasons"]["amounts_missing"] += 1
     return result
+
+
+def quality_evidence(entry):
+    """只读解释已发布分数的证据；不把行业豁免算成数据丢失。"""
+    analysis = entry.get("financial_analysis") or {}
+    quality = analysis.get("quality") or {}
+    weights, scores = quality.get("weights") or {}, quality.get("sub_scores") or {}
+    keys = ("roe", "cashflow", "debt", "stability", "capex")
+    covered = sum(weights[k] for k in keys if finite(scores.get(k)) and finite(weights.get(k)))
+    configured = sum(weights[k] for k in keys if finite(weights.get(k)))
+    result = {"coverage": covered / configured if configured > 0 else None,
+              "effective_weights": {}, "statuses": {}, "pending": [], "exempt": []}
+    for key in keys:
+        metric = (analysis.get("metrics") or {}).get({"debt": "debt_equity", "capex": "capex_to_profit"}.get(key, "")) or {}
+        state = "scored" if finite(scores.get(key)) else metric.get("status") or "missing"
+        result["statuses"][key] = state
+        result["effective_weights"][key] = weights.get(key) / covered if finite(scores.get(key)) and covered > 0 else None
+        if state == "not_applicable":
+            result["exempt"].append(key)
+        elif state != "scored":
+            result["pending"].append(key)
+    return result

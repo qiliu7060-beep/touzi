@@ -88,6 +88,24 @@ function contrast(first,second) {
 
 for(const {file,cloud} of browserTestRuntimes(import.meta.url)) {
   const pure=harness(file,cloud,false).api;
+  const evidenceSample = sample();
+  evidenceSample.financial_analysis.quality = {weights:{roe:.25,cashflow:.2,debt:.2,stability:.2,capex:.15},
+    sub_scores:{roe:100,cashflow:100,debt:null,stability:100,capex:null}};
+  evidenceSample.financial_analysis.metrics.debt_equity.status = 'missing';
+  evidenceSample.financial_analysis.metrics.capex_to_profit.status = 'missing';
+  const untouchedEvidence = JSON.stringify(evidenceSample);
+  assert.equal(pure.qualityEvidence(evidenceSample).coverage,.65);
+  assert.match(pure.qualityEvidenceText(evidenceSample),/质量覆盖 65%.*待核验.*高分仅反映可用子项/);
+  assert.match(pure.financialHTML(evidenceSample),/有效权重/);
+  assert.match(pure.financialHTML(evidenceSample),/38.46/);
+  evidenceSample.financial_analysis.metrics.debt_equity.status = 'not_applicable';
+  evidenceSample.financial_analysis.metrics.capex_to_profit.status = 'not_applicable';
+  assert.equal(pure.qualityEvidence(evidenceSample).pending.length,0);
+  assert.match(pure.qualityEvidenceText(evidenceSample),/适用子项齐备.*行业豁免/);
+  assert.doesNotMatch(pure.qualityEvidenceText(evidenceSample),/待核验/);
+  evidenceSample.financial_analysis.metrics.debt_equity.status = 'missing';
+  evidenceSample.financial_analysis.metrics.capex_to_profit.status = 'missing';
+  assert.equal(JSON.stringify(evidenceSample),untouchedEvidence,'证据展示不得修改已发布分数或数据');
   let view=pure.pickFinancialMetric(sample(),'debt_equity','verified');
   assert.equal(view.value,'0.80 倍');assert.equal(view.status,'优良');assert.match(view.reason,/原始值严格低于0.8/);
   view=pure.pickFinancialMetric(sample(),'capex_to_profit','verified');assert.equal(view.value,'25.00%');assert.equal(view.status,'达标');
@@ -130,7 +148,7 @@ for(const {file,cloud} of browserTestRuntimes(import.meta.url)) {
     assert.match(h.saved[0].row.querySelector('[data-pick-financial="debt_equity"]').innerHTML,/<b>优良<\/b>/);
     assert.match(h.saved[1].row.querySelector('[data-pick-financial="capex_to_profit"]').innerHTML,/未达标/);
     assert.match(h.saved[2].row.querySelector('[data-pick-financial="debt_equity"]').innerHTML,/行业待核验/);
-    if(cloud){h.api.renderScores();assert.equal(h.saved[0].row.children[4].textContent,'88.00');assert.equal(h.saved[0].row.children[6].textContent,'10.00');}
+    if(cloud){h.api.renderScores();assert.match(h.saved[0].row.children[4].textContent,/^88\.00/);assert.match(h.saved[0].row.querySelector('[data-quality-evidence]').textContent,/质量覆盖/);assert.equal(h.saved[0].row.children[6].textContent,'10.00');}
     h.setNow(Date.parse('2027-01-01T10:00:00+08:00'));h.api.renderPickFinancials();
     assert.match(h.saved[0].row.querySelector('[data-pick-financial="debt_equity"]').innerHTML,/<b>待核验<\/b>/);
     assert.doesNotMatch(h.saved[0].row.querySelector('[data-pick-financial="debt_equity"]').innerHTML,/<b>优良<\/b>/);

@@ -3,6 +3,6 @@
   "browser-test-sync.mjs": "44170575da1012f7e87d100f4f98d8ee6983c50074f7c0dacacb7bcb3bef9df2",
   "test-holdings-actions.mjs": "44345f43c972cc11c9a1cc81edd334550a307fe4e26687643079d14828ad80fa",
   "test-financial-ui.mjs": "77ccd5592f7357a71faa5730fc5aeb020de8dbb4091432a3e12bd605b1117602",
-  "test-pick-financial.mjs": "8e8d3b5fd7892201cf5a67a4dccb98a64350ecd1873d165cbf43ab914c9e8403",
-  "test-close-browser.mjs": "9a18caeff8db9b091a03d43d77deb215ae1030dc54fb7a5d5730a92d8add0ef9"
+  "test-pick-financial.mjs": "e3664d3b0c256b663f25645e0a1d74011b0fa93a9d9376d221052c84d1690bb7",
+  "test-close-browser.mjs": "4490ef770c7510ee919b83de43ed6e0a5811ac4bf7a6cc3fea8998c568de4c96"
 }

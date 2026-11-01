@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { webcrypto, createHash } from 'node:crypto';
 import { browserTestRuntimes } from './browser-test-runtime.mjs';
-import { sortCloseIndex } from '../lib/close-browser.mjs';
+const { sortCloseIndex } = await import(new URL(browserTestRuntimes(import.meta.url)[0].cloud
+  ? '../lib/close-browser.mjs' : '../../scripts/close-browser.mjs', import.meta.url));
 
 const mixed = [
   {code:'000004',action:'观望',total:99}, {code:'000003',action:'建仓',total:50},
@@ -176,7 +177,9 @@ for (const target of browserTestRuntimes(import.meta.url)) {
   // 输入价格变化、实时行情变化均不能改变公共收盘分。
   h.context.window.__SITE__.entries['000001'].price = 999;
   h.api.renderCloseSelection();
-  assert.equal(firstRow.querySelectorAll('td')[4].textContent, '90.00');
+  assert.match(firstRow.querySelectorAll('td')[4].textContent, /^90\.00/);
+  assert.match(firstRow.querySelector('[data-quality-evidence]').textContent, /待核验/);
+  assert.equal(firstRow.querySelectorAll('[data-quality-evidence]').length, 1);
   await controller.setView('', '', 2);
   assert.equal(h.doc.getElementById('__close-rows').querySelectorAll('tr[data-pick]')[0].getAttribute('data-pick'), '000301');
   assert.equal(h.api.closePickDrafts()[0].price, '9.99');
@@ -227,7 +230,9 @@ for (const target of browserTestRuntimes(import.meta.url)) {
   assert.equal(controller.state.status, 'delayed');
   assert.equal(controller.state.snapshot.score_date, date);
   assert.equal(controller.state.entries['000001'].total, 90, '网络失败不得清空历史固定分');
-  assert.equal(firstRow.querySelectorAll('td')[4].textContent, '90.00');
+  assert.match(firstRow.querySelectorAll('td')[4].textContent, /^90\.00/);
+  assert.match(firstRow.querySelector('[data-quality-evidence]').textContent, /待核验/);
+  assert.equal(firstRow.querySelectorAll('[data-quality-evidence]').length, 1);
   assert.match(h.doc.getElementById('__close-coverage').textContent, /更新延迟/);
   assert.ok(h.requests.every(url => !url.includes('/api/scores/live')), '主动产品链不能再请求动态评分');
   if (!target.cloud) {

@@ -113,6 +113,33 @@ function financialCoverage(entries) {
   return result;
 }
 
+// 从已发布子项推导展示证据；不重算分数、不填补缺项，兼容历史快照。
+function qualityEvidence(entry) {
+  const a = entry && entry.financial_analysis || {}, q = a.quality || {};
+  const weights = q.weights || {}, scores = q.sub_scores || {}, metrics = a.metrics || {};
+  const keys = ['roe','cashflow','debt','stability','capex'];
+  const covered = keys.reduce((sum, k) => sum + (Number.isFinite(scores[k]) && Number.isFinite(weights[k]) ? weights[k] : 0), 0);
+  const configured = keys.reduce((sum, k) => sum + (Number.isFinite(weights[k]) ? weights[k] : 0), 0);
+  const statuses = {}, effective_weights = {}, pending = [], exempt = [];
+  keys.forEach(k => {
+    const metric = metrics[k === 'debt' ? 'debt_equity' : k === 'capex' ? 'capex_to_profit' : ''] || {};
+    statuses[k] = Number.isFinite(scores[k]) ? 'scored' : metric.status === 'not_applicable' ? 'not_applicable' : metric.status || 'missing';
+    effective_weights[k] = Number.isFinite(scores[k]) && covered > 0 ? weights[k] / covered : null;
+    if (statuses[k] === 'not_applicable') exempt.push(k);
+    else if (statuses[k] !== 'scored') pending.push(k);
+  });
+  return {coverage: configured > 0 ? covered / configured : null, effective_weights, statuses, pending, exempt};
+}
+
+function qualityEvidenceText(entry) {
+  const e = qualityEvidence(entry), labels = {roe:'ROE',cashflow:'现金流',debt:'债务股权',stability:'盈利稳定性',capex:'五年资本开支'};
+  const names = keys => keys.map(k => labels[k]).join('、');
+  return '质量覆盖 ' + (e.coverage === null ? '未知' : (100 * e.coverage).toFixed(0) + '%')
+    + (e.pending.length ? ' · 待核验：' + names(e.pending) + '；高分仅反映可用子项，不能视为完整财务核验'
+      : e.exempt.length ? ' · 适用子项齐备；行业豁免单列，不表示数值优秀' : ' · 评分子项齐备（不代表全部财务字段已核验）')
+    + (e.exempt.length ? ' · 行业豁免：' + names(e.exempt) : '');
+}
+
 // 选股表只展示已有财务判断，不重新计算评分或增加买入否决条件。
 function pickFinancialMetric(entry, key, mode) {
   const analysis = entry && entry.financial_analysis;
@@ -189,6 +216,13 @@ function updatePickFinancialColumns(doc, entries, modeFor) {
     buyHeader.textContent = row.hasAttribute('data-close-pick') ? '收盘买入条件' : '原买入门槛（发布时）';
     qualifyPickBuyText(buyChecks);
     const entry = entries[row.getAttribute('data-pick')];
+    const scoreCell = originalCells[4];
+    if (scoreCell) {
+      let evidence = scoreCell.querySelector('[data-quality-evidence]');
+      if (!evidence) { evidence = doc.createElement('small'); evidence.setAttribute('data-quality-evidence', ''); scoreCell.appendChild(evidence); }
+      evidence.style.display = 'block'; evidence.style.whiteSpace = 'normal';
+      evidence.textContent = qualityEvidenceText(entry);
+    }
     for (const [key, label] of columns) {
       let heading = header.querySelector('[data-pick-financial-header="' + key + '"]');
       if (!heading) {
@@ -547,6 +581,7 @@ function createCloseSelectionView(doc, controller, options) {
     const snapshot = state.snapshot, universe = snapshot && snapshot.universe;
     doc.getElementById('__close-coverage').textContent = snapshot ? '最近合格收盘评分：' + snapshot.score_date + ' · 生成 ' + snapshot.built_at
       + ' · 市场 ' + universe.market_total + '只，粗筛通过 ' + universe.eligible_total + '只，尝试 ' + universe.attempted + '只，已评分 ' + universe.scored + '只，失败 ' + universe.failed + '只，粗筛排除 ' + universe.excluded + '只'
+      + (snapshot.financial_coverage ? ' · 质量子项齐备 ' + snapshot.financial_coverage.quality.full + '只、部分可用 ' + snapshot.financial_coverage.quality.partial + '只（含行业豁免）；评分成功不等于完整财务核验' : ' · 财务覆盖统计待核验')
       + (state.status === 'delayed' ? ' · 更新延迟，保留历史收盘结果' : '') : '尚无合格收盘评分，等待收盘数据发布。';
     const matches = controller.matching(), codes = controller.viewCodes();
     const nextSignature = (snapshot && snapshot.built_at || '') + '|' + codes.join(',');
@@ -2014,6 +2049,7 @@ function createCloseSelectionView(doc, controller, options) {
     var byYear = {}; rows.forEach(function (row) { byYear[row.fiscal_year] = row; });
     var html = '<p><strong>' + esc(state(a.status)) + '</strong> · 五年窗口：' + esc(win.start_year || '未知')
       + '—' + esc(win.end_year || '未知') + '（完整财年）</p>'
+      + '<p><strong>' + esc(qualityEvidenceText(entry)) + '</strong></p>'
       + '<p>本股质量评分覆盖：' + financialNumber(quality.coverage, 100, '%') + '（可用子项权重；不代表财报字段完整率）</p>'
       + '<p>债务股权比率：<strong>' + financialNumber(debt.value, 1, ' 倍') + '</strong> · '
       + esc(verdict(debt, '优良', '未达优良标准')) + ' · 报告期 ' + esc(debt.report_date || '未知')
@@ -2037,18 +2073,20 @@ function createCloseSelectionView(doc, controller, options) {
     html += '</tbody></table></div><p class="small">五年累计净利润：' + financialNumber(capex.net_profit_sum, 1e-8, '亿元')
       + ' · 五年累计资本开支：' + financialNumber(capex.capex_sum, 1e-8, '亿元') + '。资本开支口径：购建固定资产、无形资产和其他长期资产支付的现金；净利润非正时比例无法判断。</p>';
     if ((a.loss_years || []).length) { html += '<p>亏损年份：' + esc(a.loss_years.join('、')) + '</p>'; }
+    var evidence = qualityEvidence(entry);
     var q = a.quality || {}, labels = { roe: 'ROE', cashflow: '经营现金流÷净利润', debt: '债务股权比率', stability: '盈利稳定性', capex: '五年资本开支比例' };
     html += '<details data-financial-detail="quality"><summary>质量评分明细与覆盖率：' + financialNumber(q.coverage, 100, '%') + '</summary>'
       + '<p class="small">缺失或行业不适用项在可用项内重新归一化，覆盖率反映原权重中有数据参与的比例。</p>'
       + '<p class="small">总分折算列按配置的质量权重展示；总分其他模块缺失并归一化时，实际贡献会变化。</p>'
-      + '<div style="overflow-x:auto"><table><thead><tr><th>子项</th><th>配置权重</th><th>子项分</th><th>质量分贡献</th><th>总分折算</th></tr></thead><tbody>';
+      + '<div style="overflow-x:auto"><table><thead><tr><th>子项</th><th>配置权重</th><th>有效权重</th><th>状态</th><th>子项分</th><th>质量分贡献</th><th>总分折算</th></tr></thead><tbody>';
     Object.keys(labels).forEach(function (key) {
       var c = (q.contributions || {})[key], weight = (SITE.stock_weights || {}).quality;
       html += '<tr><th scope="row">' + labels[key] + '</th><td>' + financialNumber((q.weights || {})[key], 100, '%')
+        + '</td><td>' + financialNumber(evidence.effective_weights[key], 100, '%') + '</td><td>' + esc(evidence.statuses[key] === 'scored' ? '参与评分' : state(evidence.statuses[key]))
         + '</td><td>' + financialNumber((q.sub_scores || {})[key], 1) + '</td><td>' + financialNumber(c, 1)
         + '</td><td>' + (typeof c === 'number' && typeof weight === 'number' ? financialNumber(c * weight, 1) : '暂无数据') + '</td></tr>';
     });
-    html += '</tbody></table></div><p>缺项：' + esc((q.missing || []).map(function (key) { return labels[key] || key; }).join('、') || '无') + '</p></details>';
+    html += '</tbody></table></div><p>未计分子项（行业豁免与待核验分列见上方提示）：' + esc((q.missing || []).map(function (key) { return labels[key] || key; }).join('、') || '无') + '</p></details>';
     var warnings = entry.sell_snapshot && entry.sell_snapshot.financial_warn || [];
     html += '<p>财务预警：' + esc(warnings.length ? warnings.join('；') : a.status === 'ok' ? '本轮新增财务条件未触发' : '数据不足或不适用，请核对指标状态')
       + '。财务预警提示复核；总分变化仍参与原有减仓、清仓规则。</p>';
@@ -2173,7 +2211,7 @@ function createCloseSelectionView(doc, controller, options) {
 
   // 给 Node 单元测试用
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { closeState: CLOSE, renderCloseSelection: renderCloseSelection, loadCloseScores: loadCloseScores, closePickDrafts: closePickDrafts, publicScoreFresh: publicScoreFresh, pickFinancialMetric: pickFinancialMetric, renderPickFinancials: renderPickFinancials, financialHTML: financialHTML, renderFinancials: renderFinancials, parseQuoteText: parseQuoteText, oneRow: oneRow, sellDecision: sellDecision,
+    module.exports = { closeState: CLOSE, renderCloseSelection: renderCloseSelection, loadCloseScores: loadCloseScores, closePickDrafts: closePickDrafts, publicScoreFresh: publicScoreFresh, qualityEvidence: qualityEvidence, qualityEvidenceText: qualityEvidenceText, pickFinancialMetric: pickFinancialMetric, renderPickFinancials: renderPickFinancials, financialHTML: financialHTML, renderFinancials: renderFinancials, parseQuoteText: parseQuoteText, oneRow: oneRow, sellDecision: sellDecision,
       summarize: summarize, valuationQuoteValid: valuationQuoteValid,
       planSellShares: planSellShares, sellRatioFor: sellRatioFor, buyFees: buyFees,
       sellFees: sellFees, txSym: txSym, alertFor: alertFor, parseHistory: parseHistory,

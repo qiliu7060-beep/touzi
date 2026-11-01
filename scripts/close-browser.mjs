@@ -320,6 +320,7 @@ export function createCloseSelectionView(doc, controller, options) {
     const snapshot = state.snapshot, universe = snapshot && snapshot.universe;
     doc.getElementById('__close-coverage').textContent = snapshot ? '最近合格收盘评分：' + snapshot.score_date + ' · 生成 ' + snapshot.built_at
       + ' · 市场 ' + universe.market_total + '只，粗筛通过 ' + universe.eligible_total + '只，尝试 ' + universe.attempted + '只，已评分 ' + universe.scored + '只，失败 ' + universe.failed + '只，粗筛排除 ' + universe.excluded + '只'
+      + (snapshot.financial_coverage ? ' · 质量子项齐备 ' + snapshot.financial_coverage.quality.full + '只、部分可用 ' + snapshot.financial_coverage.quality.partial + '只（含行业豁免）；评分成功不等于完整财务核验' : ' · 财务覆盖统计待核验')
       + (state.status === 'delayed' ? ' · 更新延迟，保留历史收盘结果' : '') : '尚无合格收盘评分，等待收盘数据发布。';
     const matches = controller.matching(), codes = controller.viewCodes();
     const nextSignature = (snapshot && snapshot.built_at || '') + '|' + codes.join(',');

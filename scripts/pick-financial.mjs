@@ -1,3 +1,30 @@
+// 从已发布子项推导展示证据；不重算分数、不填补缺项，兼容历史快照。
+export function qualityEvidence(entry) {
+  const a = entry && entry.financial_analysis || {}, q = a.quality || {};
+  const weights = q.weights || {}, scores = q.sub_scores || {}, metrics = a.metrics || {};
+  const keys = ['roe','cashflow','debt','stability','capex'];
+  const covered = keys.reduce((sum, k) => sum + (Number.isFinite(scores[k]) && Number.isFinite(weights[k]) ? weights[k] : 0), 0);
+  const configured = keys.reduce((sum, k) => sum + (Number.isFinite(weights[k]) ? weights[k] : 0), 0);
+  const statuses = {}, effective_weights = {}, pending = [], exempt = [];
+  keys.forEach(k => {
+    const metric = metrics[k === 'debt' ? 'debt_equity' : k === 'capex' ? 'capex_to_profit' : ''] || {};
+    statuses[k] = Number.isFinite(scores[k]) ? 'scored' : metric.status === 'not_applicable' ? 'not_applicable' : metric.status || 'missing';
+    effective_weights[k] = Number.isFinite(scores[k]) && covered > 0 ? weights[k] / covered : null;
+    if (statuses[k] === 'not_applicable') exempt.push(k);
+    else if (statuses[k] !== 'scored') pending.push(k);
+  });
+  return {coverage: configured > 0 ? covered / configured : null, effective_weights, statuses, pending, exempt};
+}
+
+export function qualityEvidenceText(entry) {
+  const e = qualityEvidence(entry), labels = {roe:'ROE',cashflow:'现金流',debt:'债务股权',stability:'盈利稳定性',capex:'五年资本开支'};
+  const names = keys => keys.map(k => labels[k]).join('、');
+  return '质量覆盖 ' + (e.coverage === null ? '未知' : (100 * e.coverage).toFixed(0) + '%')
+    + (e.pending.length ? ' · 待核验：' + names(e.pending) + '；高分仅反映可用子项，不能视为完整财务核验'
+      : e.exempt.length ? ' · 适用子项齐备；行业豁免单列，不表示数值优秀' : ' · 评分子项齐备（不代表全部财务字段已核验）')
+    + (e.exempt.length ? ' · 行业豁免：' + names(e.exempt) : '');
+}
+
 // 选股表只展示已有财务判断，不重新计算评分或增加买入否决条件。
 export function pickFinancialMetric(entry, key, mode) {
   const analysis = entry && entry.financial_analysis;
@@ -74,6 +101,13 @@ export function updatePickFinancialColumns(doc, entries, modeFor) {
     buyHeader.textContent = row.hasAttribute('data-close-pick') ? '收盘买入条件' : '原买入门槛（发布时）';
     qualifyPickBuyText(buyChecks);
     const entry = entries[row.getAttribute('data-pick')];
+    const scoreCell = originalCells[4];
+    if (scoreCell) {
+      let evidence = scoreCell.querySelector('[data-quality-evidence]');
+      if (!evidence) { evidence = doc.createElement('small'); evidence.setAttribute('data-quality-evidence', ''); scoreCell.appendChild(evidence); }
+      evidence.style.display = 'block'; evidence.style.whiteSpace = 'normal';
+      evidence.textContent = qualityEvidenceText(entry);
+    }
     for (const [key, label] of columns) {
       let heading = header.querySelector('[data-pick-financial-header="' + key + '"]');
       if (!heading) {

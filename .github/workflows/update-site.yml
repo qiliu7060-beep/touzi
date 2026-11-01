@@ -20,6 +20,7 @@ on:
       - 'scripts/publish_site.py'
       - 'scripts/webui.py'
       - 'scripts/pick-financial.mjs'
+      - 'scripts/audit_quality_evidence.py'
       - 'tests/test_pick_financial.py'
       - 'scripts/publish_eligibility.py'
       - 'tests/test_publish_eligibility.py'
