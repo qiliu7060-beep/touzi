@@ -349,6 +349,7 @@ class Screener:
         raw: dict[str, Any],
         as_of: pd.Timestamp | str | None = None,
         point_in_time: bool = False,
+        strict_history: bool = False,
     ) -> StockScore:
         """把一只股票的明细数据打分。
 
@@ -361,6 +362,11 @@ class Screener:
         """
         cfg = self.cfg
         as_of_ts = self.as_of if as_of is None else pd.Timestamp(as_of)
+        if strict_history:
+            if not point_in_time:
+                raise ValueError("strict_history requires point_in_time=True")
+            from .portfolio_pit import strict_inputs, history_last
+            raw = strict_inputs(raw, as_of_ts)
         d = dict(meta)
         code = plain_code(str(d.get("code", raw.get("code", ""))))
         name = str(d.get("name") or "")
@@ -376,6 +382,9 @@ class Screener:
         # 值作为「当前值」——这样分位是自洽的，不依赖另一路数据源的快照。
         pe_hist = _clip_history(raw.get("pe_hist"), as_of_ts)
         pb_hist = _clip_history(raw.get("pb_hist"), as_of_ts)
+        if strict_history:
+            pe_hist = pd.to_numeric(pe_hist, errors="coerce").dropna()
+            pb_hist = pd.to_numeric(pb_hist, errors="coerce").dropna()
         pe_pctl_ts = pb_pctl_ts = float("nan")
         if pe_hist is not None and len(pe_hist) > 20:
             pe_pctl_ts = percentile_of(float(pe_hist.dropna().iloc[-1]), pe_hist)
@@ -385,8 +394,8 @@ class Screener:
         # point-in-time 时，PE/PB 也要取 as_of 当天的值，而不是今天快照的值
         # （快照会在格雷厄姆数 PE×PB≤22.5 这类绝对水平判断里泄漏未来信息）
         if point_in_time:
-            pe = _last_value(pe_hist, fallback=pe)
-            pb = _last_value(pb_hist, fallback=pb)
+            pe = history_last(pe_hist) if strict_history else _last_value(pe_hist, fallback=pe)
+            pb = history_last(pb_hist) if strict_history else _last_value(pb_hist, fallback=pb)
 
         # 实时模式：用「实时快照的 PE/PB」在自身历史池里的分位，替代历史末值分位。
         # 这样盘中估值一变，分位和得分立刻跟着变，而不是等百度次日更新历史序列。
@@ -406,10 +415,12 @@ class Screener:
                 if len(s_close):
                     price = float(s_close.iloc[-1])
         div = _clip_history(raw.get("div"), as_of_ts)
-        div_row = self._div_summary_map().get(code) if getattr(self, "_div_summary", None) is not None else None
+        div_row = (self._div_summary_map().get(code) if not strict_history and getattr(self, "_div_summary", None) is not None else None)
         din = build_dividend_input(code, name, div, float(price) if np.isfinite(price) else None,
                                    div_row, as_of=as_of_ts)
         dy = din.get("dividend_yield", float("nan"))
+        if strict_history and not raw.get("div_history_complete", False):
+            dy = float("nan")
 
         # ---------------------------------------------------------- 质量
         fin = _clip_history(raw.get("fin"), as_of_ts)
@@ -424,7 +435,8 @@ class Screener:
         # ---------------------------------------------------------- 政策
         pin = {
             "code": code, "name": name, "industry": industry,
-            "policy_table": self._industry_policy(), "events": self._policy_events(),
+            "policy_table": None if strict_history else self._industry_policy(),
+            "events": None if strict_history else self._policy_events(),
             "as_of": as_of_ts,
         }
 
@@ -446,9 +458,39 @@ class Screener:
             )
         parts["valuation"] = score_valuation(valuation_input, cfg)
         parts["quality"] = score_quality(QualityInput(code=code, name=name, industry=industry, **qsum), cfg)
-        dividend_input = {**din, "bond_yield": self._bond_yield()}
+        dividend_input = {**din, "bond_yield": (
+            history_last(raw.get("bond_hist")) if strict_history else self._bond_yield())}
         parts["dividend"] = score_dividend(dividend_input, cfg)
-        parts["policy"] = score_policy(pin, cfg)
+        parts["policy"] = score_policy(pin, cfg) if not strict_history else RuleResult(
+            "政策", float("nan"), "缺少历史版本", explain="当前人工政策表不能回填历史")
+        if strict_history:
+            unavailable = []
+            if fin is None or len(fin) == 0:
+                parts["quality"] = RuleResult("质量", float("nan"), "缺少已披露历史版本")
+                unavailable.append("fin")
+            if not raw.get("div_history_complete", False):
+                # Empty records do not prove zero dividends or a complete history.
+                parts["dividend"] = RuleResult("股息", float("nan"), "缺少已披露分红记录")
+                unavailable.append("div")
+                dy = float("nan")
+            if not np.isfinite(price) or price <= 0:
+                unavailable.append("price_hist")
+            if not np.isfinite(pe):
+                unavailable.append("pe_hist")
+            if not np.isfinite(pb):
+                unavailable.append("pb_hist")
+            flags["历史输入日期"] = {
+                "fin_report_date": str(fin["report_date"].iloc[-1]) if fin is not None and len(fin) else None,
+                "fin_available_at": str(fin["available_at"].iloc[-1]) if fin is not None and len(fin) else None,
+                "pe_date": str(pe_hist.index[-1]) if len(pe_hist) else None,
+                "pb_date": str(pb_hist.index[-1]) if len(pb_hist) else None,
+                "bond_date": str(raw["bond_hist"].index[-1]) if len(raw["bond_hist"]) else None,
+                "div_records": len(div) if div is not None else 0,
+            }
+            flags["历史信息缺失"] = unavailable
+            flags["历史国债缺失"] = not np.isfinite(dividend_input["bond_yield"])
+            flags["历史政策缺失"] = True
+            flags["历史分红融资汇总缺失"] = True
 
         # ---------------------------------------------------- 加权合成
         raw_w = dict(cfg.stock_weights)
@@ -465,6 +507,9 @@ class Screener:
             tot_w += w
             used[key] = w
         total = clamp(acc / tot_w) if tot_w > 0 else float("nan")
+        if strict_history and flags["历史信息缺失"]:
+            # Do not rank a policy-only/partial-data substitute as the original B strategy.
+            total = float("nan")
 
         flags["参与打分的项"] = list(used.keys())
         flags["缺失项"] = missing
@@ -597,3 +642,4 @@ class Screener:
             df.insert(0, "排名", range(1, len(df) + 1))
         self.results = results
         return df
+
