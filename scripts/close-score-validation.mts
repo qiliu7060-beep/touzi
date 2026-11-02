@@ -1,3 +1,4 @@
+import { validateIndicatorEvidence } from './pick-financial.mjs';
 import { marketClock, validCalendar } from './market-calendar.mjs';
 
 export const CLOSE_KIND = 'touzi-close-v1';
@@ -144,6 +145,7 @@ function validateFinancial(entry: JsonObject, built: number, checks: JsonObject[
     return;
   }
   const analysis = closeObject(entry.financial_analysis), metrics = closeObject(analysis.metrics);
+  validateIndicatorEvidence(analysis.quality, built);
   requireClose(['ok', 'partial', 'missing', 'stale', 'invalid', 'not_applicable'].includes(String(analysis.status)));
   requireClose(analysis.source === 'sina-finance-report' && analysis.currency === 'CNY' && analysis.unit === 'yuan'
     && analysis.statement_scope === 'consolidated');

@@ -12,6 +12,7 @@ on:
       - 'touzi/live_model.py'
       - 'touzi/market_calendar.py'
       - 'touzi/financial_coverage.py'
+      - 'touzi/util.py'
       - 'touzi/data/**'
       - 'touzi/signals/quality.py'
       - 'config/settings.toml'

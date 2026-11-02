@@ -1,3 +1,83 @@
+// 独立于评分覆盖率；旧快照不借用合并三表的时间。
+function indicatorStamp(v) {
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(v)) return NaN;
+  const day = Date.parse(v.slice(0, 10));
+  if (!Number.isFinite(day) || new Date(day).toISOString().slice(0, 10) !== v.slice(0, 10)
+    || Number(v.slice(11, 13)) >= 24 || Number(v.slice(14, 16)) >= 60 || Number(v.slice(17, 19)) >= 60) return NaN;
+  return Date.parse(v);
+}
+export function indicatorFreshness(e, now = Date.now()) {
+  e = e || {};
+  const fetched = indicatorStamp(e.fetched_at), checked = indicatorStamp(e.checked_at);
+  if (e.time_status !== 'ok' || !Number.isFinite(fetched) || !Number.isFinite(checked)) return 'unknown';
+  if (fetched > checked || checked > now + 60000 || !(e.ttl_seconds >= 0) || !Number.isFinite(e.ttl_seconds)) return 'invalid';
+  return now - fetched >= e.ttl_seconds * 1000 ? 'stale' : 'fresh';
+}
+
+export function qualitySourceSummary(entry) {
+  const evidence = entry && entry.financial_analysis && entry.financial_analysis.quality && entry.financial_analysis.quality.indicator_evidence || {};
+  const labels = {roe:'ROE', cashflow:'现金流', stability:'盈利稳定性'};
+  return Object.keys(labels).map(key => {
+    const e = evidence[key] || {}, state = indicatorFreshness(e);
+    return labels[key] + '：' + (e.source_status === 'failed' ? (e.cache_status === 'stale_fallback' ? '来源失败，回退旧缓存；' : '来源失败；') : '')
+      + (e.data_status === 'invalid_schema' ? '源数据结构异常；' : '')
+      + (state === 'fresh' ? '取数时间在缓存TTL内（不代表报告期或正式披露已核验）' : state === 'stale' ? '缓存陈旧，待核验' : '取数时间未知或异常，待核验');
+  }).join('；');
+}
+
+export function qualitySourceHTML(entry) {
+  const evidence = entry && entry.financial_analysis && entry.financial_analysis.quality && entry.financial_analysis.quality.indicator_evidence || {};
+  const labels = {roe:'ROE', cashflow:'经营现金流÷净利润', stability:'盈利稳定性'};
+  const states = {hit:'正常缓存命中', refreshed:'重新抓取成功', stale_fallback:'来源失败，回退旧缓存', source_failed:'来源失败，无可用缓存'};
+  let html = '<details data-financial-detail="indicator-source"><summary>财务指标独立来源与新鲜度</summary><p>报告期是计算所用期间；实际取数时间是接口成功返回或缓存记录时间。正式披露时间未知，不以这两种时间替代。缓存TTL仅检查取数年龄，不保证上游已更新报告。</p>'
+    + '<div style="overflow-x:auto"><table><thead><tr><th>指标</th><th>独立来源</th><th>实际参与的报告期</th><th>实际取数时间</th><th>缓存状态及检查时间</th><th>正式披露时间</th></tr></thead><tbody>';
+  for (const key of Object.keys(labels)) {
+    const e = evidence[key] || {};
+    html += '<tr><th>' + labels[key] + '</th><td>' + pickFinancialEscape(e.source || '未知（旧快照未记录）')
+      + '<br>' + pickFinancialEscape(e.api || '') + '</td><td>' + pickFinancialEscape((e.report_periods || []).join('、') || '未知')
+      + (e.period_basis === 'quarterly_fallback' ? '（季度回退口径）' : '')
+      + '</td><td>' + pickFinancialEscape(e.fetched_at || '未知')
+      + '<br>' + pickFinancialEscape(e.fetched_at_basis === 'network_response' ? '接口成功返回时间' : e.fetched_at_basis === 'cache_saved_at' ? '缓存写入时间（复用元数据）' : '时间依据未知') + '<br>' + pickFinancialEscape(e.time_status || '未记录')
+      + '</td><td>' + pickFinancialEscape(states[e.cache_status] || '未知') + '<br>检查于 ' + pickFinancialEscape(e.checked_at || '未知')
+      + '<br>取数TTL ' + pickFinancialEscape(Number.isFinite(e.ttl_seconds) ? e.ttl_seconds / 86400 + '天' : '未知')
+      + '</td><td>' + pickFinancialEscape(e.disclosed_at || '未知') + '</td></tr>';
+  }
+  return html + '</tbody></table></div></details>';
+}
+
+// 新字段可选以兼容旧快照；存在时不允许把未知/失败/陈旧伪装为新鲜。
+export function validateIndicatorEvidence(quality, built) {
+  const evidence = quality && quality.indicator_evidence;
+  if (evidence === undefined) return;
+  if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) throw new Error('财务指标来源结构无效');
+  for (const [key, e] of Object.entries(evidence)) {
+    if (!['roe','cashflow','stability'].includes(key) || !e || typeof e !== 'object' || !Array.isArray(e.report_periods)
+      || e.report_periods.length > 50 || e.report_periods.some(p => typeof p !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(p)
+        || !Number.isFinite(Date.parse(p)) || new Date(p).toISOString().slice(0,10) !== p)
+      || e.disclosed_at !== null) throw new Error('财务指标报告期/披露时间无效');
+    if (e.source !== undefined && (e.source !== 'sina-financial-analysis-indicator' || e.api !== 'akshare.stock_financial_analysis_indicator')) throw new Error('财务指标独立来源错误');
+    if (e.cache_status !== undefined && !['hit','refreshed','stale_fallback','source_failed'].includes(e.cache_status)) throw new Error('财务指标缓存状态无效');
+    if (e.source_status !== undefined && (e.source_status !== (['stale_fallback','source_failed'].includes(e.cache_status) ? 'failed' : 'ok'))) throw new Error('来源失败状态不一致');
+    if (e.time_status !== undefined && !['ok','missing','unknown_timezone','future'].includes(e.time_status)) throw new Error('财务指标时间状态无效');
+    if (e.time_status !== 'ok' && e.fetched_at != null) throw new Error('未知时间不能充当实际取数时间');
+    if (e.checked_at !== undefined) {
+      if (e.source !== 'sina-financial-analysis-indicator' || e.api !== 'akshare.stock_financial_analysis_indicator'
+        || !['network_response','cache_saved_at'].includes(e.fetched_at_basis)
+        || !['ok','missing','unknown_timezone','future'].includes(e.time_status)
+        || !['hit','refreshed','stale_fallback','source_failed'].includes(e.cache_status)
+        || !['ok','failed'].includes(e.source_status)
+        || !/^fin_\d{6}_\d{4}$/.test(e.cache_key || '')
+        || (e.cache_status === 'refreshed') !== (e.fetched_at_basis === 'network_response')) throw new Error('独立来源或取数依据缺失');
+      const checked = indicatorStamp(e.checked_at);
+      if (!Number.isFinite(checked) || checked > built + 60000 || !Number.isFinite(e.ttl_seconds) || e.ttl_seconds < 0) throw new Error('财务指标检查时间或TTL无效');
+      const state = indicatorFreshness(e, checked);
+      if (state === 'invalid' || e.time_status === 'ok' && state === 'unknown' || e.freshness !== state) throw new Error('财务指标新鲜度不一致');
+      if (state !== 'unknown' && (!Number.isFinite(e.age_seconds) || e.age_seconds < 0
+        || Math.abs(e.age_seconds - (checked - Date.parse(e.fetched_at)) / 1000) > .01)) throw new Error('财务指标缓存年龄不一致');
+    } else if (e.freshness === 'fresh' || e.time_status === 'ok') throw new Error('财务指标缺少检查时间');
+  }
+}
+
 // 从已发布子项推导展示证据；不重算分数、不填补缺项，兼容历史快照。
 export function qualityEvidence(entry) {
   const a = entry && entry.financial_analysis || {}, q = a.quality || {};
@@ -22,7 +102,8 @@ export function qualityEvidenceText(entry) {
   return '质量覆盖 ' + (e.coverage === null ? '未知' : (100 * e.coverage).toFixed(0) + '%')
     + (e.pending.length ? ' · 待核验：' + names(e.pending) + '；高分仅反映可用子项，不能视为完整财务核验'
       : e.exempt.length ? ' · 适用子项齐备；行业豁免单列，不表示数值优秀' : ' · 评分子项齐备（不代表全部财务字段已核验）')
-    + (e.exempt.length ? ' · 行业豁免：' + names(e.exempt) : '');
+    + (e.exempt.length ? ' · 行业豁免：' + names(e.exempt) : '')
+    + ' · 独立取数核验：' + qualitySourceSummary(entry);
 }
 
 // 选股表只展示已有财务判断，不重新计算评分或增加买入否决条件。

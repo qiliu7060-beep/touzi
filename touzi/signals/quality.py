@@ -56,6 +56,7 @@ class QualityInput(dict):
         "periods_annual",
         "profit_growth_series",
         "financial_analysis",
+        "indicator_evidence",
     )
 
     def __init__(self, **kw: Any):
@@ -97,7 +98,17 @@ def summarize_financials(fin: pd.DataFrame, stability_years: int = 5) -> dict[st
     roe_series = pd.to_numeric(annual.get("roe"), errors="coerce").dropna().tail(12)
     growth_series = pd.to_numeric(annual.get("profit_growth"), errors="coerce").dropna().tail(12)
     latest = f.iloc[-1]
+    evidence = {}
+    for key, col, count in (("roe", "roe", 3), ("cashflow", "ocf_to_profit", 3),
+                            ("stability", "profit_growth", stability_years)):
+        values = pd.to_numeric(annual[col], errors="coerce")
+        periods = annual.loc[values.notna(), "report_date"].tail(count)
+        evidence[key] = {**fin.attrs.get("indicator_source", {}),
+                         "report_periods": [str(pd.Timestamp(p).date()) for p in periods],
+                         "period_basis": "annual" if annual["report_date"].dt.month.eq(12).all() else "quarterly_fallback",
+                         "disclosed_at": None}
     return {
+        "indicator_evidence": evidence,
         "roe": tail_mean(annual, "roe", 3),
         "roe_series": roe_series.to_list(),
         # 年报顺序由老到新，供「连续 N 年下滑/为负」的卖出规则判定
@@ -271,6 +282,7 @@ def score_quality(data: QualityInput | dict, cfg) -> RuleResult:
                            "missing": [k for k, v in sub_scores.items() if v is None],
                            "weights": public_weights, "sub_scores": sub_scores,
                            "contributions": {k: public_weights[k] * v / covered if v is not None and covered else None for k, v in sub_scores.items()}}
+    analysis["quality"]["indicator_evidence"] = d.get("indicator_evidence") or {}
     detail["financial_analysis"] = analysis
     return RuleResult(
         name="质量",

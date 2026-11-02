@@ -10,7 +10,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 
@@ -179,7 +179,8 @@ class Cache:
             ts = datetime.fromisoformat(meta["saved_at"])
         except Exception:
             return False
-        return datetime.now() - ts < ttl
+        now = datetime.now(ts.tzinfo) if ts.tzinfo else datetime.now()
+        return timedelta(0) <= now - ts < ttl
 
     def saved_at(self, key: str) -> datetime | None:
         """缓存最后一次写入的时间（用于在看板上披露数据新鲜度）。"""
@@ -209,7 +210,7 @@ class Cache:
                 json.dumps(
                     {
                         "key": key,
-                        "saved_at": datetime.now().isoformat(),
+                        "saved_at": datetime.now(timezone.utc).isoformat(),
                         "rows": int(len(df)),
                         "format": fmt,
                     },
@@ -233,11 +234,34 @@ def cached_fetch(
     retries: int = 2,
     sleep: float = 1.5,
     allow_stale_on_error: bool = True,
+    metadata: dict | None = None,
 ) -> pd.DataFrame:
     """带缓存与重试的取数。失败时若存在旧缓存则降级使用旧数据。"""
+    def record(state, fetched=None, error=None):
+        if metadata is None:
+            return
+        now = datetime.now(timezone.utc)
+        saved = cache.saved_at(key)
+        actual = fetched or saved
+        time_status = ("missing" if actual is None else "unknown_timezone" if actual.tzinfo is None
+                       else "future" if actual > now else "ok")
+        age = (now - actual).total_seconds() if time_status == "ok" else None
+        ttl = (cache.ttl if ttl_days is None else timedelta(days=ttl_days)).total_seconds()
+        metadata.clear()
+        metadata.update(cache_key=key, cache_status=state,
+                        fetched_at=actual.isoformat() if time_status == "ok" else None,
+                        cache_saved_at=saved.isoformat() if saved else None,
+                        fetched_at_basis="network_response" if fetched else "cache_saved_at",
+                        checked_at=now.isoformat(), time_status=time_status,
+                        ttl_seconds=ttl, age_seconds=age,
+                        freshness="unknown" if age is None else "stale" if age >= ttl else "fresh",
+                        source_status="failed" if error else "ok",
+                        error_type=type(error).__name__ if error else None)
+
     hit = cache.get(key, ttl_days=ttl_days)
     if hit is not None and len(hit) > 0:
         LOG.debug("缓存命中：%s", key)
+        record("hit")
         return hit
 
     last_exc: Exception | None = None
@@ -245,7 +269,9 @@ def cached_fetch(
         try:
             df = fetcher()
             if df is not None and len(df) > 0:
+                fetched = datetime.now(timezone.utc)
                 cache.put(key, df)
+                record("refreshed", fetched=fetched)
                 return df
             last_exc = RuntimeError("接口返回空数据")
         except Exception as exc:
@@ -256,7 +282,9 @@ def cached_fetch(
     stale = cache.get(key, allow_stale=True)
     if stale is not None and len(stale) > 0 and allow_stale_on_error:
         LOG.warning("接口 %s 抓取失败(%s)，降级使用旧缓存", key, type(last_exc).__name__)
+        record("stale_fallback", error=last_exc)
         return stale
+    record("source_failed", error=last_exc)
     raise RuntimeError(f"取数失败且无可用缓存：{key}，原因：{last_exc}") from last_exc
 
 

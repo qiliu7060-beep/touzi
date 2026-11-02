@@ -67,6 +67,33 @@ for (const { file: path } of runtimes) {
   assert.match(html, />4\.50<\/td>/, '15质量分乘实际30%质量权重');
   assert.equal((html.match(/scope="row">202/g) || []).length, 5);
   assert.match(api.financialHTML({}), /无法判断/);
+  assert.match(html, /取数时间未知或异常/);
+  assert.match(html, /财务指标独立来源与新鲜度/);
+  const sourced = structuredClone(entry);
+  const acquired = new Date().toISOString();
+  sourced.financial_analysis.quality.indicator_evidence = Object.fromEntries(['roe','cashflow','stability'].map(key => [key, {
+    source: 'sina-financial-analysis-indicator', api: 'akshare.stock_financial_analysis_indicator',
+    report_periods: ['2023-12-31','2024-12-31','2025-12-31'], disclosed_at: null,
+    fetched_at: acquired, fetched_at_basis: 'cache_saved_at', checked_at: acquired,
+    cache_status: 'hit', time_status: 'ok', source_status: 'ok', ttl_seconds: 86400,
+  }]));
+  const beforeSource = JSON.stringify(sourced);
+  html = api.financialHTML(sourced);
+  assert.match(html, /正常缓存命中/);
+  assert.match(html, /缓存写入时间（复用元数据）/);
+  assert.match(html, /正式披露时间未知/);
+  assert.match(html, /sina-financial-analysis-indicator/);
+  assert.equal(JSON.stringify(sourced), beforeSource, '展示不能重写来源和分数');
+  const old = new Date(Date.now() - 3 * 86400000).toISOString();
+  const source = sourced.financial_analysis.quality.indicator_evidence.roe;
+  source.fetched_at = old; source.cache_status = 'stale_fallback'; source.source_status = 'failed';
+  html = api.financialHTML(sourced);
+  assert.match(html, /来源失败，回退旧缓存/);
+  assert.match(html, /缓存陈旧，待核验/);
+  source.fetched_at = null; source.time_status = 'missing';
+  assert.match(api.financialHTML(sourced), /取数时间未知或异常/);
+  source.source = '<img src=x onerror=alert(1)>';
+  assert.doesNotMatch(api.financialHTML(sourced), /<img src=x/);
   const exempt = structuredClone(entry);
   exempt.financial_analysis.metrics.debt_equity = { status: 'not_applicable', value: null, excellent: null };
   exempt.financial_analysis.status = 'stale';
