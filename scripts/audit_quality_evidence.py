@@ -43,12 +43,18 @@ def audit(folder, limit=100):
         row = dict(rank=rank, code=item['code'], name=entry['name'], total=entry['total'],
                    quality=entry.get('quality'), action=entry['action'], industry=entry['industry'],
                    report_status=a.get('status'), source=a.get('source'),
-                   indicator_source='sina via akshare (code provenance; per-item fetch time not recorded)', fetched_at=a.get('fetched_at'),
+                   indicator_source='see per-metric source fields; legacy snapshots may have unknown acquisition time', fetched_at=a.get('fetched_at'),
                    coverage=evidence['coverage'], pending=','.join(evidence['pending']), exempt=','.join(evidence['exempt']))
         for key, state in evidence['statuses'].items():
             row.update({key+'_status': state, key+'_score': (q.get('sub_scores') or {}).get(key),
                         key+'_weight': (q.get('weights') or {}).get(key), key+'_effective_weight': evidence['effective_weights'][key],
                         key+'_contribution': contributions.get(key)})
+        for key in ('roe', 'cashflow', 'stability'):
+            source = (q.get('indicator_evidence') or {}).get(key) or {}
+            for field in ('source', 'api', 'fetched_at', 'fetched_at_basis', 'cache_saved_at', 'checked_at',
+                          'cache_status', 'source_status', 'time_status', 'freshness', 'ttl_seconds', 'disclosed_at'):
+                row[key + '_' + field] = source.get(field)
+            row[key + '_report_periods'] = ','.join(source.get('report_periods') or [])
         rows.append(row)
     return rows
 

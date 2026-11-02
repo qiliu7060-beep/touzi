@@ -492,8 +492,16 @@ def fetch_financial_indicators(
             raise RuntimeError("空数据")
         return df
 
-    raw = cached_fetch(cache, f"fin_{plain_code(code)}_{start_year}", _fetch,
-                       ttl_days=ttl_days, retries=1, sleep=1.0)
+    metadata = {"source": "sina-financial-analysis-indicator",
+                "api": "akshare.stock_financial_analysis_indicator"}
+    fetch_metadata = {}
+    try:
+        raw = cached_fetch(cache, f"fin_{plain_code(code)}_{start_year}", _fetch,
+                           ttl_days=ttl_days, retries=1, sleep=1.0, metadata=fetch_metadata)
+    except RuntimeError as exc:
+        exc.fetch_metadata = {**metadata, **fetch_metadata}
+        raise
+    metadata.update(fetch_metadata)
 
     def pick(*candidates: str) -> pd.Series:
         for c in candidates:
@@ -503,7 +511,9 @@ def fetch_financial_indicators(
 
     date_col = next((c for c in ("日期", "报告期", "date") if c in raw.columns), None)
     if date_col is None:
-        return pd.DataFrame()
+        out = pd.DataFrame()
+        out.attrs["indicator_source"] = {**metadata, "data_status": "invalid_schema"}
+        return out
     out = pd.DataFrame(
         {
             "report_date": pd.to_datetime(raw[date_col], errors="coerce"),
@@ -531,7 +541,9 @@ def fetch_financial_indicators(
     # 只有 12-31 那一期是完整年度值，跨期直接平均会得到无意义的结果。
     # 这里显式标出年度行，由下游（summarize_financials）只对年度行取均值。
     out["is_annual"] = out["report_date"].dt.month.eq(12)
-    return out.reset_index(drop=True)
+    out = out.reset_index(drop=True)
+    out.attrs["indicator_source"] = metadata
+    return out
 
 
 def fetch_valuation_history(

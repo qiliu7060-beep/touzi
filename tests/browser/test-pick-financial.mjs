@@ -102,7 +102,8 @@ for(const {file,cloud} of browserTestRuntimes(import.meta.url)) {
   evidenceSample.financial_analysis.metrics.capex_to_profit.status = 'not_applicable';
   assert.equal(pure.qualityEvidence(evidenceSample).pending.length,0);
   assert.match(pure.qualityEvidenceText(evidenceSample),/适用子项齐备.*行业豁免/);
-  assert.doesNotMatch(pure.qualityEvidenceText(evidenceSample),/待核验/);
+  assert.doesNotMatch(pure.qualityEvidenceText(evidenceSample),/待核验：债务股权/);
+  assert.match(pure.qualityEvidenceText(evidenceSample),/独立取数核验：ROE：取数时间未知或异常/);
   evidenceSample.financial_analysis.metrics.debt_equity.status = 'missing';
   evidenceSample.financial_analysis.metrics.capex_to_profit.status = 'missing';
   assert.equal(JSON.stringify(evidenceSample),untouchedEvidence,'证据展示不得修改已发布分数或数据');

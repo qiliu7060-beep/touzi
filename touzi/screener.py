@@ -341,6 +341,8 @@ class Screener:
                 LOG.debug("%s %s 抓取失败：category=%s elapsed_ms=%.1f", code, key,
                           failure["category"], (time.monotonic() - started) * 1000)
                 out[key] = None
+                if key == "fin":
+                    out["fin_metadata"] = getattr(exc, "fetch_metadata", {})
         return out
 
     def score_one(
@@ -425,6 +427,11 @@ class Screener:
         # ---------------------------------------------------------- 质量
         fin = _clip_history(raw.get("fin"), as_of_ts)
         qsum = summarize_financials(fin, stability_years=int(cfg.quality.stability_years)) if fin is not None and len(fin) else {}
+        if not qsum.get("indicator_evidence"):
+            source = (getattr(raw.get("fin"), "attrs", {}).get("indicator_source")
+                      or raw.get("fin_metadata") or {})
+            qsum["indicator_evidence"] = {k: {**source, "report_periods": [], "disclosed_at": None}
+                                          for k in ("roe", "cashflow", "stability")}
         # 更正后的当前报表不可回填历史回测。
         qsum["financial_analysis"] = analyze_financials(
             None if point_in_time else raw.get("statements"), industry,

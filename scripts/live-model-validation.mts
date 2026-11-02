@@ -1,3 +1,4 @@
+import { validateIndicatorEvidence } from './pick-financial.mjs';
 import type { Model } from './live-scoring.mjs';
 import { validCalendar, marketClock, calendarModelExpiry, closedBaseline } from './market-calendar.mjs';
 
@@ -116,6 +117,7 @@ function financialAnalysis(value: unknown, now: number, plan: Record<string, unk
   requireValue(Array.isArray(analysis.notes) && analysis.notes.length <= 30
     && analysis.notes.every(note => text(note, 1000)));
   const quality = object(analysis.quality);
+  validateIndicatorEvidence(quality, now);
   requireValue(finite(quality.coverage) && quality.coverage >= 0 && quality.coverage <= 1);
   requireValue(Array.isArray(quality.missing) && quality.missing.length <= 5
     && quality.missing.every(key => QUALITY_KEYS.includes(String(key))));
