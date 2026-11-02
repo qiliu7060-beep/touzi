@@ -463,3 +463,9 @@ excel_file = "score_detail.xlsx"
 top_display = 50
 # 是否在报告中输出「规则有效性验证」章节
 include_rule_validation = true
+
+# 月度定投债基趋势：基点阈值，初始工程参数并非最优策略证明
+[investment]
+caution_bp = 5
+pause_bp = 15
+long_pressure_bp = 15

@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-FILES = ("live-scoring.mts", "live-model-validation.mts", "market-calendar.mjs", "financial-coverage.mjs", "pick-financial.mjs", "close-browser.mjs", "close-score-validation.mts")
+FILES = ("live-scoring.mts", "live-model-validation.mts", "market-calendar.mjs", "financial-coverage.mjs", "pick-financial.mjs", "close-browser.mjs", "close-score-validation.mts", "investment-browser.mjs")
 
 
 def main():
@@ -28,6 +28,7 @@ def main():
     snippet = generated.replace("export ", "") + "\n" + (ROOT / "webapp/lib/financial-coverage.mjs").read_text(encoding="utf-8").replace("export ", "")
     snippet += "\n" + (ROOT / "webapp/lib/pick-financial.mjs").read_text(encoding="utf-8").replace("export ", "")
     snippet += "\n" + (ROOT / "webapp/lib/close-browser.mjs").read_text(encoding="utf-8").replace("export ", "")
+    snippet += "\n" + (ROOT / "webapp/lib/investment-browser.mjs").read_text(encoding="utf-8").replace("export ", "")
     block = "  // MARKET_CALENDAR_START (generated)\n" + snippet + "  // MARKET_CALENDAR_END\n"
     for relative in ("scripts/static/app.js", "webapp/public/legacy/app.js"):
         path = ROOT / relative
