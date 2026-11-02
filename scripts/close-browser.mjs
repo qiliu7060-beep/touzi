@@ -162,10 +162,10 @@ export function createCloseBrowser(options) {
     if (JSON.stringify(value).length > maximum) throw new Error('收盘评分响应过大');
     return { value, bytes: null };
   }
-  async function staticPayload(codes) {
+  async function staticPayload(codes, remote = false) {
     let base = '';
     let manifest;
-    try { manifest = (await json('close-scores.json', 2 * 1024 * 1024)).value; }
+    try { if (remote) throw new Error('检查规范源'); manifest = (await json('close-scores.json', 2 * 1024 * 1024)).value; }
     catch {
       base = 'https://raw.githubusercontent.com/qiliu7060-beep/touzi/close-data/';
       manifest = (await json(base + 'close-scores.json', 2 * 1024 * 1024)).value;
@@ -216,7 +216,14 @@ export function createCloseBrowser(options) {
       }
       wanted.forEach(code => { if (part.entries[code]) entries[code] = part.entries[code]; });
     }
-    return Object.assign({}, manifest, { entries, status: 'ok', errors: [] });
+    const accepted = Object.assign({}, manifest, { entries, status: 'ok', errors: [] });
+    if (!remote && !base && !closeScoreIsCurrent(manifest, now(), options.calendarCheck)) {
+      try { const latest = await staticPayload(codes, true);
+        if (latest.score_date > manifest.score_date) return latest;
+        if (latest.score_date === manifest.score_date && closeSnapshotIdentity(latest) !== closeSnapshotIdentity(manifest)) throw new Error('同日收盘源冲突');
+      } catch { /* 新源失败时保留已完整核验的历史结果及其日期。 */ }
+    }
+    return accepted;
   }
   async function load(codes) {
     const generation = codes ? 0 : ++viewRequest;
@@ -347,7 +354,11 @@ export function createCloseSelectionView(doc, controller, options) {
       const row = rows.get(code), item = state.index.find(value => value.code === code), entry = state.entries[code];
       const cells = row.querySelectorAll('td');
       row.setAttribute('data-name', item.name); cells[2].textContent = item.name;
-      cells[3].textContent = item.action;
+      cells[3].textContent = '';
+      const actionPill = doc.createElement('span');
+      actionPill.className = 'pill ' + ({'建仓':'great','接近建仓':'mid','观望':'weak','回避':'bad','候选':'mid','待核验':'mid'}[item.action] || 'mid');
+      actionPill.textContent = item.action; cells[3].appendChild(actionPill);
+      cells[4].className = 'close-total'; cells[4].setAttribute('style', 'font-size:18px;font-weight:700');
       [['total',4],['price',5],['pe',6],['pb',7],['dy',8]].forEach(([key, column]) => { cells[column].textContent = entry && typeof entry[key] === 'number' ? entry[key].toFixed(key === 'price' ? 3 : 2) : key === 'total' && typeof item.total === 'number' ? item.total.toFixed(2) : '—'; });
       cells[4].title = '固定收盘评分 · ' + (snapshot && snapshot.score_date || '未知日期');
       const checks = entry && entry.buy_checks || [];

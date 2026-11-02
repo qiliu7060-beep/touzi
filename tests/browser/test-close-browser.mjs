@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { webcrypto, createHash } from 'node:crypto';
 import { browserTestRuntimes } from './browser-test-runtime.mjs';
-const { sortCloseIndex } = await import(new URL(browserTestRuntimes(import.meta.url)[0].cloud
-  ? '../lib/close-browser.mjs' : '../../scripts/close-browser.mjs', import.meta.url));
+// 完整Sites工作区与独立Python仓库共用同一份测试。
+const helper = new URL('../lib/close-browser.mjs', import.meta.url);
+const { sortCloseIndex } = await import(existsSync(helper) ? helper.href : new URL('../../scripts/close-browser.mjs', import.meta.url).href);
 
 const mixed = [
   {code:'000004',action:'观望',total:99}, {code:'000003',action:'建仓',total:50},

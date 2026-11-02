@@ -320,6 +320,8 @@ def page(title: str, active: str, body: str, *, bar: str = "",
     """
     if interval is None:
         interval = LIVE_INTERVAL
+    if active in ("overview", "pick"):
+        body = '<p><a href="#__investment">本月投资分配：输入总金额，计算股票、债基和现金</a></p>' + body
     tail = live_js(interval) if script is None else script
     return (
         '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'

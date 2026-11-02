@@ -1,0 +1,66 @@
+name: Daily investment context
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/investment-context.yml'
+      - 'scripts/build_investment.py'
+      - 'scripts/publish_investment.py'
+      - 'touzi/investment.py'
+      - 'config/settings.toml'
+  pull_request:
+    paths:
+      - '.github/workflows/investment-context.yml'
+      - 'scripts/build_investment.py'
+      - 'scripts/publish_investment.py'
+      - 'touzi/investment.py'
+      - 'tests/test_investment.py'
+      - 'tests/test_publish_investment.py'
+      - 'config/settings.toml'
+  schedule:
+    # 北京时间17:35首轮、18:35重试；同日允许宏观数据推进。
+    - cron: '35 9 * * 1-5'
+    - cron: '35 10 * * 1-5'
+permissions:
+  contents: read
+concurrency:
+  group: investment-context
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: python -m unittest tests.test_investment tests.test_publish_investment
+  refresh:
+    if: github.event_name != 'pull_request'
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    env:
+      PYTHONUTF8: '1'
+      TOUZI_PROXY: ''
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - run: python scripts/build_investment.py
+      - run: python scripts/publish_investment.py --validate-only .investment-output/investment-context.json
+      - run: python scripts/publish_investment.py .investment-output/investment-context.json
+        env:
+          GH_TOKEN: ${{ github.token }}
