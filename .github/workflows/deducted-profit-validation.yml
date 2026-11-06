@@ -1,0 +1,41 @@
+name: Offline deducted profit evidence regression
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/deducted-profit-validation.yml'
+      - 'touzi/data/deducted_profit.py'
+      - 'touzi/data/financial.py'
+      - 'touzi/util.py'
+      - 'scripts/validate_deducted_profit_trial.py'
+      - 'tests/test_deducted_profit*.py'
+      - 'tests/fixtures/deducted_trial_20261106/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deducted-profit-validation.yml'
+      - 'touzi/data/deducted_profit.py'
+      - 'touzi/data/financial.py'
+      - 'touzi/util.py'
+      - 'scripts/validate_deducted_profit_trial.py'
+      - 'tests/test_deducted_profit*.py'
+      - 'tests/fixtures/deducted_trial_20261106/**'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install 'numpy>=1.26,<2' 'pandas>=2.2,<3'
+      - name: Replay saved responses and test fail-closed version detection
+        run: python -m unittest discover -s tests -p 'test_deducted_profit*.py' -q
