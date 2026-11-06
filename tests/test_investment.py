@@ -27,13 +27,24 @@ class InvestmentTests(unittest.TestCase):
         days=[d for d in pd.date_range('2026-06-01','2026-10-30') if trading_day(d.date())][-65:]
         now=datetime(2026,10,30,19,tzinfo=TZ)
         rules=dict(caution_bp=5,pause_bp=15,long_pressure_bp=15)
-        for delta,expected in [(0,1),(4.999,.75),(5,.5),(14.999,.5),(15,0)]:
+        for delta,expected,interval in [(0,1,'≤0'),(4.999,.75,'0至不足5'),(5,.5,'5至不足15'),(14.99999999,.5,'5至不足15'),(15,0,'≥15')]:
             values=[2.0]*65
             values[-5:]=[2+delta/100]*5
-            self.assertEqual(bond_signal(pd.Series(values,index=days),now,rules)['factor'],expected)
+            signal = bond_signal(pd.Series(values,index=days),now,rules)
+            self.assertEqual(signal['factor'],expected)
+            self.assertIn(f'命中{interval}基点区间', signal['reasons'][0])
+            self.assertIn(f'基础投入系数{expected:.0%}', signal['reasons'][0])
+            self.assertIn(f"20日趋势{signal['delta20_bp']}基点", signal['reasons'][0])
         values=[2.0]*65
         values[-65:-60]=[1.8]*5
-        self.assertEqual(bond_signal(pd.Series(values,index=days),now,rules)['factor'],.5)
+        signal = bond_signal(pd.Series(values,index=days),now,rules)
+        self.assertEqual(signal['factor'],.5)
+        self.assertIn('将投入系数限制为50%', signal['reasons'][1])
+        # 展示阈值来自实际配置，不能在网页里另写一套固定的5/15规则。
+        rules = dict(caution_bp=7,pause_bp=18,long_pressure_bp=25)
+        signal = bond_signal(pd.Series(values,index=days),now,rules)
+        self.assertEqual(signal['factor'],1)
+        self.assertIn('未达到25基点压力阈值', signal['reasons'][1])
 
     def test_direction(self):
         days=[d for d in pd.date_range('2026-06-01','2026-10-30') if trading_day(d.date())]
