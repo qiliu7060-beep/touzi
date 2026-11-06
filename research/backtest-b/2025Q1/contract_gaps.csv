@@ -1,0 +1,9 @@
+input,severity,evidence_status,obtained_coverage,required_evidence,source_route
+historical_universes,blocking,unresolved,0 complete historical universes,完整逐股历史池、ST/行业/上市退市区间及当日筛选证据,Tushare bak_basic/daily_basic + 交易所原公告
+fin,blocking,partial_documentary,1 company; 2 pre-signal reports; incomplete vintages,全部候选公司多年年报、更正链及指标映射,公司/巨潮原PDF + RQData PIT statements=all 实数核对
+pe_hist/pb_hist,blocking,unresolved,0 verified daily series,历史PE_TTM/PB实数、原始版本与修订口径说明,Tushare daily_basic 或可出具历史版本证据的供应商
+div,blocking,partial_documentary,1 pre-signal implemented event,自上市以来全部事件及变更版本,实施公告 + dividend 导出核对
+price_hist,blocking,unresolved,0 complete daily series,未复权close及价格单位,交易所/行情供应商未复权日线
+return_price_hist,blocking,unresolved,0 verified return series,逐敞口日close/volume/证券状态；公司行动一致性,daily+adj_factor+suspend_d+原公告
+benchmark,blocking,unresolved,0 daily index series,2025-03-31至2025-07-01完整沪深300日线及市场日历,中证/交易所或供应商index_daily+trade_cal
+bond_hist,optional_disclose,not_collected,0 series,历史收益率版本及单位；缺失时披露不用利差项,中债或经核验供应商
