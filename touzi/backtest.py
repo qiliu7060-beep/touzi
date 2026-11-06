@@ -378,9 +378,15 @@ def backtest_portfolio(
             raise HistoricalDataError(f"回测B：{code} 缺少经核验的统一复权收益价格及成交量", audit_df)
         prices[code] = raw["return_price_hist"]
     # Quantity sizing must use the same basis as fills (not unadjusted signal prices).
-    terminal = idx.index[idx.index > q_ends[-1]][0]
-    simulation = simulate_closes(prices, idx.loc[:terminal, "close"], targets, cost,
-                                 int(bcfg.get("max_wait_days", 15)))
+    # The last quarter end is a valuation boundary, not an extra signal.
+    # Do not add an unexplained next-session return to the final quarter.
+    terminal = q_ends[-1]
+    try:
+        simulation = simulate_closes(prices, idx.loc[:terminal, "close"], targets, cost,
+                                     int(bcfg.get("max_wait_days", 15)))
+    except HistoricalDataError as exc:
+        exc.audit = pd.concat([audit_df, exc.audit], ignore_index=True, sort=False)
+        raise
     daily = simulation["daily"]
     boundaries = [*targets, terminal]
     periods = []
@@ -812,4 +818,5 @@ def backtest_stocks(
              len(sdf), len(tdf), overall.get("平均策略收益%"), overall.get("平均买入持有%"))
     return {"trades": tdf, "stocks": sdf, "metrics": metrics,
             "start": str(dates[0].date()), "end": str(dates[-1].date())}
+
 

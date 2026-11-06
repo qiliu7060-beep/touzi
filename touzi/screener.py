@@ -475,6 +475,10 @@ class Screener:
             if fin is None or len(fin) == 0:
                 parts["quality"] = RuleResult("质量", float("nan"), "缺少已披露历史版本")
                 unavailable.append("fin")
+            elif not np.isfinite(parts["quality"].score):
+                # A dated row with no usable quality metrics is not evidence
+                # for a valuation/dividend-only substitute strategy.
+                unavailable.append("quality")
             if not raw.get("div_history_complete", False):
                 # Empty records do not prove zero dividends or a complete history.
                 parts["dividend"] = RuleResult("股息", float("nan"), "缺少已披露分红记录")
@@ -649,4 +653,5 @@ class Screener:
             df.insert(0, "排名", range(1, len(df) + 1))
         self.results = results
         return df
+
 

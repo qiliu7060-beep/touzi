@@ -1,5 +1,8 @@
 """Offline regression cases: facts available at signal time and actual cash flows."""
 import unittest
+import json
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
@@ -72,6 +75,39 @@ class HistoricalFacts(unittest.TestCase):
         raw["fin"] = pd.concat([raw["fin"], version])
         self.assertEqual(disclosed(raw["fin"], pd.Timestamp("2022-06-30"), "report_date").roe.iloc[0], 15)
         self.assertEqual(disclosed(raw["fin"], pd.Timestamp("2022-08-02"), "report_date").roe.iloc[0], 99)
+
+    def test_unpadded_dates_select_chronologically_latest_version(self):
+        fin = pd.concat([archive()["fin"]] * 2, ignore_index=True)
+        fin["available_at"] = ["2022-9-1", "2022-10-1"]
+        fin["report_date"] = ["2021-12-31", pd.Timestamp("2021-12-31")]
+        fin["roe"] = [15, 99]
+        visible = disclosed(fin, pd.Timestamp("2022-11-01"), "report_date")
+        self.assertEqual(len(visible), 1)
+        self.assertEqual(visible.roe.iloc[0], 99)
+
+    def test_conflicting_same_time_versions_fail_but_exact_duplicates_are_safe(self):
+        fin = archive()["fin"]
+        duplicate = pd.concat([fin, fin], ignore_index=True)
+        self.assertEqual(len(disclosed(duplicate, pd.Timestamp("2022-06-30"), "report_date")), 1)
+        duplicate.loc[1, "roe"] = 99
+        with self.assertRaisesRegex(ValueError, "Conflicting"):
+            disclosed(duplicate, pd.Timestamp("2022-06-30"), "report_date")
+
+    def test_future_version_conflicts_do_not_change_current_information(self):
+        fin = archive()["fin"]
+        future = fin.assign(available_at="2099-01-01")
+        versions = pd.concat([fin, future, future.assign(roe=99)])
+        visible = disclosed(versions, pd.Timestamp("2022-06-30"), "report_date")
+        self.assertEqual(visible.roe.iloc[0], 15)
+
+    def test_empty_quality_metrics_never_rank_a_dated_financial_row(self):
+        raw = archive()
+        for col in ("roe", "profit_growth", "ocf_to_profit", "debt_ratio", "current_ratio"):
+            raw["fin"][col] = np.nan
+        score = self.score(raw)
+        self.assertTrue(np.isnan(score.parts["quality"].score))
+        self.assertTrue(np.isnan(score.total))
+        self.assertIn("quality", score.data_flags["历史信息缺失"])
 
     def test_pe_pb_absent_never_use_current_snapshot(self):
         for field in ("pe_hist", "pb_hist"):
@@ -169,13 +205,64 @@ class Execution(unittest.TestCase):
     def test_initial_loss_is_included_in_drawdown(self):
         self.assertEqual(_portfolio_metrics(pd.Series([-.1, 0.0]), 252)["最大回撤%"], -10)
 
-    def test_missing_volume_and_side_block_never_fill(self):
-        for column, value in (("volume", np.nan), ("buy_blocked", True)):
+    def test_side_block_never_fills(self):
+        ph = prices(self.dates, [10]*4)
+        ph["buy_blocked"] = True
+        result = self.run_ledger({"a": ph})
+        self.assertTrue(result["trades"].empty)
+        self.assertEqual(result["daily"].nav.iloc[-1], 1)
+
+    def test_unknown_volume_or_missing_quote_refuses_performance(self):
+        for col, value in (("volume", np.nan), ("volume", -1), ("close", np.nan)):
+            with self.subTest(col=col, value=value):
+                ph = prices(self.dates, [10]*4)
+                ph.loc[self.dates[2], col] = value
+                with self.assertRaises(HistoricalDataError) as ctx:
+                    self.run_ledger({"a": ph})
+                self.assertEqual(ctx.exception.audit.iloc[0]["code"], "a")
+                self.assertEqual(ctx.exception.audit.iloc[0]["date"], self.dates[2])
+
+    def test_truncated_and_internal_price_gaps_are_not_suspensions(self):
+        for dates in (self.dates[:2], self.dates.delete(2)):
+            with self.assertRaisesRegex(HistoricalDataError, "unexplained_return_price_gap"):
+                self.run_ledger({"a": prices(dates, [10]*len(dates))})
+
+    def test_sourced_suspension_retains_cash_and_marks_without_filling(self):
+        ph = prices(self.dates, [10, np.nan, 12, 13])
+        ph["security_status"] = "trading"
+        ph["status_source"] = ""
+        ph.loc[self.dates[1], ["security_status", "status_source", "volume"]] = ["suspended", "archive:event-1", np.nan]
+        result = self.run_ledger({"a": ph})
+        self.assertEqual(result["daily"].cash.iloc[1], 1)
+        self.assertEqual(result["trades"].date.iloc[0], self.dates[2])
+        self.assertIn("suspended_mark", result["events"].event.tolist())
+
+    def test_sourced_suspended_holding_uses_prior_mark(self):
+        ph = prices(self.dates, [10, 10, np.nan, 12])
+        ph["security_status"] = "trading"
+        ph["status_source"] = ""
+        ph.loc[self.dates[2], ["security_status", "status_source", "volume"]] = ["suspended", "archive:event-2", np.nan]
+        result = self.run_ledger({"a": ph})
+        self.assertEqual(result["daily"].nav.iloc[2], 1)
+        self.assertAlmostEqual(result["daily"].nav.iloc[-1], 1.2)
+
+    def test_unsupported_delisting_and_unsourced_suspension_refuse_performance(self):
+        for status in ("delisted", "suspended"):
             ph = prices(self.dates, [10]*4)
-            ph[column] = value
-            result = self.run_ledger({"a": ph})
-            self.assertTrue(result["trades"].empty)
-            self.assertEqual(result["daily"].nav.iloc[-1], 1)
+            ph["security_status"] = "trading"
+            ph.loc[self.dates[2], "security_status"] = status
+            with self.assertRaises(HistoricalDataError):
+                self.run_ledger({"a": ph})
+
+    def test_prices_after_exit_are_not_required(self):
+        px = {"a": prices(self.dates[:3], [10]*3)}
+        result = self.run_ledger(px, {self.dates[0]: ["a"], self.dates[1]: []})
+        self.assertAlmostEqual(result["daily"].nav.iloc[-1], 1)
+
+    def test_future_selection_does_not_require_prelisting_quotes(self):
+        px = {"a": prices(self.dates[1:], [10]*3)}
+        result = self.run_ledger(px, {self.dates[0]: [], self.dates[1]: ["a"]})
+        self.assertEqual(result["trades"].date.iloc[0], self.dates[2])
 
     def test_expiry_and_end_do_not_invent_liquidation(self):
         px = {"a": prices(self.dates, [10]*4, [100, 0, 0, 100])}
@@ -223,6 +310,104 @@ class PortfolioIntegration(unittest.TestCase):
         self.assertAlmostEqual(result["metrics"]["超额"]["累计超额%"], 0)
         self.assertTrue(result["audit"].eligible.all())
 
+    def test_price_truncation_stops_and_retains_score_and_price_audits(self):
+        raw = archive()
+        raw["return_price_hist"] = raw["return_price_hist"].loc[:"2022-07-01"]
+        with self.assertRaises(HistoricalDataError) as ctx:
+            self.run_b(raw)
+        audit = ctx.exception.audit
+        self.assertTrue(audit["signal_date"].notna().any())
+        self.assertIn("unexplained_return_price_gap", audit["missing"].tolist())
+
+    def test_last_quarter_is_valuation_boundary_and_future_returns_are_excluded(self):
+        raw = archive()
+        raw["return_price_hist"].loc["2023-07-03":, "close"] = 1000
+        result = self.run_b(raw)
+        self.assertEqual(result["daily"].index[-1], pd.Timestamp("2023-06-30"))
+        self.assertEqual(result["periods"].iloc[-1]["下期"], "2023-06-30")
+        self.assertEqual(result["periods"].iloc[-1]["调仓日"], "2023-03-31")
+        self.assertEqual(result["metrics"]["组合"]["累计收益%"], 0)
+        self.assertFalse((result["audit"].signal_date == pd.Timestamp("2023-06-30")).any())
+
+
+class PipelineIntegration(unittest.TestCase):
+    def test_expected_refusal_is_saved_without_reusing_old_portfolio(self):
+        from scripts.run_all import _run_portfolio_checked, _load_backtest
+
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            pd.DataFrame({"旧收益": [96.04]}).to_csv(root / "backtest_portfolio.csv", index=False)
+            (root / "backtest_metrics.json").write_text(json.dumps({"portfolio": {"累计收益%": 96.04}}))
+            audit = pd.DataFrame([{"code": "000001", "missing": "fin"}])
+            with patch("builtins.print"):
+                result = _run_portfolio_checked(
+                    unittest.mock.Mock(side_effect=HistoricalDataError("无原始档案", audit)), root)
+                _, loaded = _load_backtest(load_config(), root)
+            self.assertIsNone(result)
+            self.assertIsNone(loaded)
+            status = json.loads((root / "backtest_b_status.json").read_text())
+            self.assertEqual(status["status"], "not_computed")
+            self.assertEqual(pd.read_csv(root / "backtest_b_audit.csv")["missing"].iloc[0], "fin")
+
+    def test_unexpected_programming_error_is_not_suppressed(self):
+        from scripts.run_all import _run_portfolio_checked
+
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(RuntimeError, "bug"):
+                _run_portfolio_checked(unittest.mock.Mock(side_effect=RuntimeError("bug")), Path(folder))
+
+    def test_latest_refusal_blocks_even_previously_computed_cache(self):
+        from scripts.run_all import _load_backtest
+
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            pd.DataFrame({"组合收益%": [0]}).to_csv(root / "backtest_portfolio.csv", index=False)
+            meta = {"status": "computed", "history_contract": "pit-v2"}
+            (root / "backtest_metrics.json").write_text(json.dumps({"portfolio": meta}))
+            status_path = root / "backtest_b_status.json"
+            status_path.write_text(json.dumps(meta))
+            self.assertIsNotNone(_load_backtest(load_config(), root)[1])
+            status_path.write_text(json.dumps({**meta, "status": "not_computed"}))
+            with patch("builtins.print"):
+                self.assertIsNone(_load_backtest(load_config(), root)[1])
+
+    def test_refused_b_still_runs_c_and_generates_reports(self):
+        from scripts.run_all import build_parser, run_once
+        from touzi.util import Cache
+
+        cfg = load_config()
+        args = build_parser().parse_args(["--skip-macro"])
+        empty = pd.DataFrame()
+        macro_bt = {"summary": {}, "table": empty, "detail": empty, "tables": {}}
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            with patch("touzi.screener.Screener") as scr, \
+                 patch("touzi.tracker.ensure_holdings_template"), \
+                 patch("touzi.tracker.Tracker") as tracker, \
+                 patch("touzi.portfolio.Portfolio") as portfolio, \
+                 patch("touzi.backtest.validate_macro_rules", return_value=macro_bt), \
+                 patch("touzi.backtest.backtest_portfolio", side_effect=HistoricalDataError("档案不足")), \
+                 patch("touzi.backtest.backtest_stocks", return_value={}) as c, \
+                 patch("touzi.regime.data_freshness", return_value=None), \
+                 patch("touzi.signals.policy.load_industry_policy", return_value=empty), \
+                 patch("touzi.signals.policy.load_policy_events", return_value=empty), \
+                 patch("touzi.report.build_dashboard", return_value="dashboard.html") as dashboard, \
+                 patch("touzi.report.build_markdown", return_value="report.md") as markdown, \
+                 patch("builtins.print"):
+                scr.return_value.run.return_value = empty
+                scr.return_value.results = []
+                tracker.return_value.build.return_value = pd.DataFrame(columns=["建议动作"])
+                portfolio.return_value.build.return_value = empty
+                result = run_once(cfg, args, Cache(root / "cache"), None, root)
+            c.assert_called_once()
+            dashboard.assert_called_once()
+            markdown.assert_called_once()
+            self.assertIsNone(result["port_bt"])
+            saved = json.loads((root / "backtest_metrics.json").read_text())
+            self.assertEqual(saved["portfolio"]["status"], "not_computed")
+            self.assertNotIn("组合", saved["portfolio"])
+
 
 if __name__ == "__main__":
     unittest.main()
+

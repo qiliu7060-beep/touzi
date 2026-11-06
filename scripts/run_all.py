@@ -42,18 +42,49 @@ def _fmt_seconds(s: float) -> str:
     return f"{s / 60:.1f} 分钟" if s >= 60 else f"{s:.1f} 秒"
 
 
+def _run_portfolio_checked(run, out_dir: Path, **kwargs):
+    """Only expected historical-data refusal is isolated from the report run."""
+    from touzi.portfolio_pit import HistoricalDataError
+
+    try:
+        result = run(**kwargs)
+    except HistoricalDataError as exc:
+        exc.audit.to_csv(out_dir / "backtest_b_audit.csv", index=False, encoding="utf-8-sig")
+        status = {"status": "not_computed", "history_contract": "pit-v2",
+                  "reason": str(exc), "audit_file": "backtest_b_audit.csv"}
+        print(f"      回测B 未计算（其余流程继续）：{exc}")
+        result = None
+    else:
+        status = {"status": "computed", "history_contract": "pit-v2"}
+    (out_dir / "backtest_b_status.json").write_text(
+        json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
+    return result
+
+
 def _load_backtest(cfg, out_dir: Path) -> tuple[dict | None, dict | None]:
     """复用磁盘上的回测结果（--reuse-backtest）。"""
     saved = json.loads((out_dir / "backtest_metrics.json").read_text(encoding="utf-8"))
     macro_bt = {"summary": saved.get("macro", {}).get("summary"),
                 "tables": saved.get("macro", {}).get("tables", {})}
     port_bt = None
-    if (out_dir / "backtest_portfolio.csv").exists():
+    portfolio = saved.get("portfolio") or {}
+    status_path = out_dir / "backtest_b_status.json"
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        status = {}
+    if (portfolio.get("status") == "computed"
+            and portfolio.get("history_contract") == "pit-v2"
+            and status.get("status") == "computed"
+            and status.get("history_contract") == "pit-v2"
+            and (out_dir / "backtest_portfolio.csv").exists()):
         port_bt = {"periods": pd.read_csv(out_dir / "backtest_portfolio.csv"),
                    "metrics": saved.get("portfolio", {}),
                    "top_n": saved.get("portfolio", {}).get("top_n"),
                    "cost_rate": cfg.backtest.get("cost_rate", 0.0015),
                    "start": saved.get("portfolio", {}).get("start")}
+    elif (out_dir / "backtest_portfolio.csv").exists():
+        print("      回测B 未复用：旧结果或未计算结果不符合当前严格历史契约")
     return macro_bt, port_bt
 
 
@@ -234,13 +265,14 @@ def run_once(cfg, args, cache: Cache, proxy: str | None, out_dir: Path) -> dict:
         if not args.skip_portfolio:
             print(f"      回测B（组合，候选上限 {args.backtest_limit}，{args.quarters} 期）"
                   "—— 每期都要重打分，最慢的一步 …")
-            port_bt = backtest_portfolio(cfg, cache=cache, proxy=proxy,
-                                         limit=args.backtest_limit, quarters=args.quarters,
-                                         workers=args.workers)
-            periods = port_bt.get("periods")
+            port_bt = _run_portfolio_checked(
+                backtest_portfolio, out_dir, cfg=cfg, cache=cache, proxy=proxy,
+                limit=args.backtest_limit, quarters=args.quarters, workers=args.workers)
+            periods = (port_bt or {}).get("periods")
             if periods is not None and len(periods):
                 periods.to_csv(out_dir / "backtest_portfolio.csv", index=False, encoding="utf-8-sig")
-            print("      " + json.dumps(port_bt.get("metrics", {}), ensure_ascii=False))
+            if port_bt is not None:
+                print("      " + json.dumps(port_bt.get("metrics", {}), ensure_ascii=False))
 
         if not args.skip_stocks_backtest:
             mth = int(args.stocks_months or cfg.get_path("backtest.stocks_months", 48) or 48)
@@ -276,6 +308,8 @@ def run_once(cfg, args, cache: Cache, proxy: str | None, out_dir: Path) -> dict:
         # metrics 本身不含 top_n/start/cost_rate（它们是 backtest_portfolio 的兄弟键），
         # 这里合并进去，复用路径才能原样还原「每期持仓数」等信息
         port_meta = dict((port_bt or {}).get("metrics", {}) or {})
+        port_meta.update(status="computed" if port_bt is not None else "not_computed",
+                         history_contract="pit-v2")
         for k in ("top_n", "start", "cost_rate"):
             if port_meta.get(k) is None:
                 port_meta[k] = (port_bt or {}).get(k)
@@ -469,3 +503,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

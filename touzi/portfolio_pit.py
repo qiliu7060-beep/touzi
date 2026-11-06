@@ -24,13 +24,27 @@ def disclosed(frame, signal, period_col=None):
     if "available_at" not in frame:
         return frame.iloc[:0].copy()
     # Conservative next-day availability also for timestamped publications.
-    published = pd.to_datetime(frame["available_at"], errors="coerce")
+    published = pd.to_datetime(frame["available_at"], errors="coerce", format="mixed")
+    if published.dt.tz is not None:
+        raise ValueError("Publications require naive China-local timestamps")
     mask = published.notna() & (published.dt.normalize() < pd.Timestamp(signal).normalize())
     if period_col:
-        mask &= pd.to_datetime(frame[period_col], errors="coerce") <= signal
+        periods = pd.to_datetime(frame[period_col], errors="coerce", format="mixed")
+        if periods.dt.tz is not None:
+            raise ValueError("Report/event dates require naive China-local dates")
+        periods = periods.dt.normalize()
+        mask &= periods.notna() & (periods <= signal)
     out = frame.loc[mask].copy()
+    # Use the parsed values for BOTH filtering and version selection. Lexical
+    # sorting would put '2022-9-1' after '2022-10-1'.
+    out["available_at"] = published.loc[mask]
     if period_col:
-        out = out.sort_values("available_at").drop_duplicates(period_col, keep="last")
+        out[period_col] = periods.loc[mask]
+        keys = [period_col, "available_at"]
+        for _, versions in out.groupby(keys):
+            if len(versions.drop_duplicates()) > 1:
+                raise ValueError("Conflicting historical versions at the same publication time")
+        out = out.sort_values("available_at", kind="stable").drop_duplicates(period_col, keep="last")
         out = out.sort_values(period_col)
     return out
 
@@ -104,7 +118,9 @@ def simulate_closes(prices, benchmark, targets, cost=0.0015, max_wait_days=15):
     frames = {}
     for code, frame in prices.items():
         if not isinstance(frame.index, pd.DatetimeIndex) or frame.index.has_duplicates:
-            raise ValueError(f"{code}: unique dated prices required")
+            raise HistoricalDataError(f"{code}: unique dated prices required", pd.DataFrame([
+                {"code": code, "eligible": False, "missing": "return_price_dates",
+                 "stage": "return_prices"}]))
         frames[code] = frame.sort_index()
     cash, units, marks, pending = 1.0, {}, {}, {}
     rows, trades, events = [], [], []
@@ -118,6 +134,44 @@ def simulate_closes(prices, benchmark, targets, cost=0.0015, max_wait_days=15):
     b_start = calendar[1]
     b0 = float(benchmark.loc[b_start])
     for day in calendar:
+        def missing_price(code, reason):
+            raise HistoricalDataError(
+                f"回测B：{code} {day.date()} 收益价格/证券状态不足，未计算收益：{reason}",
+                pd.DataFrame([{"date": day, "code": code, "eligible": False,
+                               "missing": reason, "stage": "return_prices"}]))
+
+        # Expired, unheld orders no longer require market data.
+        for code, (_, issued) in list(pending.items()):
+            if (day - issued).days > max_wait_days:
+                events.append({"date": day, "code": code, "event": "expired"})
+                del pending[code]
+        required = ({c for c, q in units.items() if q > 0}
+                    | set(pending) | set(targets.get(day, [])))
+        for code in sorted(required):
+            frame = frames.get(code)
+            if frame is None or day not in frame.index:
+                missing_price(code, "unexplained_return_price_gap")
+            r = frame.loc[day]
+            status = r.get("security_status", "")
+            if not isinstance(status, str) or status not in ("", "trading", "suspended"):
+                # Delisting needs a verified settlement path; never freeze the
+                # last quote forever or invent a liquidation value.
+                missing_price(code, "unsupported_or_unknown_security_status")
+            suspended = status == "suspended"
+            if suspended and not (isinstance(r.get("status_source"), str)
+                                  and r["status_source"].strip()):
+                missing_price(code, "suspension_without_source")
+            close = pd.to_numeric(r.get("close"), errors="coerce")
+            volume = pd.to_numeric(r.get("volume"), errors="coerce")
+            valid_close = np.isfinite(close) and close > 0
+            valid_volume = np.isfinite(volume) and volume >= 0
+            if not suspended and not (valid_close and valid_volume):
+                missing_price(code, "invalid_return_close_or_volume")
+            if suspended and not valid_close:
+                if code not in marks:
+                    missing_price(code, "suspension_without_prior_mark")
+                events.append({"date": day, "code": code, "event": "suspended_mark",
+                               "source": r["status_source"]})
         tradable = {}
         for code, frame in frames.items():
             if day not in frame.index:
@@ -128,13 +182,9 @@ def simulate_closes(prices, benchmark, targets, cost=0.0015, max_wait_days=15):
             if np.isfinite(close) and close > 0:
                 marks[code] = float(close)
                 # Missing volume is unknown, never proof of tradability.
-                if np.isfinite(volume) and volume > 0 and bool(r.get("tradable", True)):
+                if (np.isfinite(volume) and volume > 0 and bool(r.get("tradable", True))
+                        and r.get("security_status", "") != "suspended"):
                     tradable[code] = float(close)
-        # Cancel stale orders before filling. A signal is applied only after fills.
-        for code, (_, issued) in list(pending.items()):
-            if (day - issued).days > max_wait_days:
-                events.append({"date": day, "code": code, "event": "expired"})
-                del pending[code]
         orders = [(c, goal, issued) for c, (goal, issued) in pending.items()
                   if issued < day and c in tradable]
         # Sell first. Side-specific exchange restrictions can be supplied per row.
@@ -192,3 +242,4 @@ def simulate_closes(prices, benchmark, targets, cost=0.0015, max_wait_days=15):
     events.extend({"date": calendar[-1], "code": c, "event": "unfilled_at_end"} for c in pending)
     return {"daily": pd.DataFrame(rows).set_index("date"),
             "trades": pd.DataFrame(trades), "events": pd.DataFrame(events), "units": units}
+
