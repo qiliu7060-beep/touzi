@@ -2402,4 +2402,3 @@ function createInvestmentPanel(doc, options) {
   }
 })();
 
-
