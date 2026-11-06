@@ -16,6 +16,8 @@ proxy = "http://127.0.0.1:7897"
 # 缓存过期天数：宏观月度数据 7 天，行情 1 天
 cache_ttl_macro_days = 7
 cache_ttl_price_days = 1
+# 独立扣非归母金额仅供展示。生产采集需另行批准后启用；不用于历史回测。
+collect_deducted_parent_profit = false
 # 复权方式：qfq(前复权) / hfq(后复权) / ""
 adjust = "qfq"
 

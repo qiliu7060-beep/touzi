@@ -317,7 +317,9 @@ class Screener:
             "div": lambda: fetch_dividend_detail(code, self.cache, self.proxy, ttl_days=self.ttls["fund"]),
             "fin": lambda: fetch_financial_indicators(code, self.cache, start_year="2016",
                                                       ttl_days=self.ttls["fund"]),
-            "statements": lambda: fetch_financial_statements(code, self.cache, ttl_days=1, diagnostic=diagnostic),
+            "statements": lambda: fetch_financial_statements(
+                code, self.cache, ttl_days=1, diagnostic=diagnostic,
+                include_deducted=self.cfg.general.get("collect_deducted_parent_profit", False) is True),
         }
         # 回测需要历史价格（算股息率与区间收益），实时筛选不需要，故按需抓取
         if getattr(self, "_need_price", False):
