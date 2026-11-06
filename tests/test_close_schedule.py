@@ -65,6 +65,24 @@ class CloseScheduleTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             scheduled_target('2026-10-29T21:23:00Z', 'unrecognised')
 
+    def test_hourly_watchdog_targets_nominal_close_across_midnight_and_weekend(self):
+        for at in ['2026-11-06T11:43:00Z', '2026-11-06T20:43:00Z',
+                   '2026-11-07T00:10:00Z', '2026-11-09T09:00:00Z']:
+            self.assertEqual(scheduled_target(at, '43 11-20 * * 1-5'), date(2026, 11, 6))
+        self.assertEqual(scheduled_target('2026-11-09T11:43:00Z', '43 11-20 * * 1-5'), date(2026, 11, 9))
+
+    def test_explicit_preflight_date_only_prepares_without_publishing(self):
+        from scripts.close_batch import main
+        with patch('sys.argv', ['close_batch.py', 'preflight', '--score-date', '2026-11-06']), \
+             patch('scripts.close_batch.prepare', return_value={'run': True, 'status': 'ready'}) as freeze, \
+             patch('scripts.close_batch.score_batch') as score, \
+             patch('scripts.close_batch.assemble') as assemble, \
+             patch.dict('os.environ', {}, clear=True):
+            main()
+        self.assertEqual(freeze.call_args.kwargs['target_day'], date(2026, 11, 6))
+        score.assert_not_called()
+        assemble.assert_not_called()
+
     def test_normal_close_and_cross_midnight_freeze_keep_real_quote(self):
         for now in ['2026-10-29T17:23:00', '2026-10-30T00:17:00', '2026-10-30T09:29:59']:
             result, context = self.freeze(instant(now))
@@ -72,6 +90,8 @@ class CloseScheduleTests(unittest.TestCase):
             self.assertEqual(context['score_date'], '2026-10-29')
             self.assertEqual(context['quote_at'], '2026-10-29T15:05:00+08:00')
             self.assertTrue(all(t.startswith('2026-10-29T') for t in context['quote_times'].values()))
+            self.assertEqual(result['quote_accepted'], 10)
+            self.assertEqual(result['quote_coverage'], 1.)
 
     def test_wrong_day_stale_intraday_and_future_quotes_fail(self):
         for quote in ['2026-10-28 15:05:00', '2026-10-30 15:05:00', '2026-10-29 14:59:59']:
@@ -191,3 +211,4 @@ class CloseScheduleTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
