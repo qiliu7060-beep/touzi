@@ -796,7 +796,7 @@ function createInvestmentPanel(doc, options) {
     const m=saved.macro,b=saved.bond,history=error||!checked.fresh;
     status.textContent=(history?'历史参考，暂停当前自动建议':'当前分配参考')+' · 宏观计算 '+m.computed_at+' · 国债观测 '+b.observation_date+' · 抓取 '+b.fetched_at+(error?' · '+error:'');
     const stage={1:'正常',0.75:'谨慎',0.5:'防守',0:'暂停'};
-    reason.textContent='股票建议 '+(m.position*100).toFixed(1)+'%'+(m.score<=30?'，宏观分≤30，暂停新增股票投入':'')+'；国债10年收益率 '+b.yield_pct.toFixed(4)+'%，近20/60交易日 '+b.delta20_bp.toFixed(2)+' / '+b.delta60_bp.toFixed(2)+'基点；债基'+stage[b.factor]+'（投入系数 '+b.factor*100+'%）。收益率下降通常利好已有债券价格，不能等同基金未来回报。';
+    reason.textContent='股票建议 '+(m.position*100).toFixed(1)+'%'+(m.score<=30?'，宏观分≤30，暂停新增股票投入':'')+'；国债10年收益率 '+b.yield_pct.toFixed(4)+'%，近20/60交易日 '+String(b.delta20_bp)+' / '+String(b.delta60_bp)+'基点；债基'+stage[b.factor]+'（投入系数 '+b.factor*100+'%）。'+b.reasons.join('；')+'。收益率下降通常利好已有债券价格，不能等同基金未来回报。';
     const text=doc.getElementById('__investment-amount').value;
     if(!text){result.textContent='输入总额后计算股票、债基和预留现金';return;}
     try {const a=investmentAllocation(text,m.position,m.score,b.factor);const total=a.stock+a.bond+a.cash;const percent=k=>total?'（'+(a[k]/total*100).toFixed(2)+'%）':'（0.00%）';result.textContent=(history?'历史示例：':'')+'股票 '+(a.stock/100).toFixed(2)+'元'+percent('stock')+'　债基 '+(a.bond/100).toFixed(2)+'元'+percent('bond')+'　预留现金 '+(a.cash/100).toFixed(2)+'元'+percent('cash');}
@@ -2401,4 +2401,5 @@ function createInvestmentPanel(doc, options) {
     module.exports.closePublicChanges = closePublicChanges;
   }
 })();
+
 
