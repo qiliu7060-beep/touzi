@@ -3,11 +3,24 @@ run-name: "Close scores · ${{ github.event_name }} · ${{ github.event_name == 
 
 on:
   workflow_dispatch:
+    inputs:
+      score_date:
+        description: '补发目标日 YYYY-MM-DD；空值处理当天。仍校验真实日期和安全窗口'
+        required: false
+        type: string
+  pull_request:
+    paths:
+      - '.github/workflows/close-scores.yml'
+      - '.github/workflows/close-preflight.yml'
+      - 'scripts/close_batch.py'
+      - 'tests/test_close_schedule.py'
   schedule:
     # 北京时间17:23首轮、18:23重试，次日05:23补偿（UTC同一周一至五）。
     - cron: '23 9 * * 1-5'
     - cron: '23 10 * * 1-5'
     - cron: '23 21 * * 1-5'
+    # 北京时间19:43至次日04:43逐小时补偿；已发布则幂等跳过。
+    - cron: '43 11-20 * * 1-5'
   push:
     branches: [main]
     paths:
@@ -57,7 +70,7 @@ jobs:
   prepare:
     needs: check
     # 只有显式授权的启动提交可在push时精算；普通push仍只检查。
-    if: github.event_name != 'push' || contains(github.event.head_commit.message, '[run-close]')
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[run-close]'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -92,8 +105,9 @@ jobs:
         env:
           CLOSE_CREATED_AT: ${{ steps.anchor.outputs.created_at }}
           CLOSE_SCHEDULE: ${{ github.event.schedule }}
+          CLOSE_SCORE_DATE: ${{ inputs.score_date }}
           GH_TOKEN: ${{ github.token }}
-        run: python scripts/close_batch.py prepare --created-at "$CLOSE_CREATED_AT" --schedule "$CLOSE_SCHEDULE" --github-output "$GITHUB_OUTPUT"
+        run: python scripts/close_batch.py prepare --created-at "$CLOSE_CREATED_AT" --schedule "$CLOSE_SCHEDULE" --score-date "$CLOSE_SCORE_DATE" --github-output "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         if: steps.freeze.outputs.run == 'true'
         with:
@@ -178,7 +192,7 @@ jobs:
     name: Confirm close publication or explicit safe skip
     needs: [check, prepare, score, publish]
     # 默认success()会跳过失败/跳过的依赖，最终门禁必须always执行。
-    if: always() && (github.event_name != 'push' || contains(github.event.head_commit.message, '[run-close]'))
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[run-close]')))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -191,3 +205,4 @@ jobs:
         env:
           CLOSE_NEEDS: ${{ toJSON(needs) }}
         run: python scripts/close_batch.py outcome
+
