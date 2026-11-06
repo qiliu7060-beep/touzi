@@ -257,7 +257,7 @@ def _portfolio_metrics(returns: pd.Series, freq_per_year: float, rf: float = 0.0
     ann = float((1.0 + cum) ** (1.0 / years) - 1.0) if years > 0 and cum > -1 else float("nan")
     vol = float(r.std(ddof=1) * np.sqrt(freq_per_year)) if n > 1 else float("nan")
     sharpe = float((ann - rf) / vol) if vol and np.isfinite(vol) and vol > 0 else float("nan")
-    curve = (1.0 + r).cumprod()
+    curve = pd.concat([pd.Series([1.0]), (1.0 + r).cumprod().reset_index(drop=True)], ignore_index=True)
     dd = float((curve / curve.cummax() - 1.0).min())
     return {
         "期数": n,
@@ -279,159 +279,149 @@ def backtest_portfolio(
     quarters: int | None = None,
     workers: int = 6,
     screener=None,
+    historical_universes: dict | None = None,
+    archived_raws: dict | None = None,
+    benchmark: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
-    """个股组合回测：季度调仓，取总分前 N 只等权持有，对比沪深300。"""
+    """回测B：严格历史输入、收盘后信号、逐日成交账本。
+
+    历史档案契约及局限见 docs/backtest-b-pit.md。无财报披露/原始版本证据
+    时拒绝发布收益；默认当前候选池仅供偏差研究，不能宣称无幸存者偏差。
+    """
     from .screener import Screener
+    from .portfolio_pit import HistoricalDataError, simulate_closes
 
     proxy = proxy if proxy is not None else (cfg.general.get("proxy") or None)
     apply_proxy_env(proxy)
     if cache is None:
         cache = Cache(cfg.resolve(cfg.general.get("cache_dir", "data_cache")))
-    top_n = int(top_n or cfg.screen.get("top_n", 30))
-    cost = float(cfg.backtest.get("cost_rate", 0.0015))
     bcfg = cfg.backtest
-
+    top_n = int(top_n or cfg.screen.get("top_n", 30))
+    cost = float(bcfg.get("cost_rate", 0.0015))
+    if top_n < 1:
+        raise ValueError("top_n must be positive")
     scr = screener or Screener(cfg, cache=cache, proxy=proxy)
-    scr._need_price = True  # 触发历史价格抓取
-
-    kept, _ = scr.prefilter()
-    cand = scr._select_candidates(kept, limit=limit)
+    scr._need_price = True
+    if historical_universes is not None:
+        universes = {pd.Timestamp(t): frame.copy() for t, frame in historical_universes.items()}
+        if not universes:
+            raise ValueError("Empty historical universe archive")
+        cand = pd.concat(list(universes.values())).drop_duplicates("code")
+    else:
+        kept, _ = scr.prefilter()
+        cand = scr._select_candidates(kept, limit=limit)
+        universes = None
     codes = [str(c) for c in cand["code"]]
-    metas = {str(r["code"]): r for _, r in cand.iterrows()}
-
-    LOG.info("回测B：抓取 %d 只股票的历史数据（首次较慢，之后走缓存）…", len(codes))
-    raws = parallel_map(scr._fetch_one, codes, workers=workers, label="回测数据抓取")
-
-    # ---- 调仓日：沪深300 的月末，且个股估值历史覆盖得到 ----
-    idx = fetch_index_daily(bcfg.get("benchmark", "sh000300"), cache,
-                            ttl_days=resolve_ttls(cfg)["history"])
-    idx_m = _monthly_last(idx["close"])
-    q_ends = idx_m.index[idx_m.index.is_quarter_end]
-
-    # 估值历史（百度）只有 5 年，回测起点不能早于它。
-    # 但**绝不能取 max()**：只要有一只次新股（或百度无历史的老股）起始日很晚，
-    # 整个回测窗口就被它拖到最近，导致「可用调仓日不足」。改用分位数：
-    # 取 60% 分位 = 60% 候选股都已经同时有价格与估值数据的那个月末。
-    starts: list[pd.Timestamp] = []
-    for raw in raws.values():
-        s = None
-        ph = raw.get("price_hist")
-        if ph is not None and len(ph):
-            s = ph.index.min()
-        pe = raw.get("pe_hist")
-        if pe is not None and len(pe):
-            s = pe.index.min() if s is None else max(s, pe.index.min())
-        if s is not None:
-            starts.append(pd.Timestamp(s))
-    if not starts:
-        raise RuntimeError("没有拿到任何个股历史数据，无法回测")
-
-    starts_sr = pd.Series(starts)
-    cover_start = starts_sr.quantile(0.60)
-    covered = int((starts_sr <= cover_start).sum())
-    LOG.info(
-        "回测B：起始日 %s（%d/%d 只覆盖；最早 %s，最晚 %s）",
-        cover_start.date(), covered, len(starts),
-        starts_sr.min().date(), starts_sr.max().date(),
-    )
-
-    q_ends = [d for d in q_ends if d >= cover_start]
+    raws = archived_raws if archived_raws is not None else parallel_map(
+        scr._fetch_one, codes, workers=workers, label="回测B历史数据")
+    idx = benchmark if benchmark is not None else fetch_index_daily(
+        bcfg.get("benchmark", "sh000300"), cache, ttl_days=resolve_ttls(cfg)["history"])
+    idx = idx.sort_index()
+    # Use actual quarter's LAST SESSION, never a resample-created holiday label.
+    quarter_dates = pd.Series(idx.index, index=idx.index).groupby(idx.index.to_period("Q")).last()
+    start = pd.Timestamp(cfg.general.get("start_date", "2011-01-01"))
+    # Only completed quarters whose following market close exists in the dataset.
+    q_ends = [pd.Timestamp(t) for period, t in quarter_dates.items()
+              if period.end_time.normalize() < idx.index.max() and t >= start]
     if quarters:
         q_ends = q_ends[-int(quarters):]
-    if len(q_ends) < 3:
-        raise RuntimeError(f"可用调仓日不足（{len(q_ends)} 个），无法回测")
-    LOG.info("回测B：调仓日 %d 个，%s ~ %s", len(q_ends), q_ends[0].date(), q_ends[-1].date())
-
-    freq = 4.0  # 季度
-    periods: list[dict[str, Any]] = []
-    prev_hold: set[str] = set()
-    equity = 1.0
-    bench_equity = 1.0
-
-    for i, t in enumerate(q_ends[:-1]):
-        t_next = q_ends[i + 1]
-        scored: list[tuple[float, str]] = []
-        for code, meta in metas.items():
+    if len(q_ends) < 2:
+        raise HistoricalDataError("回测B：至少需要两个已完成季度及其后续交易日")
+    audit, targets = [], {}
+    for t in q_ends[:-1]:
+        if universes is not None and t not in universes:
+            raise HistoricalDataError(f"回测B：缺少 {t.date()} 的历史候选池")
+        frame = universes[t] if universes is not None else cand
+        scored = []
+        for _, meta in frame.iterrows():
+            code = str(meta["code"])
+            if universes is None:
+                # A current sector classification cannot stand in for historical membership.
+                meta = meta.copy()
+                meta["industry"] = ""
             raw = raws.get(code) or {}
             try:
-                ss = scr.score_one(meta, raw, as_of=t, point_in_time=True)
-            except Exception:
-                continue
-            if np.isfinite(ss.total):
-                scored.append((float(ss.total), code))
-        scored.sort(reverse=True)
-        picked = [c for _, c in scored[:top_n]]
-        if len(picked) < int(bcfg.get("min_stocks_per_period", 10)):
-            LOG.warning("%s 入选股票不足（%d），跳过该期", t.date(), len(picked))
-            continue
-
-        rets: list[float] = []
-        for code in picked:
-            ph = raws.get(code, {}).get("price_hist")
-            if ph is None or len(ph) == 0:
-                continue
-            px = pd.to_numeric(ph["close"], errors="coerce").dropna()
-            a = px[px.index <= t]
-            b = px[px.index <= t_next]
-            if len(a) and len(b) and float(a.iloc[-1]) > 0:
-                rets.append(float(b.iloc[-1]) / float(a.iloc[-1]) - 1.0)
-        if not rets:
-            continue
-        gross = float(np.mean(rets))
-
-        hold = set(picked)
-        turnover = len(hold - prev_hold) / max(len(hold), 1)
-        net = gross - 2.0 * cost * turnover
-        prev_hold = hold
-
-        bi_a = idx_m[idx_m.index <= t]
-        bi_b = idx_m[idx_m.index <= t_next]
-        bench = float(bi_b.iloc[-1]) / float(bi_a.iloc[-1]) - 1.0 if len(bi_a) and len(bi_b) else float("nan")
-
-        equity *= (1.0 + net)
-        bench_equity *= (1.0 + bench) if np.isfinite(bench) else 1.0
-        periods.append({
-            "调仓日": f"{t:%Y-%m-%d}", "下期": f"{t_next:%Y-%m-%d}",
-            "持仓数": len(rets), "换手率%": round(turnover * 100, 1),
-            "组合收益%": round(net * 100, 2), "沪深300%": None if not np.isfinite(bench) else round(bench * 100, 2),
-            "超额%": None if not np.isfinite(bench) else round((net - bench) * 100, 2),
-            "组合净值": round(equity, 4), "基准净值": round(bench_equity, 4),
-            "持仓": ",".join(picked),
-        })
-
-    if not periods:
-        raise RuntimeError("回测没有产生任何有效调仓期")
-
+                ss = scr.score_one(meta, raw, as_of=t, point_in_time=True, strict_history=True)
+                missing = ss.data_flags.get("历史信息缺失", [])
+                eligible = np.isfinite(ss.total)
+                # Unadjusted signal prices cannot be reconstructed from today's qfq.
+                if raw.get("signal_price_basis") != "unadjusted":
+                    missing = [*missing, "unadjusted_signal_prices"]
+                    eligible = False
+                if eligible:
+                    scored.append((float(ss.total), code))
+                audit.append({"signal_date": t, "code": code, "eligible": eligible,
+                              "missing": ",".join(missing),
+                              "bond_missing": ss.data_flags.get("历史国债缺失", True),
+                              "input_dates": ss.data_flags.get("历史输入日期", {}),
+                              "universe": "historical_archive" if universes is not None else "current_biased"})
+            except Exception as exc:
+                audit.append({"signal_date": t, "code": code, "eligible": False,
+                              "missing": f"score_error:{type(exc).__name__}"})
+        scored.sort(key=lambda pair: (-pair[0], pair[1]))
+        picked = [code for _, code in scored[:top_n]]
+        targets[t] = picked
+    audit_df = pd.DataFrame(audit)
+    minimum = int(bcfg.get("min_stocks_per_period", 10))
+    deficient = [str(t.date()) for t, picks in targets.items() if len(picks) < minimum]
+    if deficient:
+        raise HistoricalDataError(
+            "回测B：可靠历史信息不足，未计算收益；缺少已披露原始财报版本、历史估值、"
+            "已披露分红或未复权信号价格。不得沿用旧83.49个百分点差距。日期："
+            + ",".join(deficient), audit_df)
+    # Separate raw signal prices from the provider's consistent adjusted return index.
+    # Do not use adjusted absolute prices to compute historical dividend yields.
+    prices = {}
+    for code in {c for picks in targets.values() for c in picks}:
+        raw = raws[code]
+        if not raw.get("return_price_basis_verified", False) or raw.get("return_price_hist") is None:
+            raise HistoricalDataError(f"回测B：{code} 缺少经核验的统一复权收益价格及成交量", audit_df)
+        prices[code] = raw["return_price_hist"]
+    # Quantity sizing must use the same basis as fills (not unadjusted signal prices).
+    # The last quarter end is a valuation boundary, not an extra signal.
+    # Do not add an unexplained next-session return to the final quarter.
+    terminal = q_ends[-1]
+    try:
+        simulation = simulate_closes(prices, idx.loc[:terminal, "close"], targets, cost,
+                                     int(bcfg.get("max_wait_days", 15)))
+    except HistoricalDataError as exc:
+        exc.audit = pd.concat([audit_df, exc.audit], ignore_index=True, sort=False)
+        raise
+    daily = simulation["daily"]
+    boundaries = [*targets, terminal]
+    periods = []
+    for t, end in zip(boundaries[:-1], boundaries[1:]):
+        a, z = daily.loc[t], daily.loc[end]
+        net, bench = float(z.nav / a.nav - 1), float(z.benchmark_nav / a.benchmark_nav - 1)
+        trades = simulation["trades"]
+        fees = float(trades.loc[(trades["date"] > t) & (trades["date"] <= end), "fee"].sum()) if len(trades) else 0.0
+        periods.append({"调仓日": str(t.date()), "下期": str(end.date()),
+                        "持仓数": len(targets[t]), "持仓": ",".join(targets[t]),
+                        "组合收益%": net * 100, "沪深300%": bench * 100,
+                        "超额%": (net - bench) * 100, "交易费用": fees,
+                        "组合净值": float(z.nav), "基准净值": float(z.benchmark_nav)})
     pdf = pd.DataFrame(periods)
-    port_r = pdf["组合收益%"] / 100.0
-    bench_r = pdf["沪深300%"] / 100.0
+    # Daily observations retain initial NAV=1 and expose suspension/stale marking paths.
     rf = float(bcfg.get("risk_free_rate", 0.025))
-
     metrics = {
-        "组合": _portfolio_metrics(port_r, freq, rf),
-        "沪深300": _portfolio_metrics(bench_r, freq, rf),
+        "组合": _portfolio_metrics(daily.nav.pct_change().dropna(), 252.0, rf),
+        "沪深300": _portfolio_metrics(daily.benchmark_nav.pct_change().dropna(), 252.0, rf),
+        "超额": {"区间": f"{daily.index[0]:%Y-%m-%d} ~ {terminal:%Y-%m-%d}",
+                 "累计超额%": round(float(daily.nav.iloc[-1] - daily.benchmark_nav.iloc[-1]) * 100, 2),
+                 "期末组合净值": float(daily.nav.iloc[-1]),
+                 "期末基准净值": float(daily.benchmark_nav.iloc[-1]),
+                 "单边成本": cost, "调仓频率": "季度"},
+        "_disclaimer": [
+            "研究结果；政策历史版本及分红/融资汇总缺失，不宣称完整复刻生产评分。",
+            "当前候选池有幸存者/当前市值筛选偏差。" if universes is None else "使用调用方提供的逐期历史候选池，原始存档仍需独立核验。",
+            "信号收盘后形成，次一可成交日收盘成交；停牌保留仓位/现金，订单逾期取消。",
+            "基准首个信号后下一市场交易日收盘买入，此前持现金；基准未扣交易费。",
+            "统一复权价格指数模型；未模拟现金分红到账再投资、逐笔撮合及无标记的涨跌停。",
+            "期末按市值计价，未强制清仓；停牌持仓沿用最近收盘价，可能低估风险。",
+        ],
     }
-    excess = port_r - bench_r.fillna(0.0)
-    metrics["超额"] = {
-        "区间": f"{q_ends[0]:%Y-%m-%d} ~ {q_ends[len(pdf)]:%Y-%m-%d}",
-        "累计超额%": round(float((1 + port_r).prod() - (1 + bench_r.fillna(0)).prod()) * 100, 2),
-        "平均每期超额%": round(float(excess.mean()) * 100, 2),
-        "跑赢期数占比%": round(float((excess > 0).mean()) * 100, 1),
-        "期末组合净值": round(float((1 + port_r).prod()), 4),
-        "期末基准净值": round(float((1 + bench_r.fillna(0)).prod()), 4),
-        "单边成本": cost,
-        "调仓频率": "季度",
-    }
-    metrics["_disclaimer"] = [
-        "候选池是今天仍在交易的股票，存在幸存者偏差，结果偏乐观。",
-        "估值历史来自百度股市通『近五年』，回测区间受此限制。",
-        "回测打分禁用了全市场/同行业截面分位（那是今天的快照），只保留个股历史分位。",
-    ]
-
-    LOG.info("回测B完成：%d 期，组合累计 %s%%，基准累计 %s%%",
-             len(pdf), metrics["组合"]["累计收益%"], metrics["沪深300"]["累计收益%"])
-    return {"periods": pdf, "metrics": metrics, "top_n": top_n,
-            "cost_rate": cost, "start": str(q_ends[0].date())}
+    return {"periods": pdf, "metrics": metrics, "top_n": top_n, "cost_rate": cost,
+            "start": str(daily.index[0].date()), "audit": audit_df, **simulation}
 
 
 # =============================================================== 汇总
@@ -828,3 +818,5 @@ def backtest_stocks(
              len(sdf), len(tdf), overall.get("平均策略收益%"), overall.get("平均买入持有%"))
     return {"trades": tdf, "stocks": sdf, "metrics": metrics,
             "start": str(dates[0].date()), "end": str(dates[-1].date())}
+
+
