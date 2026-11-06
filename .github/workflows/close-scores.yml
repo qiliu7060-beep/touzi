@@ -1,5 +1,5 @@
 name: Daily full-market close scores
-run-name: "Close scores · ${{ github.event_name }} · ${{ github.event_name == 'push' && !contains(github.event.head_commit.message, '[run-close]') && 'checks only' || 'publish' }}"
+run-name: "Close scores · ${{ github.event_name }} · ${{ (github.event_name == 'pull_request' || (github.event_name == 'push' && !contains(github.event.head_commit.message, '[run-close]'))) && 'checks only' || 'publish' }}"
 
 on:
   workflow_dispatch:
