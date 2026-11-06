@@ -1,0 +1,73 @@
+{
+  "description": "2026-11-06只读调查中的真实金额及响应字段人工摘录。不是完整原始响应，不宣称具有原始响应哈希。parent为年报对照值；normalized_unit为元。",
+  "normalized_unit": "CNY_yuan",
+  "samples": [
+    {
+      "code": "600519",
+      "year": 2024,
+      "value": "86240905977.420000",
+      "parent": "86228146421.620000",
+      "published": "20250403",
+      "evidence": "https://money.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=10845839&stockid=600519"
+    },
+    {
+      "code": "603195",
+      "year": 2024,
+      "value": "3741807159.860000",
+      "parent": "4272204565.030000",
+      "published": "20250425",
+      "evidence": "https://static.cninfo.com.cn/finalpage/2025-04-25/1223284030.PDF"
+    },
+    {
+      "code": "000002",
+      "year": 2024,
+      "value": "-45393719289.830000",
+      "parent": "-49478429211.960000",
+      "published": "20250401",
+      "evidence": "https://www.vanke.com/upload/file/2025-03-31/c0759f4e-c010-4de0-ad5f-3b0ed636a364.PDF"
+    },
+    {
+      "code": "600036",
+      "year": 2024,
+      "value": "148011000000.000000",
+      "parent": "148391000000",
+      "published": "20250326",
+      "evidence": "https://static.cninfo.com.cn/finalpage/2025-03-26/1222895153.PDF"
+    },
+    {
+      "code": "600519",
+      "year": 2021,
+      "value": "52581102656.240000",
+      "parent": "52460144378.160000",
+      "published": "20220331",
+      "evidence": "https://money.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=7946578&stockid=600519",
+      "adjusted": "52556464900.24"
+    },
+    {
+      "code": "603195",
+      "year": 2021,
+      "value": "2632476489.560000",
+      "parent": "2780360732.660000",
+      "published": "20220412",
+      "evidence": "https://money.finance.sina.com.cn/corp/view/vCB_AllBulletinDetail.php?id=7976355&stockid=603195",
+      "adjusted": "2632296518.65"
+    },
+    {
+      "code": "000002",
+      "year": 2021,
+      "value": "22381781882.050000",
+      "parent": "22524033383.220000",
+      "published": "20220331",
+      "evidence": "https://static.cninfo.com.cn/finalpage/2022-03-31/1212750450.PDF"
+    },
+    {
+      "code": "600036",
+      "year": 2021,
+      "value": "119430000000.000000",
+      "parent": "119922000000",
+      "published": "20220319",
+      "evidence": "https://static.cninfo.com.cn/finalpage/2022-03-18/1212627469.PDF",
+      "verified_document_date": "2022-03-18"
+    }
+  ]
+}

@@ -2247,7 +2247,14 @@ function createInvestmentPanel(doc, options) {
       var r = byYear[year] || {};
       html += '<tr><th scope="row">' + esc(year) + '<br><span class="small muted">' + esc(r.report_date || '未取得年报') + '</span></th>';
       ['revenue', 'operating_profit', 'net_profit', 'deducted_parent_net_profit'].forEach(function (key) {
-        html += '<td>' + financialNumber(r[key], 1e-8) + (key === 'net_profit' && r[key] < 0 ? '（亏损）' : '') + '</td>';
+        var sourceNote = '';
+        if (key === 'deducted_parent_net_profit' && r.deducted_parent_evidence) {
+          var de = r.deducted_parent_evidence;
+          sourceNote = '<br><span class="small muted">' + esc(de.status === 'ok' ? '新浪关键指标 NPCUT' : de.status === 'stale' ? '旧缓存/已过期 · 新浪 NPCUT' : '缺失 · ' + (de.reason || '来源待核验'))
+            + '<br>获取：' + esc(de.fetched_at || '未知') + '<br>供应商公告日：' + esc(de.supplier_disclosed_date || '未知')
+            + '（未独立核验）</span>';
+        }
+        html += '<td>' + financialNumber(r[key], 1e-8) + (key === 'net_profit' && r[key] < 0 ? '（亏损）' : '') + sourceNote + '</td>';
       });
       html += '<td>' + financialNumber(r.net_margin, 100, '%') + '</td><td>' + financialNumber(r.operating_cash_flow, 1e-8)
         + '</td><td>' + financialNumber(r.capex, 1e-8) + '</td><td>' + financialNumber(r.capex_to_profit, 100, '%') + '</td></tr>';

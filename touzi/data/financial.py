@@ -14,6 +14,7 @@ import pandas as pd
 from ..util import LOG, cached_fetch
 from .stock import plain_code, to_tx_symbol
 from ..diagnostics import emit_diagnostic, error_category
+from .deducted_profit import fetch_deducted_parent_profit, annual_deducted_evidence
 
 SOURCE = "sina-finance-report"
 BASE = "https://quotes.sina.cn/cn/api/openapi.php/CompanyFinanceService.getFinanceReport2022"
@@ -57,7 +58,7 @@ def normalize_reports(code, source, reports, fetched_at):
     return pd.DataFrame(rows)
 
 
-def fetch_financial_statements(code, cache, ttl_days=1, diagnostic=None):
+def fetch_financial_statements(code, cache, ttl_days=1, diagnostic=None, include_deducted=False):
     """分别缓存三表；失败旧缓存保留真实获取时间，由纯分析明确降级。"""
     def fetch(source):
         started = time.monotonic()
@@ -103,7 +104,11 @@ def fetch_financial_statements(code, cache, ttl_days=1, diagnostic=None):
                         (time.monotonic() - started) * 1000)
             return source, pd.DataFrame()
     with ThreadPoolExecutor(max_workers=3) as pool:
-        return dict(pool.map(fetch, AMOUNTS))
+        tables = dict(pool.map(fetch, AMOUNTS))
+    # 默认不新增生产请求；独立缓存、来源时间及状态，不改变三表行为。
+    if include_deducted:
+        tables["deducted_parent"] = fetch_deducted_parent_profit(code, cache, ttl_days=ttl_days)
+    return tables
 
 
 def analyze_financials(tables, industry="", as_of=None, ttl_days=1):
@@ -147,6 +152,10 @@ def analyze_financials(tables, industry="", as_of=None, ttl_days=1):
             if report.get("source_updated_at"):
                 stamps.append(report["source_updated_at"])
         row["source_updated_at"] = max(stamps) if stamps else None
+        deducted, evidence = annual_deducted_evidence(
+            (tables or {}).get("deducted_parent"), date, now, ttl_days)
+        row["deducted_parent_net_profit"] = deducted
+        row["deducted_parent_evidence"] = evidence
         if row["net_profit"] is not None and row["revenue"] is not None and row["revenue"] > 0:
             row["net_margin"] = row["net_profit"] / row["revenue"]
         if row["net_profit"] is not None and row["net_profit"] > 0 and row["capex"] is not None and row["capex"] >= 0:
@@ -189,7 +198,9 @@ def analyze_financials(tables, industry="", as_of=None, ttl_days=1):
     annual_status = "missing" if annual_profit is None else "ok" if fresh(annual) else "stale"
     statuses = [debt_status, capex_status, annual_status, cumulative_status]
     status = "missing" if not any(frames.values()) else "stale" if "stale" in statuses else "ok" if all(s in ("ok", "not_applicable", "invalid") for s in statuses) else "partial"
-    notes = ["低资本开支只是财务竞争力线索，不证明持续竞争优势。", "当前财报适配器未覆盖可靠的扣非归母净利润字段，显示缺失；不以归母或合并净利润替代。"]
+    notes = ["低资本开支只是财务竞争力线索，不证明持续竞争优势。",
+             "扣非归母净利润独立来自新浪关键指标NPCUT，仅供展示；缺失不以归母或合并净利润替代。",
+             "扣非年度序列未保证最新追溯调整，接口公告日期尚未独立核验，不用于历史时点回测。"]
     if debt_exempt:
         notes.append("行业债务项不适用，不参与计分或预警。")
     if financial:
