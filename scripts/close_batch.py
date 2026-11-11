@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import hashlib
 import json
 import math
@@ -90,15 +90,21 @@ def scheduled_target(created_at, schedule):
     cron按UTC周一至五运行，凌晨补偿也归属该UTC日的北京时间收盘。
     """
     hours = {"23 9 * * 1-5": 9, "23 10 * * 1-5": 10, "23 21 * * 1-5": 21}
-    if schedule not in hours:
+    watchdog = schedule == "43 11-20 * * 1-5"
+    if schedule not in hours and not watchdog:
         raise ValueError("未知收盘调度表达式")
     anchor = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
     if anchor.tzinfo is None:
         raise ValueError("运行创建时间必须注明时区")
     anchor = anchor.astimezone(timezone.utc)
-    nominal = anchor.replace(hour=hours[schedule], minute=23, second=0, microsecond=0)
-    while nominal > anchor or nominal.weekday() >= 5:
-        nominal -= timedelta(days=1)
+    if watchdog:
+        nominal = anchor.replace(minute=43, second=0, microsecond=0)
+        while nominal > anchor or nominal.weekday() >= 5 or not 11 <= nominal.hour <= 20:
+            nominal -= timedelta(hours=1)
+    else:
+        nominal = anchor.replace(hour=hours[schedule], minute=23, second=0, microsecond=0)
+        while nominal > anchor or nominal.weekday() >= 5:
+            nominal -= timedelta(days=1)
     return nominal.date()
 
 
@@ -234,7 +240,10 @@ def prepare(folder, batch_size=100, now=None, previous=None, target_day=None):
     matrix = [{"batch": i // batch_size, "codes": codes[i:i + batch_size]} for i in range(0, len(codes), batch_size)]
     atomic_json(folder / "batches.json", matrix)
     return {"run": True, "status": "ready", "matrix": {"include": [{"batch": row["batch"]} for row in matrix]},
-            "score_date": day.isoformat(), "eligible": len(codes)}
+            "score_date": day.isoformat(), "eligible": len(codes),
+            "quote_accepted": len(timestamps), "quote_coverage": len(timestamps) / len(codes),
+            "quote_first": timestamps[0], "quote_last": timestamps[-1],
+            "prepared_at": prepared_at.isoformat()}
 
 
 def worker(folder, code, output):
@@ -350,7 +359,7 @@ def assemble(folder, results, output, now=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("prepare", "worker", "score", "assemble", "outcome", "verify"))
+    parser.add_argument("command", choices=("prepare", "preflight", "worker", "score", "assemble", "outcome", "verify"))
     parser.add_argument("--folder", default=".close-input")
     parser.add_argument("--output", default=".close-output")
     parser.add_argument("--results", default=".close-results")
@@ -363,8 +372,15 @@ def main():
     parser.add_argument("--schedule", default="")
     parser.add_argument("--score-date")
     args = parser.parse_args()
-    if args.command == "prepare":
-        target = scheduled_target(args.created_at, args.schedule) if args.schedule else None
+    if args.command in ("prepare", "preflight"):
+        if args.schedule and args.score_date:
+            parser.error("定时目标与显式目标日期不能混用")
+        target = scheduled_target(args.created_at, args.schedule) if args.schedule else (
+            date.fromisoformat(args.score_date) if args.score_date else None)
+        if args.command == "preflight" and target is None:
+            target = close_target(datetime.now(TZ))
+            if target is None:
+                raise ValueError("无法核验最近已完成交易日")
         try:
             value = prepare(args.folder, target_day=target)
             if value.get("status") == "outside_window":
@@ -392,7 +408,6 @@ def main():
             summary.write("收盘流水线结果：" + result + "\n")
         print(result)
     elif args.command == "verify":
-        from datetime import date
         if not snapshot_covers(prior_manifest(), date.fromisoformat(args.score_date), datetime.now(TZ)):
             raise ValueError("发布后未读到目标日合格评分，收盘漏更")
         print("已确认数据分支存在目标日或更新的合格快照")
@@ -407,3 +422,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
