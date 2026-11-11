@@ -1,0 +1,34 @@
+{
+  "pilot": "2025Q1",
+  "signal_date": "2025-03-31",
+  "proposed_first_fill": "2025-04-01",
+  "valuation_end": "2025-06-30",
+  "benchmark_required_end": "2025-07-01",
+  "history_contract": "pit-v2",
+  "repository": "qiliu7060-beep/touzi",
+  "reference_commit": "15d20e939a5e8776a6e4eb61c4f92f7927e7c266",
+  "status": "not_computed",
+  "stage": "documentary_evidence_preflight",
+  "engine_invoked": false,
+  "reason": "critical historical evidence incomplete",
+  "returns": null,
+  "verification_flags": {
+    "fin_vintage_verified": false,
+    "valuation_vintage_verified": false,
+    "div_vintage_verified": false,
+    "div_history_complete": false,
+    "return_price_basis_verified": false,
+    "bond_vintage_verified": false
+  },
+  "production_changes": [],
+  "external_writes": [],
+  "historical_universe_complete": false,
+  "full_candidate_coverage": null,
+  "counts": {
+    "acquisition_attempts": 24,
+    "downloaded": 23,
+    "failed": 1,
+    "documentary_sample_rows": 9
+  },
+  "note": "This is a research status file, not production backtest_b_status.json. Flags are deliberately unverified, not adapter data. external_writes: [] records the original evidence-acquisition stage before PR #7 was created; it is not the current GitHub write history. PR #7 creation does not change the unverified research status."
+}
