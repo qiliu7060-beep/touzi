@@ -30,5 +30,5 @@
     "failed": 1,
     "documentary_sample_rows": 9
   },
-  "note": "This is a research status file, not production backtest_b_status.json. Flags are deliberately unverified, not adapter data."
+  "note": "This is a research status file, not production backtest_b_status.json. Flags are deliberately unverified, not adapter data. external_writes: [] records the original evidence-acquisition stage before PR #7 was created; it is not the current GitHub write history. PR #7 creation does not change the unverified research status."
 }
