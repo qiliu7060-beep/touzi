@@ -101,6 +101,8 @@ class MacroContext:
     staleness: dict[str, Any] = field(default_factory=dict)
     unavailable: list[str] = field(default_factory=list)
     fed_panel: pd.DataFrame | None = None
+    input_evidence: dict[str, Any] = field(default_factory=dict)
+    current_series: dict[str, Any] = field(default_factory=dict)
 
     def to_frame(self) -> pd.DataFrame:
         rows = []
@@ -135,6 +137,7 @@ def build_macro_context(
     cache=None,
     proxy: str | None = None,
     as_of: pd.Timestamp | str | None = None,
+    input_policy: str = "historical-aligned",
 ) -> MacroContext:
     """取宏观数据 → 算 5 条规则 → 合成背景分与目标仓位。"""
     import logging
@@ -146,10 +149,22 @@ def build_macro_context(
 
     from .util import resolve_ttls
 
+    if input_policy not in ("historical-aligned", "upstream-observed-live"):
+        raise ValueError("未知宏观输入策略")
+    current = input_policy == "upstream-observed-live"
     ttls = resolve_ttls(cfg)
+    evidence: dict[str, Any] = {}
     panel = build_cn_macro_panel(cache, proxy, start=cfg.general.get("start_date"),
-                                 ttl_days=ttls["macro"], bond_ttl_days=ttls["history"])
-    aligned = panel["aligned"]
+                                 ttl_days=0 if current else ttls["macro"],
+                                 bond_ttl_days=0 if current else ttls["history"],
+                                 **({"metadata": evidence, "current": True} if current else {}))
+    # 当前源已返回的实际值不套用回测的近似月度公布滞后。
+    aligned = panel["raw"] if current else panel["aligned"]
+    if current:
+        for key in ("pmi", "cpi", "ppi", "gdp", "bond_10y"):
+            obj = aligned[key]
+            if not isinstance(obj.index, pd.DatetimeIndex) or obj.index.hasnans or obj.index.has_duplicates or any(day.date() > as_of_ts.date() for day in obj.index):
+                raise ValueError(f"当前宏观源{key}包含未来、重复或无效日期")
 
     def _truncate(obj):
         """把序列/表截断到 as_of，防未来函数。"""
@@ -165,9 +180,14 @@ def build_macro_context(
 
     fed_panel = None
     try:
-        fed_panel = fetch_fed_panel(cache, proxy, ttl_days=ttls["us"])
+        fed_panel = fetch_fed_panel(cache, proxy, ttl_days=0 if current else ttls["us"],
+                                    **({"metadata": evidence.setdefault("fed", {})} if current else {}))
+        if current and any(day.date() > as_of_ts.date() for day in fed_panel.index):
+            raise ValueError("当前Fed输入包含未来日期")
         fed_panel = _truncate(fed_panel)
     except Exception as exc:
+        if current:
+            raise
         log.warning("美联储数据抓取失败，fed 模块将缺席：%s", exc)
 
     results: dict[str, RuleResult] = {}
@@ -221,6 +241,8 @@ def build_macro_context(
         staleness=panel.get("staleness", {}),
         unavailable=unavailable,
         fed_panel=fed_panel,
+        input_evidence=evidence,
+        current_series=aligned if current else {},
     )
     log.info("宏观背景分 %.1f → 目标仓位 %.0f%%（%s）", macro_score, position * 100, ctx.regime)
     return ctx

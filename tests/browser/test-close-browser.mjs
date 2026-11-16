@@ -213,8 +213,12 @@ for (const target of browserTestRuntimes(import.meta.url)) {
   }
   const search = h.doc.getElementById('__financialsearch');
   search.value = '虚拟企业1001'; h.doc.getElementById('__financialform').dispatch('submit');
-  await new Promise(resolve => setImmediate(resolve));
-  await new Promise(resolve => setImmediate(resolve));
+  // WebCrypto摘要在线程池完成，固定两轮事件循环不足以保证真实分片已接纳。
+  // 有界等待实际业务状态，超时后仍由原断言报告失败，不跳过或弱化验证。
+  const financialDeadline = Date.now() + 2000;
+  while (!controller.state.entries['001001'] && Date.now() < financialDeadline) {
+    await new Promise(resolve => setTimeout(resolve, 1));
+  }
   assert.equal(h.doc.getElementById('__financialcode').value, '001001', '财务中文搜索覆盖尚未显示的全池股票');
   assert.ok(controller.state.entries['001001'], '选择全池股票后按需读取财务分片');
   await controller.setView('虚拟企业1001', '', 1);

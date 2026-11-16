@@ -463,20 +463,20 @@ def render_macro(macro, no: str = "一") -> str:
             continue
         miss = key in (d.get("unavailable") or [])
         cards.append(
-            '<div class="card">'
+            f'<div class="card" data-macro-rule="{key}">'
             f'<div class="kv"><b>{_esc(MACRO_LABELS.get(key, key))}</b>'
-            f'<span class="muted small">权重 {d["weights"].get(key, 0):.2f}</span></div>'
-            f'<div class="big">{_f(res.get("score"), 1)}'
+            f'<span class="muted small" data-macro-rule-weight="{key}">权重 {d["weights"].get(key, 0):.2f}</span></div>'
+            f'<div class="big"><span data-macro-rule-value="{key}">{_f(res.get("score"), 1)}</span>'
             f'<span class="muted" style="font-size:14px;font-weight:400"> /100</span></div>'
             f'{_meter(res.get("score"))}'
             f'<div style="margin-top:8px"><span class="tag '
-            f'{"warn" if miss else "info"}">{_esc(res.get("state"))}</span></div>'
-            f'<p class="small muted" style="margin:8px 0 0">{_esc(res.get("explain"))}</p>'
+            f'{"warn" if miss else "info"}" data-macro-rule-state="{key}">{_esc(res.get("state"))}</span></div>'
+            f'<p class="small muted" data-macro-rule-explain="{key}" style="margin:8px 0 0">{_esc(res.get("explain"))}</p>'
             "</div>"
         )
     pos = d.get("position")
     score_txt = _f(d.get("macro_score"), 1)
-    pos_txt = _f((pos or 0) * 100, 0, "%")
+    pos_txt = _f(pos * 100 if pos is not None else None, 0, "%")
     stale_rows = "".join(
         f'<div class="kv"><span>{_esc(k)}</span><b>{_esc(v)}</b></div>'
         for k, v in (d.get("staleness") or {}).items()
@@ -484,6 +484,8 @@ def render_macro(macro, no: str = "一") -> str:
     unavail = "".join(f'<span class="svc">{_esc(u)}</span>' for u in (d.get("unavailable") or []))
     return f"""
 <h2>{no}、宏观背景分与目标仓位</h2>
+<div data-macro-current data-macro-snapshot-date="{_esc(d.get('as_of'))}">
+<p class="small muted" data-macro-snapshot-note>以下为报告生成时的宏观快照；独立宏观源核验后才显示当前结果，历史报告保留原日期。</p>
 <div class="card">
   <div class="grid2">
     <div>
@@ -500,8 +502,8 @@ def render_macro(macro, no: str = "一") -> str:
     </div>
   </div>
   <p class="small muted" style="margin:14px 0 4px">
-    数据截止：<b>{_esc(d.get('as_of'))}</b>　口径：宏观数据已按公布滞后对齐（PMI 当月 0 个月、
-    CPI/PPI/GDP 各滞后 1 个月），T 时刻的分数只使用 T 时刻已经能看到的数字。
+    快照数据截止：<b>{_esc(d.get('as_of'))}</b>　历史口径：按公布滞后近似对齐（PMI 当月 0 个月、
+    CPI/PPI/GDP 各滞后 1 个月）。这不是逐条核实的实际披露时间；当前宏观结果另用已获取的已发布输入。
   </p>
   <div class="grid2" style="margin-top:8px">
     <div>{stale_rows}</div>
@@ -509,6 +511,7 @@ def render_macro(macro, no: str = "一") -> str:
   </div>
 </div>
 <div class="grid5">{''.join(cards)}</div>
+</div>
 """
 
 
@@ -1371,17 +1374,24 @@ def render_overview(
                     f'{_md_inline(r.get("提醒"))}</p>'
                 )
 
-    def kpi(label: str, value: str, note: str = "", cls: str = "") -> str:
-        return (f'<div class="card"><div class="kv"><b>{_esc(label)}</b>'
-                f'<span class="muted small">{note}</span></div>'
-                f'<div class="big {cls}">{value}</div></div>')
+    def kpi(label: str, value: str, note: str = "", cls: str = "",
+            macro_key: str = "") -> str:
+        # 标记只约束宏观展示，不与持仓报价或个股收盘日期共用状态。
+        card_attr = f' data-macro-card="{macro_key}"' if macro_key else ""
+        label_attr = f' data-macro-label="{macro_key}"' if macro_key else ""
+        note_attr = f' data-macro-note="{macro_key}"' if macro_key else ""
+        value_attr = f' data-macro-value="{macro_key}"' if macro_key else ""
+        return (f'<div class="card"{card_attr}><div class="kv"><b{label_attr}>{_esc(label)}</b>'
+                f'<span class="muted small"{note_attr}>{note}</span></div>'
+                f'<div class="big {cls}"{value_attr}>{value}</div></div>')
 
     cards = "".join([
         kpi("宏观背景分", _f(d.get("macro_score"), 1),
-            _esc(str(d.get("regime") or "")), "v-mid"),
-        kpi("目标仓位", _f((d.get("position") or 0) * 100, 0, "%"),
-            "由宏观背景分分段映射"),
-        kpi("决策时点", _esc(str(d.get("as_of") or "—")), "数据截止到这一天"),
+            _esc(str(d.get("regime") or "")), "v-mid", "score"),
+        kpi("目标仓位", _f(d["position"] * 100 if d.get("position") is not None else None, 0, "%"),
+            "由宏观背景分分段映射", macro_key="position"),
+        kpi("宏观快照日期", _esc(str(d.get("as_of") or "—")),
+            "独立宏观源核验后显示当前计算时间", macro_key="computed_at"),
         kpi("我的持仓浮动盈亏", pnl_txt,
             f"成本 {cost_txt} / 市值 {mv_txt}", pnl_cls),
         kpi("需要动手", act_txt, f"留意 {watch_txt} 只", "v-bad" if act_txt not in ("—", "0") else ""),
@@ -1419,8 +1429,9 @@ def render_overview(
         '<div class="card"><h3>数据新鲜度</h3>'
         f'<p class="small muted">{_esc(fresh_txt)}</p>'
         '<p class="small muted">行情/估值是秒级实时的（本页顶部数字每 15 秒自己刷新）；'
-        '宏观（PMI/CPI/PPI/GDP）是月度、季度公布，<b>本质上不可能实时</b>，'
-        '不要指望它变快。详情见 <a href="/data">数据新鲜度</a>。</p></div>'
+        '宏观（PMI/CPI/PPI/GDP）按月度、季度发布；页面每五分钟检查独立宏观结果，'
+        '数据未发布时分数可不变。观测期、抓取和计算时间分别显示；历史内容保留原日期。'
+        '详情见 <a href="/data">数据新鲜度</a>。</p></div>'
         "</div>"
     )
 

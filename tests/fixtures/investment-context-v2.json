@@ -1,0 +1,213 @@
+{
+  "schema_version": 2,
+  "kind": "touzi-investment-v2",
+  "formula_version": "touzi-macro-v1",
+  "input_policy": "upstream-observed-live",
+  "snapshot_id": "8f793554e2102aec980b25792d9ec2596dccbb3aac8c437353a3cfd70f788eb5",
+  "rule_version": "yield-trend-v1",
+  "as_of": "2026-11-16",
+  "built_at": "2026-11-16T18:00:00+08:00",
+  "trading_calendar": {
+    "version": "cn-a-2026-v1",
+    "start": "2026-01-01",
+    "end": "2026-12-31",
+    "exchanges": [
+      "SSE",
+      "SZSE",
+      "BSE"
+    ],
+    "sources": [
+      "https://www.sse.com.cn/disclosure/announcement/general/c/c_20251222_10802507.shtml",
+      "https://www.szse.cn/disclosure/notice/general/t20251222_618087.html",
+      "https://www.bse.cn/important_news/200027428.html"
+    ],
+    "closures": [
+      [
+        "2026-01-01",
+        "2026-01-04"
+      ],
+      [
+        "2026-02-15",
+        "2026-02-23"
+      ],
+      [
+        "2026-04-04",
+        "2026-04-06"
+      ],
+      [
+        "2026-05-01",
+        "2026-05-05"
+      ],
+      [
+        "2026-06-19",
+        "2026-06-21"
+      ],
+      [
+        "2026-09-25",
+        "2026-09-27"
+      ],
+      [
+        "2026-10-01",
+        "2026-10-07"
+      ]
+    ]
+  },
+  "macro": {
+    "score": 55.55,
+    "position": 0.641,
+    "computed_at": "2026-11-16T18:00:00+08:00",
+    "status": "ok",
+    "regime": "中性（均衡配置）",
+    "weights": {
+      "pmi": 0.3,
+      "ppi": 0.25,
+      "fed": 0.2,
+      "cpi": 0.15,
+      "gdp": 0.1
+    },
+    "rules": {
+      "pmi": {
+        "rule": "PMI",
+        "score": 62.5,
+        "state": "fixture",
+        "explain": "确定性合约样本，不代表真实行情"
+      },
+      "ppi": {
+        "rule": "PPI",
+        "score": 48,
+        "state": "fixture",
+        "explain": "确定性合约样本，不代表真实行情"
+      },
+      "fed": {
+        "rule": "FED",
+        "score": 55,
+        "state": "fixture",
+        "explain": "确定性合约样本，不代表真实行情"
+      },
+      "cpi": {
+        "rule": "CPI",
+        "score": 52,
+        "state": "fixture",
+        "explain": "确定性合约样本，不代表真实行情"
+      },
+      "gdp": {
+        "rule": "GDP",
+        "score": 60,
+        "state": "fixture",
+        "explain": "确定性合约样本，不代表真实行情"
+      }
+    },
+    "inputs": {
+      "pmi_manufacturing": {
+        "module": "pmi",
+        "source": "sina:cn_pmi_sina",
+        "frequency": "monthly",
+        "observation_date": "2026-10-31",
+        "value": 50.2,
+        "fetched_at": "2026-11-16T17:58:00+08:00",
+        "fetch_status": "network",
+        "release_at": null,
+        "source_updated_at": null,
+        "availability_policy": "upstream-observed-live"
+      },
+      "cpi": {
+        "module": "cpi",
+        "source": "sina:cn_cpi_sina",
+        "frequency": "monthly",
+        "observation_date": "2026-10-31",
+        "value": 0.2,
+        "fetched_at": "2026-11-16T17:58:00+08:00",
+        "fetch_status": "network",
+        "release_at": null,
+        "source_updated_at": null,
+        "availability_policy": "upstream-observed-live"
+      },
+      "ppi": {
+        "module": "ppi",
+        "source": "sina:cn_ppi_sina",
+        "frequency": "monthly",
+        "observation_date": "2026-10-31",
+        "value": -2.1,
+        "fetched_at": "2026-11-16T17:58:00+08:00",
+        "fetch_status": "network",
+        "release_at": null,
+        "source_updated_at": null,
+        "availability_policy": "upstream-observed-live"
+      },
+      "gdp": {
+        "module": "gdp",
+        "source": "sina:cn_gdp_sina",
+        "frequency": "quarterly",
+        "observation_date": "2026-09-30",
+        "value": 4.8,
+        "fetched_at": "2026-11-16T17:58:00+08:00",
+        "fetch_status": "network",
+        "release_at": null,
+        "source_updated_at": null,
+        "availability_policy": "upstream-observed-live"
+      },
+      "cn_bond_10y": {
+        "module": "fed",
+        "source": "sina:cn_bond_10y",
+        "frequency": "daily",
+        "observation_date": "2026-11-13",
+        "value": 1.65,
+        "fetched_at": "2026-11-16T17:58:00+08:00",
+        "fetch_status": "network",
+        "release_at": null,
+        "source_updated_at": null,
+        "availability_policy": "upstream-observed-live"
+      },
+      "policy_rate": {
+        "module": "fed",
+        "source": "yahoo:^IRX",
+        "frequency": "daily",
+        "observation_date": "2026-11-13",
+        "value": 3.5,
+        "fetched_at": "2026-11-16T17:58:00+08:00",
+        "fetch_status": "network",
+        "release_at": null,
+        "source_updated_at": null,
+        "availability_policy": "upstream-observed-live"
+      },
+      "us_10y": {
+        "module": "fed",
+        "source": "yahoo:^TNX",
+        "frequency": "daily",
+        "observation_date": "2026-11-13",
+        "value": 4.1,
+        "fetched_at": "2026-11-16T17:58:00+08:00",
+        "fetch_status": "network",
+        "release_at": null,
+        "source_updated_at": null,
+        "availability_policy": "upstream-observed-live"
+      },
+      "dollar": {
+        "module": "fed",
+        "source": "yahoo:DX-Y.NYB",
+        "frequency": "daily",
+        "observation_date": "2026-11-13",
+        "value": 100.2,
+        "fetched_at": "2026-11-16T17:58:00+08:00",
+        "fetch_status": "network",
+        "release_at": null,
+        "source_updated_at": null,
+        "availability_policy": "upstream-observed-live"
+      }
+    },
+    "freshness": "source-checked"
+  },
+  "bond": {
+    "yield_pct": 1.65,
+    "observation_date": "2026-11-13",
+    "fetched_at": "2026-11-16T17:58:00+08:00",
+    "delta20_bp": -3,
+    "delta60_bp": -5,
+    "status": "ok",
+    "factor": 1,
+    "reasons": [
+      "确定性样本，收益率下行"
+    ]
+  },
+  "errors": []
+}

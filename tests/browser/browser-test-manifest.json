@@ -4,5 +4,7 @@
   "test-holdings-actions.mjs": "44345f43c972cc11c9a1cc81edd334550a307fe4e26687643079d14828ad80fa",
   "test-financial-ui.mjs": "7595f9e44a04b38a802ccad0da1e97306de020908a3d1cad7242eb80f564845a",
   "test-pick-financial.mjs": "f6f54b3dc73ddb0c88a419db03feafcc29073c36b5a6822e1ebcd97a7d17ace4",
-  "test-close-browser.mjs": "03969264112c8293a6ee996ae21f5a0701ff665c13c5b238bf453585520de54b"
+  "test-close-browser.mjs": "afe0748e982436f70a6de8266c33fab30cebe811fde428c7feea624ff5a4819d",
+  "test-macro-context.mjs": "035382bb3b0c0a9f4551d81e345023f91f60f7fcbc8343da501f61220884bd44",
+  "macro-context-fixture.json": "52f8a3aa3654ac4d3adc17e9f3e2bbe78571a7466f7a2cf7438c13651e976ca9"
 }

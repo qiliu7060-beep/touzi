@@ -831,13 +831,14 @@ def view_report(res: dict[str, Any]) -> str:
     keys = VIEW_SECTIONS["report"]
     toc = "".join(f'<a href="#sec-{k}">{_esc(secs[k]["title"])}</a>'
                   for k in keys if k in secs)
-    body = [hero("完整报告", "下面就是那份单文件看板的全部内容，只是套进了统一站点里。",
+    body = [hero("完整报告", "本页保留生成时的完整历史快照和原始日期；当前宏观结果请查看总览或宏观与政策页。",
                  [("/", "回到总览"), ("/data", "数据新鲜度")]),
             f'<div class="hero-links">{toc}</div>']
     for k in keys:
         s = secs.get(k)
         if s:
-            body.append(f'<div id="sec-{k}">{s["html"]}</div>')
+            history_attr = ' data-macro-history' if k == "macro" else ""
+            body.append(f'<div id="sec-{k}"{history_attr}>{s["html"]}</div>')
     return "".join(body)
 
 
@@ -963,8 +964,8 @@ def view_data(res: dict[str, Any]) -> str:
 
 def view_macro(res: dict[str, Any]) -> str:
     return view_sections(res, "macro", "宏观与政策",
-                         "宏观背景分决定目标仓位；7 条判断条件逐条做了 2011-2026 的历史验证，"
-                         "**证伪的也照原样列出**。",
+                         "宏观背景分与分项从独立宏观源核验并统一更新；观测期、抓取和计算时间分别显示。"
+                         "下方历史检验及政策内容保留报告生成时的日期与结论，不随当前宏观刷新。",
                          [("/backtest", "回测"), ("/report", "完整报告")])
 
 
