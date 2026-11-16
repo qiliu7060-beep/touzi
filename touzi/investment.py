@@ -7,7 +7,7 @@ import pandas as pd
 from touzi.market_calendar import CALENDAR, TZ, trading_day, adjacent_day
 
 
-def bond_signal(series, now, rules):
+def bond_signal(series, now, rules, *, fetched_at=None):
     values = pd.to_numeric(series, errors="coerce")
     values.index = pd.to_datetime(values.index)
     if any(d.date() > now.date() for d in values.index):
@@ -31,7 +31,7 @@ def bond_signal(series, now, rules):
                        + ("将投入系数限制为50%" if factor > .5 else "系数上限为50%，基础系数已不高于上限"))
         factor = min(factor, .5)
     return {"yield_pct": float(values.iloc[-1]), "observation_date": str(values.index[-1].date()),
-            "fetched_at": now.isoformat(), "delta20_bp": d20, "delta60_bp": d60,
+            "fetched_at": fetched_at if fetched_at is not None else now.isoformat(), "delta20_bp": d20, "delta60_bp": d60,
             "status": "ok", "factor": factor,
             "reasons": [trend_reason, long_reason, "国债收益率与已有固定利率债券价格通常反向变动", "趋势规则为可配置工程参数，未经绩效验证"]}
 

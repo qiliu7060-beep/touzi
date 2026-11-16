@@ -8,6 +8,14 @@ on:
       - 'scripts/build_investment.py'
       - 'scripts/publish_investment.py'
       - 'touzi/investment.py'
+      - 'touzi/macro_context.py'
+      - 'touzi/regime.py'
+      - 'touzi/data/macro_cn.py'
+      - 'touzi/data/macro_us.py'
+      - 'touzi/util.py'
+      - 'tests/test_macro_context.py'
+      - 'tests/test_macro_inputs.py'
+      - 'tests/test_macro_display.py'
       - 'config/settings.toml'
   pull_request:
     paths:
@@ -15,6 +23,14 @@ on:
       - 'scripts/build_investment.py'
       - 'scripts/publish_investment.py'
       - 'touzi/investment.py'
+      - 'touzi/macro_context.py'
+      - 'touzi/regime.py'
+      - 'touzi/data/macro_cn.py'
+      - 'touzi/data/macro_us.py'
+      - 'touzi/util.py'
+      - 'tests/test_macro_context.py'
+      - 'tests/test_macro_inputs.py'
+      - 'tests/test_macro_display.py'
       - 'tests/test_investment.py'
       - 'tests/test_publish_investment.py'
       - 'config/settings.toml'
@@ -41,7 +57,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - run: python -m unittest tests.test_investment tests.test_publish_investment
+      - run: python -m unittest tests.test_investment tests.test_publish_investment tests.test_macro_context tests.test_macro_inputs tests.test_macro_display tests.test_weekly_macro
   refresh:
     if: github.event_name != 'pull_request'
     needs: check
@@ -60,7 +76,7 @@ jobs:
           cache: pip
       - run: python -m pip install --disable-pip-version-check -r requirements.txt
       - run: python scripts/build_investment.py
-      - run: python scripts/publish_investment.py --validate-only .investment-output/investment-context.json
-      - run: python scripts/publish_investment.py .investment-output/investment-context.json
+      - run: python scripts/publish_investment.py --validate-only .investment-output/investment-context.json --context .investment-output/investment-context-v2.json
+      - run: python scripts/publish_investment.py .investment-output/investment-context.json --context .investment-output/investment-context-v2.json
         env:
           GH_TOKEN: ${{ github.token }}

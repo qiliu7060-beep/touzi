@@ -111,12 +111,12 @@ def _fetch_yahoo_chart(symbol: str, proxy: str | None, rng: str = "10y") -> pd.D
     return df.dropna().sort_values("date").reset_index(drop=True)
 
 
-def fetch_yahoo_series(column: str, cache: Cache, proxy: str | None, ttl_days: float = 7.0) -> pd.Series:
+def fetch_yahoo_series(column: str, cache: Cache, proxy: str | None, ttl_days: float = 7.0, metadata: dict | None = None) -> pd.Series:
     """按面板列名取一条 Yahoo 序列（如 ``us_10y`` / ``dollar``）。"""
     if column not in SYMBOL_OF:
         raise KeyError(f"未知的 Yahoo 列名：{column}，可选 {sorted(SYMBOL_OF)}")
     symbol = SYMBOL_OF[column]
-    df = cached_fetch(cache, f"yahoo_{symbol}", lambda: _fetch_yahoo_chart(symbol, proxy), ttl_days=ttl_days)
+    df = cached_fetch(cache, f"yahoo_{symbol}", lambda: _fetch_yahoo_chart(symbol, proxy), ttl_days=ttl_days, metadata=metadata)
     return pd.Series(df["value"].to_numpy(dtype=float), index=pd.to_datetime(df["date"])).dropna().sort_index()
 
 
@@ -142,9 +142,9 @@ def _fetch_fred_series(series_id: str, proxy: str | None, start: str = FRED_STAR
     return df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
 
 
-def fetch_fed_balance_sheet(cache: Cache, proxy: str | None, ttl_days: float = 7.0) -> pd.Series:
+def fetch_fed_balance_sheet(cache: Cache, proxy: str | None, ttl_days: float = 7.0, metadata: dict | None = None) -> pd.Series:
     """美联储总资产（周频，百万美元）。源不可达时抛异常，由调用方决定缺席。"""
-    df = cached_fetch(cache, "fred_WALCL", lambda: _fetch_fred_series("WALCL", proxy), ttl_days=ttl_days)
+    df = cached_fetch(cache, "fred_WALCL", lambda: _fetch_fred_series("WALCL", proxy), ttl_days=ttl_days, metadata=metadata)
     return pd.Series(df["value"].to_numpy(dtype=float), index=pd.to_datetime(df["date"])).dropna().sort_index()
 
 
@@ -183,6 +183,7 @@ def fetch_fed_panel(
     series: Iterable[str] | None = None,
     ttl_days: float = 7.0,
     include_balance_sheet: bool = True,
+    metadata: dict | None = None,
 ) -> pd.DataFrame:
     """取美联储相关序列，按日对齐（向前填充，避免周末空洞）。
 
@@ -195,16 +196,24 @@ def fetch_fed_panel(
         if column == "balance_sheet":
             continue
         try:
-            s = fetch_yahoo_series(column, cache, proxy, ttl_days=ttl_days)
+            s = fetch_yahoo_series(column, cache, proxy, ttl_days=ttl_days,
+                                   **({"metadata": metadata.setdefault(column, {})} if metadata is not None else {}))
             s.name = column
+            if metadata is not None and len(s.dropna()):
+                # 在ffill前保留每列真实最后观测，不借别列的新日期复活旧值。
+                metadata[s.name].update(observation_date=str(s.dropna().index[-1].date()), value=float(s.dropna().iloc[-1]))
             frames.append(s)
         except Exception as exc:
             LOG.warning("Yahoo 序列 %s(%s) 抓取失败：%s", column, SYMBOL_OF.get(column), exc)
 
     if include_balance_sheet and "balance_sheet" in wanted:
         try:
-            s = fetch_fed_balance_sheet(cache, proxy, ttl_days=ttl_days)
+            s = fetch_fed_balance_sheet(cache, proxy, ttl_days=ttl_days,
+                                        **({"metadata": metadata.setdefault("balance_sheet", {})} if metadata is not None else {}))
             s.name = "balance_sheet"
+            if metadata is not None and len(s.dropna()):
+                # 在ffill前保留每列真实最后观测，不借别列的新日期复活旧值。
+                metadata[s.name].update(observation_date=str(s.dropna().index[-1].date()), value=float(s.dropna().iloc[-1]))
             frames.append(s)
         except Exception as exc:
             LOG.warning("美联储总资产(WALCL)抓取失败，该子项将缺席：%s", exc)

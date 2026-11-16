@@ -102,12 +102,14 @@ def _to_float(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series, errors="coerce").astype(float)
 
 
-def _indexed(df: pd.DataFrame, value_col: str, month_col: str = "月份") -> pd.Series:
+def _indexed(df: pd.DataFrame, value_col: str, month_col: str = "月份", *, strict: bool = False) -> pd.Series:
     """把「月份 + 数值」两列整理成按月末排序的 Series（去重、丢掉无效行）。"""
     if month_col not in df.columns or value_col not in df.columns:
         raise KeyError(f"缺少列 {month_col!r} 或 {value_col!r}，实际列为 {list(df.columns)}")
     idx = df[month_col].map(parse_cn_month)
     out = pd.Series(_to_float(df[value_col]).to_numpy(), index=pd.DatetimeIndex(idx))
+    if strict and (out.index.hasnans or (out.groupby(level=0).nunique() > 1).any()):
+        raise ValueError("当前宏观源日期无效或同一期数值冲突")
     out = out[~out.index.isna()]
     out = out[~out.index.duplicated(keep="last")]
     return out.sort_index()
@@ -116,67 +118,67 @@ def _indexed(df: pd.DataFrame, value_col: str, month_col: str = "月份") -> pd.
 # --------------------------------------------------------------------------- #
 # 各指标抓取
 # --------------------------------------------------------------------------- #
-def fetch_cn_pmi(cache: Cache, proxy: str | None, ttl_days: float = 7.0) -> pd.DataFrame:
+def fetch_cn_pmi(cache: Cache, proxy: str | None, ttl_days: float = 7.0, metadata: dict | None = None) -> pd.DataFrame:
     """制造业与非制造业 PMI（官方口径，来源：新浪）。
 
     返回 DataFrame，索引月末，列 ``manufacturing`` / ``non_manufacturing``。
     """
     import akshare as ak
 
-    raw = cached_fetch(cache, "cn_pmi_sina", lambda: ak.macro_china_pmi(), ttl_days=ttl_days)
-    manu = _indexed(raw, "制造业-指数")
-    non = _indexed(raw, "非制造业-指数") if "非制造业-指数" in raw.columns else pd.Series(dtype=float)
+    raw = cached_fetch(cache, "cn_pmi_sina", lambda: ak.macro_china_pmi(), ttl_days=ttl_days, metadata=metadata)
+    manu = _indexed(raw, "制造业-指数", strict=metadata is not None)
+    non = _indexed(raw, "非制造业-指数", strict=metadata is not None) if "非制造业-指数" in raw.columns else pd.Series(dtype=float)
     out = pd.DataFrame({"manufacturing": manu, "non_manufacturing": non}).sort_index()
     LOG.info("PMI：%d 个月，最新 %s = %.1f", len(out), out.index[-1].date(), out["manufacturing"].iloc[-1])
     return out
 
 
-def fetch_cn_cpi(cache: Cache, proxy: str | None, ttl_days: float = 7.0) -> pd.Series:
+def fetch_cn_cpi(cache: Cache, proxy: str | None, ttl_days: float = 7.0, metadata: dict | None = None) -> pd.Series:
     """CPI 同比（%），来源：新浪。"""
     import akshare as ak
 
-    raw = cached_fetch(cache, "cn_cpi_sina", lambda: ak.macro_china_cpi(), ttl_days=ttl_days)
-    s = _indexed(raw, "全国-同比增长").rename("cpi_yoy")
+    raw = cached_fetch(cache, "cn_cpi_sina", lambda: ak.macro_china_cpi(), ttl_days=ttl_days, metadata=metadata)
+    s = _indexed(raw, "全国-同比增长", strict=metadata is not None).rename("cpi_yoy")
     LOG.info("CPI：%d 个月，最新 %s = %.2f%%", len(s), s.index[-1].date(), s.iloc[-1])
     return s
 
 
-def fetch_cn_ppi(cache: Cache, proxy: str | None, ttl_days: float = 7.0) -> pd.Series:
+def fetch_cn_ppi(cache: Cache, proxy: str | None, ttl_days: float = 7.0, metadata: dict | None = None) -> pd.Series:
     """PPI 同比（%），来源：新浪。"""
     import akshare as ak
 
-    raw = cached_fetch(cache, "cn_ppi_sina", lambda: ak.macro_china_ppi(), ttl_days=ttl_days)
-    s = _indexed(raw, "当月同比增长").rename("ppi_yoy")
+    raw = cached_fetch(cache, "cn_ppi_sina", lambda: ak.macro_china_ppi(), ttl_days=ttl_days, metadata=metadata)
+    s = _indexed(raw, "当月同比增长", strict=metadata is not None).rename("ppi_yoy")
     LOG.info("PPI：%d 个月，最新 %s = %.2f%%", len(s), s.index[-1].date(), s.iloc[-1])
     return s
 
 
-def fetch_cn_gdp(cache: Cache, proxy: str | None, ttl_days: float = 7.0) -> pd.Series:
+def fetch_cn_gdp(cache: Cache, proxy: str | None, ttl_days: float = 7.0, metadata: dict | None = None) -> pd.Series:
     """GDP 累计同比（%），来源：新浪，季度频率、索引为该季末。"""
     import akshare as ak
 
-    raw = cached_fetch(cache, "cn_gdp_sina", lambda: ak.macro_china_gdp(), ttl_days=ttl_days)
-    s = _indexed(raw, "国内生产总值-同比增长", month_col="季度").rename("gdp_yoy")
+    raw = cached_fetch(cache, "cn_gdp_sina", lambda: ak.macro_china_gdp(), ttl_days=ttl_days, metadata=metadata)
+    s = _indexed(raw, "国内生产总值-同比增长", month_col="季度", strict=metadata is not None).rename("gdp_yoy")
     LOG.info("GDP：%d 个季度，最新 %s = %.1f%%", len(s), s.index[-1].date(), s.iloc[-1])
     return s
 
 
-def fetch_cn_money_supply(cache: Cache, proxy: str | None, ttl_days: float = 7.0) -> pd.DataFrame:
+def fetch_cn_money_supply(cache: Cache, proxy: str | None, ttl_days: float = 7.0, metadata: dict | None = None) -> pd.DataFrame:
     """M1 / M2 同比（%），来源：新浪。"""
     import akshare as ak
 
-    raw = cached_fetch(cache, "cn_money_sina", lambda: ak.macro_china_money_supply(), ttl_days=ttl_days)
+    raw = cached_fetch(cache, "cn_money_sina", lambda: ak.macro_china_money_supply(), ttl_days=ttl_days, metadata=metadata)
     out = pd.DataFrame(
         {
-            "m2_yoy": _indexed(raw, "货币和准货币(M2)-同比增长"),
-            "m1_yoy": _indexed(raw, "货币(M1)-同比增长"),
+            "m2_yoy": _indexed(raw, "货币和准货币(M2)-同比增长", strict=metadata is not None),
+            "m1_yoy": _indexed(raw, "货币(M1)-同比增长", strict=metadata is not None),
         }
     ).sort_index()
     LOG.info("货币供应：%d 个月，最新 M2 %.1f%% / M1 %.1f%%", len(out), out["m2_yoy"].iloc[-1], out["m1_yoy"].iloc[-1])
     return out
 
 
-def fetch_cn_bond_10y(cache: Cache, proxy: str | None, ttl_days: float = 1.0) -> pd.Series:
+def fetch_cn_bond_10y(cache: Cache, proxy: str | None, ttl_days: float = 1.0, metadata: dict | None = None) -> pd.Series:
     """中国 10 年期国债收益率（%），来源：新浪 ``bond_zh_us_rate``（日频）。"""
     import akshare as ak
 
@@ -184,12 +186,14 @@ def fetch_cn_bond_10y(cache: Cache, proxy: str | None, ttl_days: float = 1.0) ->
         cache,
         "cn_bond_10y",
         lambda: ak.bond_zh_us_rate(start_date="20100101"),
-        ttl_days=ttl_days,
+        ttl_days=ttl_days, metadata=metadata,
     )
     s = pd.Series(
         _to_float(raw["中国国债收益率10年"]).to_numpy(),
         index=pd.DatetimeIndex(pd.to_datetime(raw["日期"], errors="coerce")),
     )
+    if metadata is not None and (s.index.hasnans or (s.groupby(level=0).nunique() > 1).any()):
+        raise ValueError("当前国债源日期无效或同日数值冲突")
     s = s[~s.index.isna()].dropna().sort_index()
     s = s[~s.index.duplicated(keep="last")].rename("cn_10y")
     LOG.info("中国10年期国债：%d 个交易日，最新 %s = %.2f%%", len(s), s.index[-1].date(), s.iloc[-1])
@@ -205,6 +209,8 @@ def build_cn_macro_panel(
     start: str | None = None,
     ttl_days: float = 7.0,
     bond_ttl_days: float = 1.0,
+    metadata: dict | None = None,
+    current: bool = False,
 ) -> dict[str, Any]:
     """一次性取齐中国宏观数据，并按公布滞后包装成「可见时点」序列。
 
@@ -214,12 +220,15 @@ def build_cn_macro_panel(
     ttl_days 控制月度/季度宏观（PMI/CPI/PPI/GDP/M2）的缓存时长，
     bond_ttl_days 单独控制 10 年期国债收益率——它是**盘中实时变动**的市场数据。
     """
-    pmi = fetch_cn_pmi(cache, proxy, ttl_days=ttl_days)
-    cpi = fetch_cn_cpi(cache, proxy, ttl_days=ttl_days)
-    ppi = fetch_cn_ppi(cache, proxy, ttl_days=ttl_days)
-    gdp = fetch_cn_gdp(cache, proxy, ttl_days=ttl_days)
-    money = fetch_cn_money_supply(cache, proxy, ttl_days=ttl_days)
-    bond = fetch_cn_bond_10y(cache, proxy, ttl_days=bond_ttl_days)
+    def kwargs(key):
+        return {"metadata": metadata.setdefault(key, {})} if metadata is not None else {}
+    pmi = fetch_cn_pmi(cache, proxy, ttl_days=ttl_days, **kwargs("pmi"))
+    cpi = fetch_cn_cpi(cache, proxy, ttl_days=ttl_days, **kwargs("cpi"))
+    ppi = fetch_cn_ppi(cache, proxy, ttl_days=ttl_days, **kwargs("ppi"))
+    gdp = fetch_cn_gdp(cache, proxy, ttl_days=ttl_days, **kwargs("gdp"))
+    # M1/M2并未参与当前五模块评分，不能成为独立生产的额外故障点。
+    money = pd.DataFrame() if current else fetch_cn_money_supply(cache, proxy, ttl_days=ttl_days)
+    bond = fetch_cn_bond_10y(cache, proxy, ttl_days=bond_ttl_days, **kwargs("cn_bond_10y"))
 
     raw = {"pmi": pmi, "cpi": cpi, "ppi": ppi, "gdp": gdp, "money": money, "bond_10y": bond}
 
