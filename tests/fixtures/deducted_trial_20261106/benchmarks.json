@@ -1,0 +1,230 @@
+{
+  "rows": [
+    {
+      "code": "600519",
+      "year": 2021,
+      "reference_yuan": "52556464900.24",
+      "document": "https://static.cninfo.com.cn/finalpage/2024-04-03/1219506510.PDF",
+      "document_file": "600519_2023.pdf",
+      "pdf_page": 5,
+      "document_sha256": "2125ff97a452ea79b0d784e2432f7d224b6aecc330b644b593477d69e22f4ed1",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain",
+      "known_prior_yuan": "52581102656.240000"
+    },
+    {
+      "code": "600519",
+      "year": 2022,
+      "reference_yuan": "62792896829.57",
+      "document": "https://static.cninfo.com.cn/finalpage/2024-04-03/1219506510.PDF",
+      "document_file": "600519_2023.pdf",
+      "pdf_page": 5,
+      "document_sha256": "2125ff97a452ea79b0d784e2432f7d224b6aecc330b644b593477d69e22f4ed1",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain",
+      "known_prior_yuan": "62791872697.720000"
+    },
+    {
+      "code": "600519",
+      "year": 2023,
+      "reference_yuan": "74752564425.52",
+      "document": "https://static.cninfo.com.cn/finalpage/2026-04-17/1225114741.PDF",
+      "document_file": "600519_2025.pdf",
+      "pdf_page": 6,
+      "document_sha256": "474905deeaf0f875fc0a1b097a626c0c7852c427faadc5d7fc7816cbf45ea288",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    },
+    {
+      "code": "600519",
+      "year": 2024,
+      "reference_yuan": "86240905977.42",
+      "document": "https://static.cninfo.com.cn/finalpage/2026-04-17/1225114741.PDF",
+      "document_file": "600519_2025.pdf",
+      "pdf_page": 6,
+      "document_sha256": "474905deeaf0f875fc0a1b097a626c0c7852c427faadc5d7fc7816cbf45ea288",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    },
+    {
+      "code": "600519",
+      "year": 2025,
+      "reference_yuan": "82293107655.25",
+      "document": "https://static.cninfo.com.cn/finalpage/2026-04-17/1225114741.PDF",
+      "document_file": "600519_2025.pdf",
+      "pdf_page": 6,
+      "document_sha256": "474905deeaf0f875fc0a1b097a626c0c7852c427faadc5d7fc7816cbf45ea288",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    },
+    {
+      "code": "603195",
+      "year": 2021,
+      "reference_yuan": "2632296518.65",
+      "document": "https://static.cninfo.com.cn/finalpage/2024-04-26/1219840341.PDF",
+      "document_file": "603195_2023.pdf",
+      "pdf_page": 9,
+      "document_sha256": "bade9a63773834243207785922cd7c0adfafa885a60e5b558c5463171fbfbf87",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain",
+      "known_prior_yuan": "2632476489.560000"
+    },
+    {
+      "code": "603195",
+      "year": 2022,
+      "reference_yuan": "2904238642.83",
+      "document": "https://static.cninfo.com.cn/finalpage/2024-04-26/1219840341.PDF",
+      "document_file": "603195_2023.pdf",
+      "pdf_page": 9,
+      "document_sha256": "bade9a63773834243207785922cd7c0adfafa885a60e5b558c5463171fbfbf87",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain",
+      "known_prior_yuan": "2904148417.500000"
+    },
+    {
+      "code": "603195",
+      "year": 2023,
+      "reference_yuan": "3703188544.28",
+      "document": "https://static.cninfo.com.cn/finalpage/2026-04-30/1225265197.PDF",
+      "document_file": "603195_2025.pdf",
+      "pdf_page": 9,
+      "document_sha256": "43fab5b1ec584e7f9036c8d97be30bce2e3a2371808392bd71d444814ecb7c68",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    },
+    {
+      "code": "603195",
+      "year": 2024,
+      "reference_yuan": "3741807159.86",
+      "document": "https://static.cninfo.com.cn/finalpage/2026-04-30/1225265197.PDF",
+      "document_file": "603195_2025.pdf",
+      "pdf_page": 9,
+      "document_sha256": "43fab5b1ec584e7f9036c8d97be30bce2e3a2371808392bd71d444814ecb7c68",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    },
+    {
+      "code": "603195",
+      "year": 2025,
+      "reference_yuan": "3624581661.66",
+      "document": "https://static.cninfo.com.cn/finalpage/2026-04-30/1225265197.PDF",
+      "document_file": "603195_2025.pdf",
+      "pdf_page": 9,
+      "document_sha256": "43fab5b1ec584e7f9036c8d97be30bce2e3a2371808392bd71d444814ecb7c68",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    },
+    {
+      "code": "000002",
+      "year": 2021,
+      "reference_yuan": "22381781882.05",
+      "document": "https://static.cninfo.com.cn/finalpage/2022-03-31/1212750450.PDF",
+      "document_file": "000002_2021.pdf",
+      "pdf_page": 12,
+      "document_sha256": "442f1f49615919ca12698ea41bd2ad1f372b776e06625c03ba95294995ff516d",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    },
+    {
+      "code": "000002",
+      "year": 2022,
+      "reference_yuan": "19832876302.45",
+      "document": "https://www.vanke.com/upload/file/2025-03-31/c0759f4e-c010-4de0-ad5f-3b0ed636a364.PDF",
+      "document_file": "000002_2024.pdf",
+      "pdf_page": 4,
+      "document_sha256": "1fb0bc021e1b6025e5eddab116929474791d219128449ca8231d0e918db28c80",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain",
+      "known_prior_yuan": "19762103017.380000"
+    },
+    {
+      "code": "000002",
+      "year": 2023,
+      "reference_yuan": "9793841193.09",
+      "document": "https://static.cninfo.com.cn/finalpage/2026-04-01/1225067794.PDF",
+      "document_file": "000002_2025.pdf",
+      "pdf_page": 11,
+      "document_sha256": "b2befc9da2a9e09c798702c351e6af65a4b148e32baa07737b941edc2caf1eba",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    },
+    {
+      "code": "000002",
+      "year": 2024,
+      "reference_yuan": "-45393719289.83",
+      "document": "https://static.cninfo.com.cn/finalpage/2026-04-01/1225067794.PDF",
+      "document_file": "000002_2025.pdf",
+      "pdf_page": 11,
+      "document_sha256": "b2befc9da2a9e09c798702c351e6af65a4b148e32baa07737b941edc2caf1eba",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    },
+    {
+      "code": "000002",
+      "year": 2025,
+      "reference_yuan": "-85917363120.34",
+      "document": "https://static.cninfo.com.cn/finalpage/2026-04-01/1225067794.PDF",
+      "document_file": "000002_2025.pdf",
+      "pdf_page": 11,
+      "document_sha256": "b2befc9da2a9e09c798702c351e6af65a4b148e32baa07737b941edc2caf1eba",
+      "document_original_unit": "CNY yuan",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    },
+    {
+      "code": "600036",
+      "year": 2021,
+      "reference_yuan": "119430000000.00",
+      "document": "https://static.cninfo.com.cn/finalpage/2024-03-26/1219403501.PDF",
+      "document_file": "600036_2023_summary.pdf",
+      "pdf_page": 3,
+      "document_sha256": "b7395dbb8feb7b90a68b1587c216810c5947319b1798fcb2fef26d74164374e6",
+      "document_original_unit": "CNY million",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    },
+    {
+      "code": "600036",
+      "year": 2022,
+      "reference_yuan": "137551000000.00",
+      "document": "https://static.cninfo.com.cn/finalpage/2024-03-26/1219403501.PDF",
+      "document_file": "600036_2023_summary.pdf",
+      "pdf_page": 3,
+      "document_sha256": "b7395dbb8feb7b90a68b1587c216810c5947319b1798fcb2fef26d74164374e6",
+      "document_original_unit": "CNY million",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    },
+    {
+      "code": "600036",
+      "year": 2023,
+      "reference_yuan": "146047000000.00",
+      "document": "https://static.cninfo.com.cn/finalpage/2026-03-28/1225047778.PDF",
+      "document_file": "600036_2025_summary.pdf",
+      "pdf_page": 3,
+      "document_sha256": "0bdb1515fd12b5ae3d35e981452521c8d6b27bc19836186e298f62b3730bde65",
+      "document_original_unit": "CNY million",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    },
+    {
+      "code": "600036",
+      "year": 2024,
+      "reference_yuan": "148011000000.00",
+      "document": "https://static.cninfo.com.cn/finalpage/2026-03-28/1225047778.PDF",
+      "document_file": "600036_2025_summary.pdf",
+      "pdf_page": 3,
+      "document_sha256": "0bdb1515fd12b5ae3d35e981452521c8d6b27bc19836186e298f62b3730bde65",
+      "document_original_unit": "CNY million",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    },
+    {
+      "code": "600036",
+      "year": 2025,
+      "reference_yuan": "150007000000.00",
+      "document": "https://static.cninfo.com.cn/finalpage/2026-03-28/1225047778.PDF",
+      "document_file": "600036_2025_summary.pdf",
+      "pdf_page": 3,
+      "document_sha256": "0bdb1515fd12b5ae3d35e981452521c8d6b27bc19836186e298f62b3730bde65",
+      "document_original_unit": "CNY million",
+      "version_basis": "inspected_document_only_not_complete_version_chain"
+    }
+  ],
+  "method": "Manual announcement row identification; exact Decimal comparison. Not generated truth from synthetic HTTP."
+}
